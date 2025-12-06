@@ -2,6 +2,8 @@
 
 This document outlines the development roadmap for **Melos**.
 
+---
+
 ## Phase 1: Core Foundation & Converter Maturity ✅ COMPLETE
 
 The goal is to make the `MusicXML -> MNX` conversion robust enough to handle standard music scores.
@@ -22,7 +24,7 @@ The goal is to make the `MusicXML -> MNX` conversion robust enough to handle sta
     - [x] **Tuplets**: Robust handling of nested tuplets via Stack-based parsing.
     - [x] **Dynamics**: p, f, etc. (Implemented via `Sort-by-Layout` strategy).
     - [x] **Wedges**: Crescendo/Diminuendo lines (Implemented via `TimeTracker` for Rhythmic Positions).
-    - [x] **Lyrics**: Full support for歌詞 and Verse metadata.
+    - [x] **Lyrics**: Full support for 歌詞 and Verse metadata.
     - [x] **Articulations**: Staccato, tenuto, accent, strong-accent, staccatissimo, fermata.
     - [x] **Grace Notes**: Proper grouping into grace containers, no time advancement.
     - [x] **Layout Breaks**: System and Page break parsing from `<print>` tags.
@@ -34,6 +36,8 @@ The goal is to make the `MusicXML -> MNX` conversion robust enough to handle sta
     - [x] **Mixed Meter Test**: Verified handling of pickup measures and time signature changes.
     - [ ] Set up a rigorous snapshot test suite running against all W3C MNX example pairs.
 
+---
+
 ## Phase 2: Semantic Validation (The "Linter")
 
 Unlike XML validation, we need *semantic* validation to ensure musical correctness.
@@ -43,6 +47,8 @@ Unlike XML validation, we need *semantic* validation to ensure musical correctne
     - [ ] **Structure Checks**: Ensure Part ID references in global tracks are valid.
     - [ ] **Pitch Bounds**: Warn on unreasonable pitch values.
     - [ ] **CLI Tool**: Create queryable CLI (`melos check my-score.mnx`).
+
+---
 
 ## Phase 3: Web Renderer (The "Visualizer") ✅ MVP COMPLETE
 
@@ -63,12 +69,14 @@ Fill the gap of a native MNX renderer.
     - [x] Chord rendering with shared stems.
     - [x] Rest symbols (whole, half, quarter, eighth).
     - [x] Grace notes (scaled down).
-- [ ] **Engraving Rules (Next Steps)**
+- [x] **Engraving Rules** ✅ COMPLETE
     - [x] Beam slope calculations (connect beamed notes).
     - [x] Slur/Tie curves (Bezier curves).
     - [x] Clef symbols (G-Clef implemented via Bravura SVG path extraction).
     - [x] Key/Time signature display.
     - [x] Second interval collision handling in chords.
+
+---
 
 ## Phase 4: Builder API & Editor Tools
 
@@ -79,8 +87,87 @@ Enable programmatic creation of music.
 - [ ] **Audio Preview**
     - [ ] Basic oscillator-based playback of MNX data in the browser.
 
+---
+
+## Phase 5: Missing MNX Standard Features (Gap Analysis)
+
+Features defined in W3C MNX Schema (`mnx-schema.json`) but not yet implemented in Melos.
+
+### 🔴 Critical (High Impact)
+
+- [ ] **Repeats, Jumps & Endings** (Navigation)
+    - [ ] `repeat-start` / `repeat-end`: Repeat barlines.
+    - [ ] `ending`: Volta brackets (1st/2nd endings).
+    - [ ] `jump`: D.S. al Fine, D.S. al Coda, etc.
+    - [ ] `segno`: Segno sign for navigation.
+    - [ ] `fine`: End of piece marker.
+    - [ ] `coda`: Coda sign.
+    - **Impact**: Without this, scores with repeats must be "unrolled" (expanding file size) or playback order will be incorrect.
+
+- [ ] **Ottavas (Octave Shifts)**
+    - [ ] `ottava`: 8va, 8vb, 15ma, 15mb octave displacement lines.
+    - **Impact**: High-register piano/violin music will have excessive ledger lines, making scores unreadable.
+
+- [ ] **Multimeasure Rests**
+    - [ ] `multimeasure-rest`: Show "rest for N measures" instead of N separate rests.
+    - **Impact**: Essential for professional-looking part extraction (e.g., orchestral parts).
+
+### 🟡 Important (Medium Impact)
+
+- [ ] **Tremolos**
+    - [ ] `tremolo-single`: Single-note tremolo (bowed tremolo).
+    - [ ] `multi-note-tremolo`: Alternating between two notes.
+    - **Impact**: String and piano literature relies heavily on tremolo notation.
+
+- [ ] **Percussion Kit System**
+    - [ ] `kit`: Define a percussion kit (drum set).
+    - [ ] `kit-component`: Map MIDI notes to staff positions.
+    - [ ] `kit-note`: Unpitched percussion notes.
+    - **Impact**: Drum/percussion scores will not convert correctly; notes may be misplaced.
+
+- [ ] **Sound/Playback Definitions**
+    - [ ] `sound`: MIDI program/instrument assignment.
+    - [ ] `midi-number` / `midi-program`: Playback sound mapping.
+    - **Impact**: Converted MNX files will lose instrument sound information for playback.
+
+### 🟢 Nice-to-Have (Low Impact)
+
+- [ ] **Styling & Appearance**
+    - [ ] `color`: Support for colored notes/objects (educational scores, analysis).
+    - [ ] `accidental-display`: Parenthesized accidentals (cautionary/courtesy accidentals).
+    - [ ] `staff-symbol`: Custom staff lines (e.g., 1-line percussion staff).
+
+- [ ] **Advanced Barlines**
+    - [ ] `barline-type`: dotted, dashed, heavy, double, final, tick, short.
+
+- [ ] **Pedaling & Technique**
+    - [ ] Pedal markings (piano sustain pedal).
+    - [ ] String-specific techniques (harmonics, pizzicato indicators).
+
+- [ ] **System Layout Control**
+    - [ ] `system-layout`: Explicit system breaking rules.
+    - [ ] `staff-distance`: Control spacing between staves.
+
+---
+
 ## Backlog / Research
 
 - [ ] **Braille Music Generation**: Research converting semantic MNX data to Music Braille.
 - [ ] **MusicXML Export**: `MNX -> MusicXML` (lower priority, but needed for interoperability).
+- [ ] **PDF Export**: Direct PDF generation from renderer (via canvas/PDF library).
+- [ ] **MIDI Export**: Generate MIDI files from MNX data.
+- [ ] **MusicXML 4.0 Support**: Update converter for latest MusicXML features.
 
+---
+
+## Implementation Priority Matrix
+
+| Priority | Feature | Effort | Business Value |
+|----------|---------|--------|----------------|
+| P0 | Repeats & Endings | High | Critical for playback/engraving |
+| P0 | Ottavas | Medium | Critical for piano/orchestral scores |
+| P1 | Multimeasure Rests | Low | Essential for part extraction |
+| P1 | Tremolos | Medium | Important for classical music |
+| P2 | Percussion Kit | High | Required for drum notation |
+| P2 | Sound Definitions | Low | Required for playback |
+| P3 | Styling (color) | Low | Educational/analysis use |
