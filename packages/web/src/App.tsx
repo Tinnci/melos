@@ -32,7 +32,7 @@ function App() {
 
   // Keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (_e: KeyboardEvent) => {
       // Ctrl/Cmd + Z = Undo (placeholder)
       // Ctrl/Cmd + Shift + Z = Redo (placeholder)
       // Space = Play/Stop (placeholder)
