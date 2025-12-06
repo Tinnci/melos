@@ -1,0 +1,161 @@
+{
+  "global": {
+    "measures": [
+      {
+        "time": {
+          "count": 4,
+          "unit": 4
+        }
+      }
+    ]
+  },
+  "mnx": {
+    "support": {
+      "useAccidentalDisplay": true
+    },
+    "version": 1
+  },
+  "parts": [
+    {
+      "measures": [
+        {
+          "clefs": [
+            {
+              "clef": {
+                "sign": "G",
+                "staffPosition": -2
+              }
+            }
+          ],
+          "sequences": [
+            {
+              "content": [
+                {
+                  "content": [
+                    {
+                      "duration": {
+                        "base": "16th"
+                      },
+                      "id": "ev1",
+                      "notes": [
+                        {
+                          "pitch": {
+                            "octave": 5,
+                            "step": "C"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "duration": {
+                        "base": "16th"
+                      },
+                      "id": "ev2",
+                      "notes": [
+                        {
+                          "pitch": {
+                            "octave": 5,
+                            "step": "D"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "duration": {
+                        "base": "16th"
+                      },
+                      "id": "ev3",
+                      "notes": [
+                        {
+                          "pitch": {
+                            "octave": 5,
+                            "step": "C"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "inner": {
+                    "duration": "TODO",
+                    "multiple": 3
+                  },
+                  "outer": {
+                    "duration": "TODO",
+                    "multiple": 2
+                  }
+                },
+                {
+                  "content": [
+                    {
+                      "duration": {
+                        "base": "16th"
+                      },
+                      "id": "ev4",
+                      "notes": [
+                        {
+                          "pitch": {
+                            "octave": 5,
+                            "step": "E"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "duration": {
+                        "base": "16th"
+                      },
+                      "id": "ev5",
+                      "notes": [
+                        {
+                          "pitch": {
+                            "octave": 5,
+                            "step": "F"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "duration": {
+                        "base": "16th"
+                      },
+                      "id": "ev6",
+                      "notes": [
+                        {
+                          "pitch": {
+                            "octave": 5,
+                            "step": "E"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "inner": {
+                    "duration": "TODO",
+                    "multiple": 3
+                  },
+                  "outer": {
+                    "duration": "TODO",
+                    "multiple": 2
+                  }
+                },
+                {
+                  "duration": {
+                    "base": "quarter"
+                  },
+                  "rest": {}
+                },
+                {
+                  "duration": {
+                    "base": "half"
+                  },
+                  "rest": {}
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "name": "Music"
+    }
+  ]
+}
