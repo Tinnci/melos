@@ -176,6 +176,12 @@ export const OttavaSchema = z.object({
     voice: z.string().optional()
 });
 
+// [NEW] Multimeasure Rest (consolidated rest spanning multiple measures)
+export const MultimeasureRestSchema = z.object({
+    start: z.number().int(), // Starting measure number (1-indexed)
+    duration: z.number().int().min(1), // Number of measures
+    label: z.string().optional() // Optional display label
+});
 
 export const GlobalMeasureSchema = z.object({
     index: z.number().int().optional(),
@@ -212,7 +218,8 @@ export const PartMeasureSchema = z.object({
     clefs: z.array(PositionedClefSchema).optional(),
     beams: z.array(BeamSchema).optional(),
     wedges: z.array(WedgeSchema).optional(),
-    ottavas: z.array(OttavaSchema).optional() // [NEW] Octave shifts (8va, 8vb, etc.)
+    ottavas: z.array(OttavaSchema).optional(),
+    multimeasureRest: MultimeasureRestSchema.optional() // [NEW] Consolidated multi-bar rest
 });
 
 export const PartSchema = z.object({
@@ -260,3 +267,4 @@ export type RhythmicPosition = z.infer<typeof RhythmicPositionSchema>;
 export type MeasureRhythmicPosition = z.infer<typeof MeasureRhythmicPositionSchema>;
 export type Articulation = z.infer<typeof ArticulationSchema>;
 export type Ottava = z.infer<typeof OttavaSchema>;
+export type MultimeasureRest = z.infer<typeof MultimeasureRestSchema>;

@@ -1,4 +1,4 @@
-import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Tie, Slur, Lyric, DynamicEvent, Wedge, Ottava } from "@melos/core";
+import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Tie, Slur, Lyric, DynamicEvent, Wedge, Ottava, MultimeasureRest } from "@melos/core";
 import { generateEventId, generateNoteId } from "./Utils";
 import { TimeTracker } from "./TimeTracker";
 import { XmlEventStream, type XmlToken } from "./XmlEventStream";
@@ -124,12 +124,25 @@ export class MeasureParser {
             sequences.push({ content: [] });
         }
 
+        // [NEW] Multimeasure Rest Detection
+        let multimeasureRest: MultimeasureRest | undefined = undefined;
+        if (this.xmlMeasure.attributes?.["measure-style"]?.["multiple-rest"]) {
+            const duration = parseInt(this.xmlMeasure.attributes["measure-style"]["multiple-rest"]);
+            if (duration > 1) {
+                multimeasureRest = {
+                    start: this.measureIndex,
+                    duration: duration
+                };
+            }
+        }
+
         return {
             sequences: sequences,
             clefs: clefs,
             beams: this.beams.length > 0 ? this.beams : undefined,
             wedges: wedges.length > 0 ? wedges : undefined,
-            ottavas: ottavas.length > 0 ? ottavas : undefined // [NEW]
+            ottavas: ottavas.length > 0 ? ottavas : undefined,
+            multimeasureRest: multimeasureRest
         };
     }
 

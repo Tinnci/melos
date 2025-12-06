@@ -108,8 +108,8 @@ Features defined in W3C MNX Schema (`mnx-schema.json`) but not yet implemented i
     - [x] `ottava`: 8va, 8vb, 15ma, 15mb octave displacement lines.
     - **Impact**: High-register piano/violin music will have excessive ledger lines, making scores unreadable.
 
-- [ ] **Multimeasure Rests**
-    - [ ] `multimeasure-rest`: Show "rest for N measures" instead of N separate rests.
+- [x] **Multimeasure Rests** ✅ IMPLEMENTED
+    - [x] `multimeasure-rest`: Show "rest for N measures" instead of N separate rests.
     - **Impact**: Essential for professional-looking part extraction (e.g., orchestral parts).
 
 ### 🟡 Important (Medium Impact)

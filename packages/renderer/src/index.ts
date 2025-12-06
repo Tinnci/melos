@@ -103,103 +103,116 @@ export class Renderer {
                     }
                 }
 
-                const voice = measure.sequences[0];
-                if (voice) {
-                    voice.content.forEach((item: any) => {
-                        if (item.notes && item.notes.length > 0) {
-                            const duration = item.duration?.base || "quarter";
-                            const eventId = item.id || `event-${noteX}`; // Use item.id if available
-                            const isBeamed = beamedEventIds.has(eventId);
+                // --- 5a. Check for Multimeasure Rest ---
+                if ((measure as any).multimeasureRest) {
+                    const mmRest = (measure as any).multimeasureRest;
+                    svgContent += this.renderMultimeasureRest(
+                        currentX + this.config.measurePadding,
+                        currentX + measureWidth - this.config.measurePadding,
+                        currentY,
+                        mmRest.duration
+                    );
+                    // Skip regular note content rendering for this measure
+                } else {
+                    // --- 5b. Render regular measure content ---
+                    const voice = measure.sequences[0];
+                    if (voice) {
+                        voice.content.forEach((item: any) => {
+                            if (item.notes && item.notes.length > 0) {
+                                const duration = item.duration?.base || "quarter";
+                                const eventId = item.id || `event-${noteX}`; // Use item.id if available
+                                const isBeamed = beamedEventIds.has(eventId);
 
-                            // Render the chord, passing beam info
-                            const chordResult = this.renderChordWithLayout(
-                                noteX, item.notes, duration, currentY, 1, isBeamed
-                            );
-                            svgContent += chordResult.svg;
+                                // Render the chord, passing beam info
+                                const chordResult = this.renderChordWithLayout(
+                                    noteX, item.notes, duration, currentY, 1, isBeamed
+                                );
+                                svgContent += chordResult.svg;
 
-                            // Store position for beam drawing
-                            if (isBeamed && chordResult.layout) {
-                                eventPositions.set(eventId, chordResult.layout);
-                            }
-
-                            // Register position for Tie/Slur (global)
-                            if (chordResult.layout) {
-                                // Approximate note head Y position
-                                const noteHeadY = chordResult.layout.stemUp
-                                    ? chordResult.layout.stemTipY + this.config.stemLength
-                                    : chordResult.layout.stemTipY - this.config.stemLength;
-                                globalPositions.set(eventId, {
-                                    x: noteX,
-                                    y: noteHeadY,
-                                    stemUp: chordResult.layout.stemUp
-                                });
-                            }
-
-                            // Collect Slur requests from event
-                            if (item.slurs && Array.isArray(item.slurs)) {
-                                for (const slur of item.slurs) {
-                                    if (slur.target) {
-                                        curveRequests.push({
-                                            type: 'slur',
-                                            sourceId: eventId,
-                                            targetId: slur.target,
-                                            side: slur.side || 'up'
-                                        });
-                                    }
+                                // Store position for beam drawing
+                                if (isBeamed && chordResult.layout) {
+                                    eventPositions.set(eventId, chordResult.layout);
                                 }
-                            }
 
-                            // Collect Tie requests from notes
-                            for (const note of item.notes) {
-                                if (note.ties && Array.isArray(note.ties)) {
-                                    for (const tie of note.ties) {
-                                        if (tie.target) {
+                                // Register position for Tie/Slur (global)
+                                if (chordResult.layout) {
+                                    // Approximate note head Y position
+                                    const noteHeadY = chordResult.layout.stemUp
+                                        ? chordResult.layout.stemTipY + this.config.stemLength
+                                        : chordResult.layout.stemTipY - this.config.stemLength;
+                                    globalPositions.set(eventId, {
+                                        x: noteX,
+                                        y: noteHeadY,
+                                        stemUp: chordResult.layout.stemUp
+                                    });
+                                }
+
+                                // Collect Slur requests from event
+                                if (item.slurs && Array.isArray(item.slurs)) {
+                                    for (const slur of item.slurs) {
+                                        if (slur.target) {
                                             curveRequests.push({
-                                                type: 'tie',
-                                                sourceId: note.id || eventId,
-                                                targetId: tie.target,
-                                                side: 'auto'
+                                                type: 'slur',
+                                                sourceId: eventId,
+                                                targetId: slur.target,
+                                                side: slur.side || 'up'
                                             });
                                         }
                                     }
                                 }
-                            }
 
-                            noteX += this.getNoteWidth(duration);
-
-                        } else if (item.rest) {
-                            const duration = item.duration?.base || "quarter";
-                            svgContent += this.renderRest(noteX, currentY, duration);
-                            noteX += this.getNoteWidth(duration);
-
-                        } else if (item.type === 'tuplet' || item.type === 'grace') {
-                            item.content.forEach((subItem: any) => {
-                                if (subItem.notes && subItem.notes.length > 0) {
-                                    const duration = subItem.duration?.base || "eighth";
-                                    svgContent += this.renderChord(noteX, subItem.notes, duration, currentY, 0.7);
-                                    noteX += 20;
+                                // Collect Tie requests from notes
+                                for (const note of item.notes) {
+                                    if (note.ties && Array.isArray(note.ties)) {
+                                        for (const tie of note.ties) {
+                                            if (tie.target) {
+                                                curveRequests.push({
+                                                    type: 'tie',
+                                                    sourceId: note.id || eventId,
+                                                    targetId: tie.target,
+                                                    side: 'auto'
+                                                });
+                                            }
+                                        }
+                                    }
                                 }
-                            });
+
+                                noteX += this.getNoteWidth(duration);
+
+                            } else if (item.rest) {
+                                const duration = item.duration?.base || "quarter";
+                                svgContent += this.renderRest(noteX, currentY, duration);
+                                noteX += this.getNoteWidth(duration);
+
+                            } else if (item.type === 'tuplet' || item.type === 'grace') {
+                                item.content.forEach((subItem: any) => {
+                                    if (subItem.notes && subItem.notes.length > 0) {
+                                        const duration = subItem.duration?.base || "eighth";
+                                        svgContent += this.renderChord(noteX, subItem.notes, duration, currentY, 0.7);
+                                        noteX += 20;
+                                    }
+                                });
+                            }
+                        });
+                    }
+
+                    // --- 5c. Render Beams ---
+                    if (measure.beams && eventPositions.size > 0) {
+                        for (const beam of measure.beams) {
+                            svgContent += this.renderBeam(beam.events, eventPositions);
                         }
-                    });
-                }
-
-                // --- 5b. Render Beams ---
-                if (measure.beams && eventPositions.size > 0) {
-                    for (const beam of measure.beams) {
-                        svgContent += this.renderBeam(beam.events, eventPositions);
                     }
-                }
 
-                // --- 5c. Render Ottavas (8va, 8vb, etc.) ---
-                if ((measure as any).ottavas) {
-                    for (const ottava of (measure as any).ottavas) {
-                        // Simplified: render ottava spanning the measure where it starts
-                        const startX = currentX + this.config.measurePadding;
-                        const endX = currentX + measureWidth - this.config.measurePadding;
-                        svgContent += this.renderOttava(startX, endX, currentY, ottava.value);
+                    // --- 5d. Render Ottavas (8va, 8vb, etc.) ---
+                    if ((measure as any).ottavas) {
+                        for (const ottava of (measure as any).ottavas) {
+                            // Simplified: render ottava spanning the measure where it starts
+                            const startX = currentX + this.config.measurePadding;
+                            const endX = currentX + measureWidth - this.config.measurePadding;
+                            svgContent += this.renderOttava(startX, endX, currentY, ottava.value);
+                        }
                     }
-                }
+                } // End of else block (regular measure rendering)
 
                 // --- 6. Advance X position ---
                 currentX += measureWidth;
@@ -627,6 +640,33 @@ export class Renderer {
         // Draw hook at the end (vertical line going toward the staff)
         const hookLength = above ? 8 : -8;
         svg += `<line x1="${endX}" y1="${lineY}" x2="${endX}" y2="${lineY + hookLength}" stroke="black" stroke-width="1" />\n`;
+
+        return svg;
+    }
+
+    /**
+     * Render a Multimeasure Rest (consolidated rest spanning multiple measures).
+     * Displays as a thick horizontal line with two vertical brackets and a number above.
+     */
+    private renderMultimeasureRest(startX: number, endX: number, staffTopY: number, duration: number): string {
+        // Position: centered vertically on staff (between lines 2 and 4)
+        const centerY = staffTopY + 2 * this.config.lineSpacing;
+        const restWidth = endX - startX;
+
+        // Thick horizontal line (the rest symbol)
+        const lineHeight = 8;
+        let svg = `<rect x="${startX}" y="${centerY - lineHeight / 2}" width="${restWidth}" height="${lineHeight}" fill="black" />\n`;
+
+        // Vertical brackets at ends
+        const bracketHeight = this.config.lineSpacing * 2;
+        const bracketTop = centerY - bracketHeight / 2;
+        svg += `<line x1="${startX}" y1="${bracketTop}" x2="${startX}" y2="${bracketTop + bracketHeight}" stroke="black" stroke-width="2" />\n`;
+        svg += `<line x1="${endX}" y1="${bracketTop}" x2="${endX}" y2="${bracketTop + bracketHeight}" stroke="black" stroke-width="2" />\n`;
+
+        // Number above the rest (centered)
+        const numberX = (startX + endX) / 2;
+        const numberY = staffTopY - 10;
+        svg += `<text x="${numberX}" y="${numberY}" font-family="Times New Roman" font-size="18" font-weight="bold" text-anchor="middle">${duration}</text>\n`;
 
         return svg;
     }
