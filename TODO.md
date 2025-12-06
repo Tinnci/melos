@@ -112,15 +112,18 @@ Current progress and short-term plan:
 - [x] Premium dark theme with glassmorphism design system
 - [x] Keyboard shortcuts (Space = Play/Stop, Ctrl+Z = Undo, Ctrl+Shift+Z = Redo)
 - [x] localStorage persistence for Score auto-save/restore
-- [ ] Builder -> Editor mutations (property panel to mutate builder state and re-render)
+- [x] Builder -> Editor mutations (property panel to mutate builder state and re-render)
+- [x] TailwindCSS 4.x + shadcn/ui migration
+- [x] Editable Time Signature and Key Signature in Properties Panel
+- [x] File browse button as alternative to drag-and-drop
 - [ ] Snapshot & visual regression tests for the full conversion -> render -> play pipeline
 - [ ] Accessibility, keyboard navigation and responsive refinements
 
 Immediate next steps (short-term):
 
-1. Create editable property fields in PropertiesPanel (metadata, tempo).
-2. Wire property changes to rebuild Score via Builder API and re-render.
-3. Add file input button as alternative to drag-and-drop for MusicXML import.
+1. Write snapshot tests for MusicXML conversion pipeline.
+2. Add more editable properties (Part names, Tempo markings).
+3. Implement PDF/MIDI export functionality.
 
 ---
 

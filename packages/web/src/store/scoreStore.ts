@@ -53,6 +53,10 @@ export interface ScoreState {
     redo: () => void
     canUndo: () => boolean
     canRedo: () => boolean
+
+    // Score Mutation Actions
+    updateTimeSignature: (count: number, unit: number) => void
+    updateKeySignature: (fifths: number) => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -181,6 +185,43 @@ export const useScoreStore = create<ScoreState>()(
 
         canUndo: () => get().historyIndex > 0,
         canRedo: () => get().historyIndex < get().history.length - 1,
+
+        // Score Mutations
+        updateTimeSignature: (count, unit) => {
+            const { score, setScore } = get()
+            if (!score) return
+
+            const updatedScore: Score = {
+                ...score,
+                global: {
+                    ...score.global,
+                    measures: score.global.measures.map((measure, index) =>
+                        index === 0
+                            ? { ...measure, time: { count, unit } }
+                            : measure
+                    ),
+                },
+            }
+            setScore(updatedScore)
+        },
+
+        updateKeySignature: (fifths) => {
+            const { score, setScore } = get()
+            if (!score) return
+
+            const updatedScore: Score = {
+                ...score,
+                global: {
+                    ...score.global,
+                    measures: score.global.measures.map((measure, index) =>
+                        index === 0
+                            ? { ...measure, key: { fifths } }
+                            : measure
+                    ),
+                },
+            }
+            setScore(updatedScore)
+        },
     }))
 )
 
