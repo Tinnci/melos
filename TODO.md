@@ -141,7 +141,7 @@ Features defined in W3C MNX Schema (`mnx-schema.json`) but not yet implemented i
     - [ ] `barline-type`: dotted, dashed, heavy, double, final, tick, short.
 
 - [ ] **Pedaling & Technique**
-    - [ ] Pedal markings (piano sustain pedal).
+    - [x] Pedal markings (piano sustain pedal).
     - [ ] String-specific techniques (harmonics, pizzicato indicators).
 
 - [ ] **System Layout Control**

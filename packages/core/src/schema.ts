@@ -190,6 +190,17 @@ export const OttavaSchema = z.object({
     voice: z.string().optional()
 });
 
+// [NEW] Pedal (Sustain pedal)
+export const PedalSchema = z.object({
+    type: z.enum(["start", "stop", "change", "continue"]),
+    position: RhythmicPositionSchema,
+    end: MeasureRhythmicPositionSchema.optional(), // Only for lines, or paired start/stop
+    line: z.boolean().optional(), // If true, render as bracket/line
+    sign: z.boolean().optional(), // If true, render 'Ped' symbol
+    staff: z.number().int().optional(),
+    voice: z.string().optional()
+});
+
 // [NEW] Multimeasure Rest (consolidated rest spanning multiple measures)
 export const MultimeasureRestSchema = z.object({
     start: z.number().int(), // Starting measure number (1-indexed)
@@ -256,6 +267,7 @@ export const PartMeasureSchema = z.object({
     beams: z.array(BeamSchema).optional(),
     wedges: z.array(WedgeSchema).optional(),
     ottavas: z.array(OttavaSchema).optional(),
+    pedals: z.array(PedalSchema).optional(), // [NEW] Pedal markings
     multimeasureRest: MultimeasureRestSchema.optional() // [NEW] Consolidated multi-bar rest
 });
 
@@ -305,15 +317,17 @@ export type Grace = z.infer<typeof GraceSchema>;
 export type Sequence = z.infer<typeof SequenceSchema>;
 export type GlobalMeasure = z.infer<typeof GlobalMeasureSchema>;
 export type PartMeasure = z.infer<typeof PartMeasureSchema>;
+export type MeasureRhythmicPosition = z.infer<typeof MeasureRhythmicPositionSchema>;
+export type Articulation = z.infer<typeof ArticulationSchema>;
+export type Ottava = z.infer<typeof OttavaSchema>;
+export type Pedal = z.infer<typeof PedalSchema>;
+export type MultimeasureRest = z.infer<typeof MultimeasureRestSchema>;
 export type Part = z.infer<typeof PartSchema>;
 export type Score = z.infer<typeof ScoreSchema>;
 export type Beam = z.infer<typeof BeamSchema>;
 export type Wedge = z.infer<typeof WedgeSchema>;
 export type RhythmicPosition = z.infer<typeof RhythmicPositionSchema>;
-export type MeasureRhythmicPosition = z.infer<typeof MeasureRhythmicPositionSchema>;
-export type Articulation = z.infer<typeof ArticulationSchema>;
-export type Ottava = z.infer<typeof OttavaSchema>;
-export type MultimeasureRest = z.infer<typeof MultimeasureRestSchema>;
+
 export type RepeatStart = z.infer<typeof RepeatStartSchema>;
 export type RepeatEnd = z.infer<typeof RepeatEndSchema>;
 export type Ending = z.infer<typeof EndingSchema>;

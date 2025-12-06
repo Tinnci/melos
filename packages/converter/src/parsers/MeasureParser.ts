@@ -1,4 +1,4 @@
-import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Tie, Slur, Lyric, DynamicEvent, Wedge, Ottava, MultimeasureRest } from "@melos/core";
+import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Tie, Slur, Lyric, DynamicEvent, Wedge, Ottava, Pedal, MultimeasureRest } from "@melos/core";
 import { generateEventId, generateNoteId } from "./Utils";
 import { TimeTracker } from "./TimeTracker";
 import { XmlEventStream, type XmlToken } from "./XmlEventStream";
@@ -22,6 +22,7 @@ export interface PartParsingContext {
     activeWedges: Record<number, ActiveWedgeState>;
     activeOttavas: Record<number, ActiveOttavaState>; // [NEW] Ottava tracking
     activeTremolos: Record<number, { id: string }>; // [NEW] Multi-note Tremolo tracking
+    activePedals?: { pedalObj: Pedal }; // [NEW] Pedal tracking
     lyricLines: Map<string, { id: string, name: string }>;
 }
 
@@ -68,6 +69,7 @@ export class MeasureParser {
         const xmlEvents = XmlEventStream.extract(this.xmlMeasure);
         const wedges: Wedge[] = [];
         const ottavas: Ottava[] = []; // [NEW] Ottava collection
+        const pedals: Pedal[] = []; // [NEW] Pedal collection
 
         for (const token of xmlEvents) {
             const voiceId = token.voice ? String(token.voice) : "1";
@@ -92,9 +94,11 @@ export class MeasureParser {
                     if (dt.wedge) {
                         this.handleWedge(dt.wedge, wedges, voiceId);
                     }
-                    // [NEW] Handle octave-shift (8va, 8vb, etc.)
                     if (dt["octave-shift"]) {
                         this.handleOttava(dt["octave-shift"], ottavas, voiceId);
+                    }
+                    if (dt.pedal) {
+                        this.handlePedal(dt.pedal, pedals, voiceId);
                     }
                 });
             }
@@ -143,6 +147,7 @@ export class MeasureParser {
             beams: this.beams.length > 0 ? this.beams : undefined,
             wedges: wedges.length > 0 ? wedges : undefined,
             ottavas: ottavas.length > 0 ? ottavas : undefined,
+            pedals: pedals.length > 0 ? pedals : undefined,
             multimeasureRest: multimeasureRest
         };
     }
@@ -219,6 +224,72 @@ export class MeasureParser {
                 };
                 delete this.context.activeOttavas[number];
             }
+        }
+    }
+
+    private handlePedal(pedalXml: any, pedalsList: Pedal[], voiceId: string) {
+        const type = pedalXml["@_type"]; // start | stop | change | continue
+        const line = pedalXml["@_line"] === "yes";
+        const sign = pedalXml["@_sign"] === "yes" || !line;
+
+        if (type === "start") {
+            const pedalObj: Pedal = {
+                type: "start",
+                position: this.timeTracker.getCurrentPosition(voiceId),
+                line: line,
+                sign: sign,
+                voice: voiceId
+            };
+            pedalsList.push(pedalObj);
+            this.context.activePedals = { pedalObj };
+
+        } else if (type === "stop") {
+            const active = this.context.activePedals;
+            if (active) {
+                if (active.pedalObj.line) {
+                    active.pedalObj.end = {
+                        measure: this.measureIndex,
+                        position: this.timeTracker.getCurrentPosition(voiceId)
+                    };
+                    delete this.context.activePedals; // Clear active
+                } else {
+                    // Sign pedal stop
+                    const pedalStop: Pedal = {
+                        type: "stop",
+                        position: this.timeTracker.getCurrentPosition(voiceId),
+                        voice: voiceId
+                    };
+                    pedalsList.push(pedalStop);
+                    delete this.context.activePedals;
+                }
+            } else {
+                // Orphan stop
+                pedalsList.push({
+                    type: "stop",
+                    position: this.timeTracker.getCurrentPosition(voiceId),
+                    voice: voiceId
+                });
+            }
+
+        } else if (type === "change") {
+            const active = this.context.activePedals;
+            const pos = this.timeTracker.getCurrentPosition(voiceId);
+
+            if (active && active.pedalObj.line) {
+                active.pedalObj.end = { measure: this.measureIndex, position: pos };
+            } else {
+                pedalsList.push({ type: "stop", position: pos, voice: voiceId });
+            }
+
+            const newPedal: Pedal = {
+                type: "start",
+                position: pos,
+                line: line,
+                sign: sign,
+                voice: voiceId
+            };
+            pedalsList.push(newPedal);
+            this.context.activePedals = { pedalObj: newPedal };
         }
     }
 

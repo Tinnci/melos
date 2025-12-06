@@ -259,6 +259,26 @@ export class Renderer {
                             svgContent += this.renderOttava(startX, endX, currentY, ottava.value);
                         }
                     }
+
+                    // --- 5e. Render Pedals (Sustain) ---
+                    if ((measure as any).pedals) {
+                        const pedalEvents = (measure as any).pedals;
+                        pedalEvents.forEach((p: any, idx: number) => {
+                            const xOffset = (idx * 20) + 10;
+                            const pX = currentX + this.config.measurePadding + xOffset;
+
+                            if (p.type === 'start') {
+                                if (p.line) {
+                                    const endX = currentX + measureWidth - this.config.measurePadding;
+                                    svgContent += this.renderPedalLine(pX, endX, currentY);
+                                } else {
+                                    svgContent += this.renderPedalSign(pX, currentY, 'start');
+                                }
+                            } else if (p.type === 'stop' && !p.line) {
+                                svgContent += this.renderPedalSign(pX, currentY, 'stop');
+                            }
+                        });
+                    }
                 } // End of else block (regular measure rendering)
 
                 // --- 6. Advance X position ---
@@ -1142,5 +1162,19 @@ export class Renderer {
         }
 
         return svg;
+    }
+    private renderPedalSign(x: number, systemY: number, type: 'start' | 'stop'): string {
+        const y = systemY + 50; // Below staff
+        const text = type === 'start' ? "Ped." : "*";
+        const fontSize = 20;
+        const fontStyle = "italic";
+        // Times New Roman is standard for Ped.
+        return `<text x="${x}" y="${y}" font-family="Times New Roman" font-style="${fontStyle}" font-size="${fontSize}">${text}</text>\n`;
+    }
+
+    private renderPedalLine(startX: number, endX: number, systemY: number): string {
+        const y = systemY + 50;
+        const height = 10;
+        return `<path d="M${startX} ${y - height} L${startX} ${y} L${endX} ${y} L${endX} ${y - height}" stroke="black" stroke-width="1.5" fill="none"/>\n`;
     }
 }
