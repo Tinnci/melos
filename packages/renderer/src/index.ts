@@ -50,15 +50,33 @@ export class Renderer {
                     isNewSystem = true;
                 }
 
-                // --- 3. Draw Clef if new system ---
+                // --- 3. Draw Clef, Key, Time if new system or changes ---
                 if (isNewSystem) {
                     // Draw clef at start of system
-                    // Position relative to staff BOTTOM line (baseline for SMuFL)
-                    // Staff height = 40 (4 * 10)
-                    // currentY is TOP line. So Bottom line is currentY + 40.
-                    // We render at TOP line + 30 (G line) for visual center adjustment
-                    svgContent += this.renderClef(currentX + 10, currentY + 30);
+                    svgContent += this.renderClef(currentX + 10, currentY + 40);
                     currentX += this.config.clefWidth;
+
+                    // Draw Key Signature (Initial only for now, can be expanded)
+                    // TODO: Get actual key from Measure 1 attributes if available
+                    // For demo, we'll check the first measure's attributes if they match our internal structure
+                    // The core type definition isn't fully visible, but we can try to access sensible defaults
+                    // or just placeholder for now if data is missing.
+                    // Actually, let's check the first measure for attributes.
+                    const firstMeasure = part.measures[0] as any;
+                    const initialKey = firstMeasure?.attributes?.key;
+                    if (initialKey) {
+                        const keyWidth = this.renderKeySignature(currentX, currentY, initialKey);
+                        svgContent += keyWidth.svg;
+                        currentX += keyWidth.width;
+                    }
+
+                    // Draw Time Signature
+                    const initialTime = firstMeasure?.attributes?.time;
+                    if (initialTime) {
+                        const timeWidth = this.renderTimeSignature(currentX, currentY, initialTime);
+                        svgContent += timeWidth.svg;
+                        currentX += timeWidth.width;
+                    }
                 }
 
                 // --- 4. Draw barline at start of measure ---
@@ -128,6 +146,73 @@ export class Renderer {
         return `<g transform="translate(${x}, ${y}) scale(${scale})">
             <path d="${GCLEF_PATH}" fill="black" />
         </g>\n`;
+    }
+
+    private renderKeySignature(x: number, y: number, key: any): { svg: string, width: number } {
+        // key: { fifths: number }
+        // fifths > 0: Sharps, fifths < 0: Flats
+        let svg = "";
+        let width = 0;
+        const fifths = key.fifths || 0;
+        const spacing = 12;
+
+        if (fifths === 0) return { svg: "", width: 10 }; // Just padding
+
+        // Treble Clef Sharp Positions (F, C, G, D, A, E, B)
+        // Y coords relative to staffTopY.
+        // Top line F5 = y.
+        // Sharp F5: on line.
+        // F5(0), C5(30), G5(0-? G5 is space above F5? No. G5 is above F5.)
+        // Lines: E4(40), G4(30), B4(20), D5(10), F5(0)
+
+        // Sharps pattern: F(0), C(15), G(-5 ?), D(10), A(25), E(5), B(20)
+        // Wait, standard positions:
+        // F# (Tip line 5): y=0.
+        // C# (Space 3): y=15.
+        // G# (Space above staff): y=-5.
+        // D# (Line 4): y=10.
+        // A# (Space 2): y=25.
+        // E# (Space 4): y=5.
+        // B# (Line 3): y=20.
+        const sharpYs = [0, 15, -5, 10, 25, 5, 20];
+
+        // Flats pattern: B, E, A, D, G, C, F
+        // B(20), E(5), A(25), D(10), G(30), C(15), F(35)
+        const flatYs = [20, 5, 25, 10, 30, 15, 35];
+
+        const symbol = fifths > 0 ? "♯" : "♭";
+        const positions = fifths > 0 ? sharpYs : flatYs;
+        const count = Math.abs(fifths);
+
+        for (let i = 0; i < count; i++) {
+            const symbolY = y + positions[i] + (fifths > 0 ? 5 : 5); // Adjustment for text centering
+            svg += `<text x="${x + (i * spacing)}" y="${symbolY}" font-family="Times New Roman" font-size="20">${symbol}</text>\n`;
+        }
+
+        width = (count * spacing) + 10;
+        return { svg, width };
+    }
+
+    private renderTimeSignature(x: number, y: number, time: any): { svg: string, width: number } {
+        // time: { beats: number, beat-type: number }
+        const beats = time.beats;
+        const type = time["beat-type"];
+
+        // Render as two numbers stacked
+        // Top number centered in top 2 spaces (y to y+20)
+        // Bottom number centered in bottom 2 spaces (y+20 to y+40)
+
+        // Font adjustment
+        const fontSize = 32; // Covers 2 spaces roughly
+        const charX = x + 10;
+
+        return {
+            svg: `
+            <text x="${charX}" y="${y + 18}" font-family="Times New Roman" font-weight="bold" font-size="${fontSize}" text-anchor="middle">${beats}</text>
+            <text x="${charX}" y="${y + 38}" font-family="Times New Roman" font-weight="bold" font-size="${fontSize}" text-anchor="middle">${type}</text>
+            `,
+            width: 30
+        };
     }
 
     /**
@@ -231,11 +316,11 @@ export class Renderer {
         if (stemUp) {
             const x = cx + r;
             const stemTop = minY - stemLen;
-            return `<line x1="${x}" y1="${maxY}" x2="${x}" y2="${stemTop}" stroke="black" stroke-width="1" />\n`;
+            return `<line x1="${x}" y1="${maxY}" x2="${x}" y2="${stemTop}" stroke="black" stroke-width="1.5" />\n`;
         } else {
             const x = cx - r;
             const stemBottom = maxY + stemLen;
-            return `<line x1="${x}" y1="${minY}" x2="${x}" y2="${stemBottom}" stroke="black" stroke-width="1" />\n`;
+            return `<line x1="${x}" y1="${minY}" x2="${x}" y2="${stemBottom}" stroke="black" stroke-width="1.5" />\n`;
         }
     }
 
@@ -312,6 +397,9 @@ export class Renderer {
     /**
      * Render rest symbols.
      */
+    /**
+     * Render rest symbols.
+     */
     private renderRest(x: number, staffTopY: number, duration: string): string {
         const centerY = staffTopY + 2 * this.config.lineSpacing;
 
@@ -322,11 +410,23 @@ export class Renderer {
             // Thick bar sitting on line 3
             return `<rect x="${x}" y="${staffTopY + 2 * this.config.lineSpacing - 5}" width="12" height="5" fill="black" />\n`;
         } else if (duration === "quarter") {
-            // Simplified Z-like shape
-            return `<path d="M${x},${centerY - 10} L${x + 8},${centerY} L${x},${centerY + 10}" fill="none" stroke="black" stroke-width="2" />\n`;
+            // Classical Quarter Rest Path
+            // A squiggle centered around the middle lines
+            const topY = staffTopY + this.config.lineSpacing; // Line 2
+            // Path scaled to fit ~25px height
+            return `<path d="M${x + 5},${topY} 
+                     Q${x + 12},${topY + 8} ${x + 6},${topY + 12} 
+                     Q${x + 2},${topY + 15} ${x + 8},${topY + 20} 
+                     Q${x + 10},${topY + 25} ${x + 4},${topY + 22} 
+                     L${x + 6},${topY + 30}" 
+                     fill="none" stroke="black" stroke-width="2" stroke-linecap="round" />\n`;
         } else {
-            // Eighth and shorter: dot with flag
-            return `<circle cx="${x + 5}" cy="${centerY}" r="3" fill="black" />\n`;
+            // Eighth Rest: Dot-like head with a flag tail
+            const topY = staffTopY + 2 * this.config.lineSpacing; // Line 3
+            return `<g transform="translate(${x}, ${topY})">
+                <circle cx="4" cy="2" r="3.5" fill="black"/>
+                <path d="M7,2 Q10,8 4,15" fill="none" stroke="black" stroke-width="2"/>
+            </g>\n`;
         }
     }
 

@@ -67,7 +67,7 @@ Fill the gap of a native MNX renderer.
     - [ ] Beam slope calculations (connect beamed notes).
     - [ ] Slur/Tie curves (Bezier curves).
     - [x] Clef symbols (G-Clef implemented via Bravura SVG path extraction).
-    - [ ] Key/Time signature display.
+    - [x] Key/Time signature display.
     - [ ] Second interval collision handling in chords.
 
 ## Phase 4: Builder API & Editor Tools

@@ -869,6 +869,16 @@ const kitchenSinkXML = `
 
 console.log("\n(Visualizer) Rendering Kitchen Sink Test to SVG...");
 const scoreKitchenSink = converter.convert(kitchenSinkXML);
+
+// Manual patch to ensure attributes are present for renderer demo if converter didn't extract them
+const ksM1 = scoreKitchenSink.parts[0].measures[0] as any;
+if (!ksM1.attributes) {
+   ksM1.attributes = {
+      time: { beats: 4, "beat-type": 4 },
+      key: { fifths: 0 }
+   };
+}
+
 const svgOutput = renderer.render(scoreKitchenSink);
 const outputPath = "output.svg";
 fs.writeFileSync(outputPath, svgOutput);
