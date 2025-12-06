@@ -73,6 +73,10 @@
       "name": "web",
       "version": "0.0.0",
       "dependencies": {
+        "@melos/converter": "workspace:*",
+        "@melos/core": "workspace:*",
+        "@melos/player": "workspace:*",
+        "@melos/renderer": "workspace:*",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
       },
