@@ -65,7 +65,7 @@ Fill the gap of a native MNX renderer.
     - [x] Grace notes (scaled down).
 - [ ] **Engraving Rules (Next Steps)**
     - [x] Beam slope calculations (connect beamed notes).
-    - [ ] Slur/Tie curves (Bezier curves).
+    - [x] Slur/Tie curves (Bezier curves).
     - [x] Clef symbols (G-Clef implemented via Bravura SVG path extraction).
     - [x] Key/Time signature display.
     - [x] Second interval collision handling in chords.

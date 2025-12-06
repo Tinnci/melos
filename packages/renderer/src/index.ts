@@ -25,6 +25,10 @@ export class Renderer {
         let currentY = this.config.paddingY;
         let maxX = 0;
 
+        // Global position registry for deferred Tie/Slur rendering
+        const globalPositions: Map<string, { x: number, y: number, stemUp: boolean }> = new Map();
+        const curveRequests: Array<{ type: 'tie' | 'slur', sourceId: string, targetId: string, side?: string }> = [];
+
         score.parts.forEach((part, pIndex) => {
             // Track current position
             let currentX = this.config.paddingX;
@@ -118,6 +122,49 @@ export class Renderer {
                                 eventPositions.set(eventId, chordResult.layout);
                             }
 
+                            // Register position for Tie/Slur (global)
+                            if (chordResult.layout) {
+                                // Approximate note head Y position
+                                const noteHeadY = chordResult.layout.stemUp
+                                    ? chordResult.layout.stemTipY + this.config.stemLength
+                                    : chordResult.layout.stemTipY - this.config.stemLength;
+                                globalPositions.set(eventId, {
+                                    x: noteX,
+                                    y: noteHeadY,
+                                    stemUp: chordResult.layout.stemUp
+                                });
+                            }
+
+                            // Collect Slur requests from event
+                            if (item.slurs && Array.isArray(item.slurs)) {
+                                for (const slur of item.slurs) {
+                                    if (slur.target) {
+                                        curveRequests.push({
+                                            type: 'slur',
+                                            sourceId: eventId,
+                                            targetId: slur.target,
+                                            side: slur.side || 'up'
+                                        });
+                                    }
+                                }
+                            }
+
+                            // Collect Tie requests from notes
+                            for (const note of item.notes) {
+                                if (note.ties && Array.isArray(note.ties)) {
+                                    for (const tie of note.ties) {
+                                        if (tie.target) {
+                                            curveRequests.push({
+                                                type: 'tie',
+                                                sourceId: note.id || eventId,
+                                                targetId: tie.target,
+                                                side: 'auto'
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+
                             noteX += this.getNoteWidth(duration);
 
                         } else if (item.rest) {
@@ -158,6 +205,15 @@ export class Renderer {
             // Move down for next part
             currentY += this.config.systemSpacing;
         });
+
+        // --- 8. Render Ties and Slurs (Deferred) ---
+        for (const req of curveRequests) {
+            const sourcePos = globalPositions.get(req.sourceId);
+            const targetPos = globalPositions.get(req.targetId);
+            if (sourcePos && targetPos) {
+                svgContent += this.renderCurve(sourcePos, targetPos, req.type, req.side);
+            }
+        }
 
         // Calculate final SVG dimensions
         const svgWidth = Math.max(maxX + this.config.paddingX, this.config.pageWidth + this.config.paddingX * 2);
@@ -487,6 +543,44 @@ export class Renderer {
         svg += `<polygon points="${first.x},${y1} ${last.x},${y2} ${last.x},${y2 + offsetY} ${first.x},${y1 + offsetY}" fill="black" />\n`;
 
         return svg;
+    }
+
+    /**
+     * Render a curved line (Tie or Slur) between two positions using a quadratic Bezier curve.
+     */
+    private renderCurve(
+        source: { x: number, y: number, stemUp: boolean },
+        target: { x: number, y: number, stemUp: boolean },
+        type: 'tie' | 'slur',
+        side?: string
+    ): string {
+        // Determine curve direction (up or down)
+        // For ties: usually opposite to stem direction
+        // For slurs: based on 'side' parameter or stem direction
+        let curveUp = !source.stemUp; // Default: curve opposite to stem
+
+        if (side === 'up') curveUp = true;
+        else if (side === 'down') curveUp = false;
+
+        // Calculate control point for Bezier curve
+        const midX = (source.x + target.x) / 2;
+        const midY = (source.y + target.y) / 2;
+
+        // Curve height (how much it arcs)
+        const curveHeight = type === 'tie' ? 12 : 18; // Slurs are typically more arched
+        const controlY = curveUp ? midY - curveHeight : midY + curveHeight;
+
+        // Offset source and target Y slightly based on curve direction
+        const yOffset = curveUp ? -3 : 3;
+        const startY = source.y + yOffset;
+        const endY = target.y + yOffset;
+
+        // Draw as a quadratic Bezier curve (Q command)
+        // For a thicker appearance, we draw two paths (outline effect)
+        const strokeWidth = type === 'tie' ? 2 : 2.5;
+
+        return `<path d="M${source.x},${startY} Q${midX},${controlY} ${target.x},${endY}" 
+                fill="none" stroke="black" stroke-width="${strokeWidth}" stroke-linecap="round" />\n`;
     }
 
     /**
