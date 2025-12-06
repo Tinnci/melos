@@ -374,8 +374,11 @@ export class MeasureParser {
                     }
                 };
                 if (xNote.accidental) {
+                    const accObj = typeof xNote.accidental === 'object' ? xNote.accidental : { "#text": xNote.accidental };
                     noteObj.accidentalDisplay = {
-                        show: xNote.accidental["@_parentheses"] === "yes"
+                        show: true,
+                        cautionary: accObj["@_parentheses"] === "yes" || accObj["@_cautionary"] === "yes",
+                        editorial: accObj["@_editorial"] === "yes"
                     };
                 }
                 pitchKey = `${noteObj.pitch!.step}${noteObj.pitch!.octave}`;

@@ -4,6 +4,11 @@ import type { Score, Part, MeasureRhythmicPosition, Note, Event, GlobalMeasure, 
 // Original glyph designed at 1000 units per em, roughly 4 spaces high.
 const GCLEF_PATH = "M376 415l25 -145c3 -18 3 -18 29 -18c147 0 241 -113 241 -241c0 -113 -67 -198 -168 -238c-14 -6 -15 -5 -13 -17c11 -62 29 -157 29 -214c0 -170 -130 -200 -197 -200c-151 0 -190 98 -190 163c0 62 40 115 107 115c61 0 96 -47 96 -102c0 -58 -36 -85 -67 -94c-23 -7 -32 -10 -32 -17c0 -13 26 -29 80 -29c59 0 159 18 159 166c0 47 -15 134 -27 201c-2 12 -4 11 -15 9c-20 -4 -46 -6 -69 -6c-245 0 -364 165 -364 339c0 202 153 345 297 464c12 10 11 12 9 24c-7 41 -14 106 -14 164c0 104 24 229 98 311c20 22 51 48 65 48c11 0 37 -28 52 -50c41 -60 65 -146 65 -233c0 -153 -82 -280 -190 -381c-6 -6 -8 -7 -6 -19zM470 943c-61 0 -133 -96 -133 -252c0 -32 2 -66 6 -92c2 -13 6 -14 13 -8c79 69 174 159 174 270c0 55 -27 82 -60 82zM361 262l-21 128c-2 11 -4 12 -14 4c-47 -38 -93 -75 -153 -142c-83 -94 -93 -173 -93 -232c0 -139 113 -236 288 -236c20 0 40 2 56 5c15 3 16 3 14 14l-50 298c-2 11 -4 12 -20 8c-61 -17 -100 -60 -100 -117c0 -46 30 -89 72 -107c7 -3 15 -6 15 -13c0 -6 -4 -11 -12 -11c-7 0 -19 3 -27 6c-68 23 -115 87 -115 177c0 85 57 164 145 194c18 6 18 5 15 24zM430 103l49 -285c2 -12 4 -12 16 -6c56 28 94 79 94 142c0 88 -67 156 -148 163c-12 1 -13 -2 -11 -14z";
 
+// SMuFL paths (Bravura) - simplified/approximate for MVP if full paths are too large, or copied from standard sources
+const SHARP_PATH = "M76 250l0 -72l42 -13l0 72l-42 13zM156 226l0 -72l42 -13l0 72l-42 13zM76 438l0 -140l42 -13l0 140l-42 13zM156 414l0 -140l42 -13l0 140l-42 13zM76 130l80 -24l0 -34l-80 24l0 34zM198 259l-42 13l0 140l42 -13l0 -140zM30 361l46 -14l0 -140l-46 14l0 140zM198 94l-42 13l0 72l42 -13l0 -72zM30 196l46 -14l0 72l-46 14l0 -72zM76 486l80 -24l0 -34l-80 24l0 34z";
+const FLAT_PATH = "M70 410c55 14 74 -35 74 -66c0 -46 -33 -99 -94 -119l0 185zM50 -105l0 360c6 1 12 2 18 2c77 0 119 -84 119 -151c0 -56 -29 -102 -79 -117l-38 -12l0 -82l-20 0z";
+const NATURAL_PATH = "M70 338l0 -97l38 -12l0 97l-38 12zM70 216l0 -102l38 -11l0 101l-38 12zM108 81l0 -166l-20 0l0 160l-58 17l0 36l58 -18l0 97l-38 11l0 -96l-20 0l0 178l20 0l0 -160l58 -17l0 -36l-58 18l0 -95l38 -11l0 94l20 0z";
+
 export class Renderer {
     private config = {
         pageWidth: 800,          // Maximum width before wrapping
@@ -743,6 +748,13 @@ export class Renderer {
             const noteX = cx + nd.offsetX;
             svg += this.renderNoteHead(noteX, nd.y, duration, r, nd.note.notehead, nd.note.color);
             svg += this.renderLedgerLines(noteX, nd.y, staffTopY);
+
+            // Draw Accidental
+            const acc = nd.note.accidentalDisplay;
+            if (acc?.show && nd.note.pitch && nd.note.pitch.alter !== undefined) {
+                const accX = noteX - (20 * scale);
+                svg += this.renderAccidental(accX, nd.y, nd.note.pitch.alter, !!acc.cautionary, scale);
+            }
         });
 
         let layout: { x: number, stemTipY: number, stemUp: boolean } | undefined;
@@ -916,7 +928,34 @@ export class Renderer {
         const numberX = (startX + endX) / 2;
         const numberY = staffTopY - 10;
         svg += `<text x="${numberX}" y="${numberY}" font-family="Times New Roman" font-size="18" font-weight="bold" text-anchor="middle">${duration}</text>\n`;
+        return svg;
+    }
 
+    private renderAccidental(x: number, y: number, alter: number, cautionary: boolean, scale: number): string {
+        let path = "";
+        const scaleFactor = 0.04 * scale;
+        let yOffset = 0;
+
+        if (alter === 1) { // Sharp
+            path = SHARP_PATH;
+            yOffset = 20 * scale;
+        } else if (alter === -1) { // Flat
+            path = FLAT_PATH;
+            yOffset = 10 * scale;
+        } else if (alter === 0) { // Natural
+            path = NATURAL_PATH;
+            yOffset = 15 * scale;
+        } else {
+            return ""; // Add double sharp/flat later
+        }
+
+        let svg = `<path d="${path}" transform="translate(${x}, ${y + yOffset}) scale(${scaleFactor}, -${scaleFactor})" fill="black" />\n`;
+
+        if (cautionary) {
+            // Draw parentheses
+            svg += `<text x="${x - 5}" y="${y + 5}" font-family="Arial" font-size="${20 * scale}">(</text>`;
+            svg += `<text x="${x + 12}" y="${y + 5}" font-family="Arial" font-size="${20 * scale}">)</text>`;
+        }
         return svg;
     }
 

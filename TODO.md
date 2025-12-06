@@ -134,7 +134,7 @@ Features defined in W3C MNX Schema (`mnx-schema.json`) but not yet implemented i
 
 - [ ] **Styling & Appearance**
     - [x] `color`: Support for colored notes/objects (educational scores, analysis).
-    - [ ] `accidental-display`: Parenthesized accidentals (cautionary/courtesy accidentals).
+    - [x] `accidental-display`: Parenthesized accidentals (cautionary/courtesy accidentals).
     - [ ] `staff-symbol`: Custom staff lines (e.g., 1-line percussion staff).
 
 - [ ] **Advanced Barlines**
