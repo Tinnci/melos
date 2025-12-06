@@ -34,7 +34,7 @@ The goal is to make the `MusicXML -> MNX` conversion robust enough to handle sta
     - [x] **Playground**: End-to-end integration tests for all implemented features.
     - [x] **Bun Test Migration**: Automated test suite with proper assertions.
     - [x] **Mixed Meter Test**: Verified handling of pickup measures and time signature changes.
-    - [ ] Set up a rigorous snapshot test suite running against all W3C MNX example pairs.
+    - [x] Set up a rigorous snapshot test suite running against all W3C MNX example pairs.
 
 ---
 
