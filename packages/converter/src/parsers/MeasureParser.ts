@@ -1,5 +1,7 @@
-import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Tie, Slur, Lyric, DynamicEvent, Wedge, RhythmicPosition } from "@melos/core";
+import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Tie, Slur, Lyric, DynamicEvent, Wedge } from "@melos/core";
 import { generateEventId, generateNoteId } from "./Utils";
+import { TimeTracker } from "./TimeTracker";
+import { XmlEventStream, type XmlToken } from "./XmlEventStream";
 
 export interface Container {
     content: any[];
@@ -13,7 +15,7 @@ interface ActiveWedgeState {
 export interface PartParsingContext {
     activeSlurs: Record<number, { sourceEvent: Event }>;
     activeTies: Record<string, { sourceNote: Note }>;
-    activeWedges: Record<number, ActiveWedgeState>; // Track wedges across measures
+    activeWedges: Record<number, ActiveWedgeState>;
     lyricLines: Map<string, { id: string, name: string }>;
 }
 
@@ -23,27 +25,22 @@ interface VoiceContext {
     currentEvent: Event | null;
 }
 
-type XmlToken = {
-    _tag: "note" | "direction";
-    _x: number;
-    [key: string]: any;
-};
-
 export class MeasureParser {
     private beams: Beam[] = [];
     private activeBeams: Record<number, { eventIds: string[] }> = {};
     private voiceContexts: Map<string, VoiceContext> = new Map();
     private voiceOrder: string[] = [];
 
-    // Track accumulated ticks per voice for rhythmic positioning
-    private voiceTicker: Record<string, number> = {};
+    private timeTracker: TimeTracker;
 
     constructor(
         private xmlMeasure: any,
         private context: PartParsingContext,
-        private globalDivisions: number = 1, // divisions per quarter note
-        private measureIndex: number = 1 // 1-based index
-    ) { }
+        globalDivisions: number = 1,
+        private measureIndex: number = 1
+    ) {
+        this.timeTracker = new TimeTracker(globalDivisions);
+    }
 
     private getVoiceContext(voiceId: string): VoiceContext {
         let ctx = this.voiceContexts.get(voiceId);
@@ -60,76 +57,25 @@ export class MeasureParser {
         return ctx;
     }
 
-    private extractSortedXmlEvents(): XmlToken[] {
-        const tokens: XmlToken[] = [];
-
-        // 1. Extract Notes
-        const notes = this.xmlMeasure.note
-            ? (Array.isArray(this.xmlMeasure.note) ? this.xmlMeasure.note : [this.xmlMeasure.note])
-            : [];
-
-        notes.forEach((n: any) => {
-            tokens.push({
-                ...n,
-                _tag: "note",
-                _x: parseFloat(n["@_default-x"] || "0")
-            });
-        });
-
-        // 2. Extract Directions (Dynamics & Wedges)
-        const directions = this.xmlMeasure.direction
-            ? (Array.isArray(this.xmlMeasure.direction) ? this.xmlMeasure.direction : [this.xmlMeasure.direction])
-            : [];
-
-        directions.forEach((d: any) => {
-            // Flatten direction-type array if needed
-            const dTypes = Array.isArray(d["direction-type"]) ? d["direction-type"] : [d["direction-type"]];
-
-            // We care if it has dynamics OR wedge
-            const hasRelevantType = dTypes.some((dt: any) => dt.dynamics || dt.wedge);
-
-            if (hasRelevantType) {
-                tokens.push({
-                    ...d,
-                    _tag: "direction",
-                    _x: parseFloat(d["@_default-x"] || "0")
-                });
-            }
-        });
-
-        // 3. Sort by X position
-        return tokens.sort((a, b) => {
-            const diff = a._x - b._x;
-            if (diff !== 0) return diff;
-            return a._tag === "direction" ? -1 : 1;
-        });
-    }
-
     parse(): PartMeasure {
-        const xmlEvents = this.extractSortedXmlEvents();
+        // Use the extracted logic stream
+        const xmlEvents = XmlEventStream.extract(this.xmlMeasure);
         const wedges: Wedge[] = [];
 
         for (const token of xmlEvents) {
             const voiceId = token.voice ? String(token.voice) : "1";
             const ctx = this.getVoiceContext(voiceId);
 
-            // Initialize ticker for this voice
-            if (this.voiceTicker[voiceId] === undefined) {
-                this.voiceTicker[voiceId] = 0;
-            }
-            const currentTicks = this.voiceTicker[voiceId];
-
             if (token._tag === "note") {
                 this.handleNote(token, ctx);
 
-                // Advance ticker
+                // Advance time tracking
                 // Only non-chord notes advance time
                 if (!token.chord && token.duration) {
-                    this.voiceTicker[voiceId] += parseInt(token.duration);
+                    this.timeTracker.advance(voiceId, parseInt(token.duration));
                 }
 
             } else if (token._tag === "direction") {
-                // Determine if it's dynamics or wedge (could be both?)
                 const dTypes = Array.isArray(token["direction-type"]) ? token["direction-type"] : [token["direction-type"]];
 
                 dTypes.forEach((dt: any) => {
@@ -137,7 +83,7 @@ export class MeasureParser {
                         this.handleDynamics(dt, ctx);
                     }
                     if (dt.wedge) {
-                        this.handleWedge(dt.wedge, wedges, voiceId, currentTicks);
+                        this.handleWedge(dt.wedge, wedges, voiceId);
                     }
                 });
             }
@@ -176,25 +122,14 @@ export class MeasureParser {
         };
     }
 
-    private ticksToRhythmicPosition(ticks: number): RhythmicPosition {
-        // Whole note = 4 * divisions
-        const wholeNoteTicks = this.globalDivisions * 4;
-
-        // Return raw fraction: [accumulatedTicks, wholeNoteTicks]
-        // This represents position relative to measure start
-        return {
-            fraction: [ticks, wholeNoteTicks]
-        };
-    }
-
-    private handleWedge(wedgeXml: any, wedgesList: Wedge[], voiceId: string, currentTicks: number) {
+    private handleWedge(wedgeXml: any, wedgesList: Wedge[], voiceId: string) {
         const type = wedgeXml["@_type"]; // crescendo | diminuendo | stop | continue
         const number = parseInt(wedgeXml["@_number"] || "1");
 
         if (type === "crescendo" || type === "diminuendo") {
             const wedgeObj: Wedge = {
                 type: type,
-                position: this.ticksToRhythmicPosition(currentTicks),
+                position: this.timeTracker.getCurrentPosition(voiceId),
                 voice: voiceId
             };
 
@@ -210,7 +145,7 @@ export class MeasureParser {
                 // Update the End Position of the ORIGINAL object
                 active.wedgeObj.end = {
                     measure: this.measureIndex,
-                    position: this.ticksToRhythmicPosition(currentTicks)
+                    position: this.timeTracker.getCurrentPosition(voiceId)
                 };
                 delete this.context.activeWedges[number];
             }
@@ -234,8 +169,6 @@ export class MeasureParser {
     }
 
     private handleNote(xNote: any, ctx: VoiceContext) {
-        // ... (Existing implementation largely unchanged, except variable names)
-
         // --- 0. Stack Management (Tuplet Start/Stop) ---
         let currentContainer = ctx.stack[ctx.stack.length - 1];
 
