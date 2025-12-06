@@ -125,6 +125,34 @@ export class MeasureParser {
                 currentEvent = evt;
             }
 
+            // --- 1.5 Beam Logic ---
+            if (xNote.beam) {
+                const beamList = Array.isArray(xNote.beam) ? xNote.beam : [xNote.beam];
+
+                beamList.forEach((b: any) => {
+                    const number = parseInt(b["@_number"] || "1");
+                    const type = b["#text"]; // begin, continue, end, forward, backward
+
+                    if (type === "begin") {
+                        this.activeBeams[number] = { eventIds: [eventId] };
+                    } else if (type === "continue") {
+                        if (this.activeBeams[number]) {
+                            this.activeBeams[number].eventIds.push(eventId);
+                        }
+                    } else if (type === "end") {
+                        if (this.activeBeams[number]) {
+                            this.activeBeams[number].eventIds.push(eventId);
+
+                            this.beams.push({
+                                events: this.activeBeams[number].eventIds
+                            });
+
+                            delete this.activeBeams[number];
+                        }
+                    }
+                });
+            }
+
 
             // --- 2. Tuplet STOP Logic ---
             // Look for <notations><tuplet type="stop">

@@ -143,4 +143,47 @@ if (tupletObj.type === 'tuplet') {
    console.log(JSON.stringify(content, null, 2));
 }
 
+// Test 3: Beams Example
+const mockMusicXMLWithBeams = `
+<score-partwise version="3.1">
+   <part-list>
+      <score-part id="P1"><part-name>Music</part-name></score-part>
+   </part-list>
+   <part id="P1">
+      <measure number="1">
+         <attributes><divisions>2</divisions></attributes>
+         
+         <!-- 8th Note Beam Begin -->
+         <note>
+            <pitch><step>C</step><octave>4</octave></pitch>
+            <duration>1</duration>
+            <type>eighth</type>
+            <beam number="1">begin</beam>
+         </note>
+         
+         <!-- 8th Note Beam End -->
+         <note>
+            <pitch><step>D</step><octave>4</octave></pitch>
+            <duration>1</duration>
+            <type>eighth</type>
+            <beam number="1">end</beam>
+         </note>
+      </measure>
+   </part>
+</score-partwise>
+`;
+
+console.log("\n(New Test) Converting MusicXML with Beams...");
+const scoreBeams = converter.convert(mockMusicXMLWithBeams);
+const measureBeams = scoreBeams.parts[0].measures[0];
+
+console.log(`- Events count: ${measureBeams.sequences[0].content.length}`);
+if (measureBeams.beams && measureBeams.beams.length > 0) {
+   console.log(`- Beams found: ${measureBeams.beams.length} (Expected 1)`);
+   console.log(`- Beam connects ${measureBeams.beams[0].events.length} events (Expected 2)`);
+   console.log("Beam JSON:", JSON.stringify(measureBeams.beams[0], null, 2));
+} else {
+   console.error("- Error: No beams generated.");
+}
+
 console.log("--- Demo Complete ---");
