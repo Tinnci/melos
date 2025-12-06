@@ -70,8 +70,8 @@ export class MeasureParser {
                 this.handleNote(token, ctx);
 
                 // Advance time tracking
-                // Only non-chord notes advance time
-                if (!token.chord && token.duration) {
+                // Only non-chord notes AND non-grace notes advance time
+                if (!token.chord && !token.grace && token.duration) {
                     this.timeTracker.advance(voiceId, parseInt(token.duration));
                 }
 
@@ -192,6 +192,23 @@ export class MeasureParser {
             }
         }
 
+        // --- 0.5 Grace Note Detection ---
+        const isGrace = xNote.grace !== undefined;
+        let graceContainer: any = null;
+
+        if (isGrace) {
+            const lastItem = currentContainer.content[currentContainer.content.length - 1];
+            if (lastItem && lastItem.type === 'grace') {
+                graceContainer = lastItem;
+            } else {
+                graceContainer = {
+                    type: "grace",
+                    content: []
+                };
+                currentContainer.content.push(graceContainer);
+            }
+        }
+
         // --- 1. Event / Note Logic ---
         const isRest = xNote.rest !== undefined;
         const isChord = xNote.chord !== undefined;
@@ -269,7 +286,11 @@ export class MeasureParser {
                 }
             }
 
-            currentContainer.content.push(evt);
+            if (isGrace) {
+                graceContainer.content.push(evt);
+            } else {
+                currentContainer.content.push(evt);
+            }
             ctx.currentEvent = evt;
         }
 

@@ -670,6 +670,60 @@ if (gmLayout[1].break === "page") {
    console.error(`- Measure 2: Page Break MISSING. Found: ${gmLayout[1].break}`);
 }
 
+
+// Test 11: Grace Notes Example
+const mockMusicXMLGrace = `
+<score-partwise version="3.1">
+   <part-list>
+      <score-part id="P1"><part-name>Music</part-name></score-part>
+   </part-list>
+   <part id="P1">
+      <measure number="1">
+         <attributes><divisions>1</divisions></attributes>
+         
+         <!-- Grace Note (Acciaccatura) -->
+         <note>
+            <grace/>
+            <pitch><step>C</step><octave>4</octave></pitch>
+            <voice>1</voice>
+            <type>eighth</type>
+         </note>
+
+         <!-- Normal Note (Main) -->
+         <note>
+            <pitch><step>E</step><octave>4</octave></pitch>
+            <duration>4</duration>
+            <voice>1</voice>
+            <type>whole</type>
+         </note>
+      </measure>
+   </part>
+</score-partwise>
+`;
+
+console.log("\n(New Test) Converting MusicXML with Grace Notes...");
+const scoreGrace = converter.convert(mockMusicXMLGrace);
+const mGrace = scoreGrace.parts[0].measures[0];
+const seqGraceContent = mGrace.sequences[0].content;
+
+// Structure should be: [ GraceContainer { content: [Note] }, Note ]
+const itemG0 = seqGraceContent[0] as any;
+const itemG1 = seqGraceContent[1] as any;
+
+if (itemG0 && itemG0.type === "grace") {
+   console.log(`- Grace Container found (Correct).`);
+   console.log(`- Grace Events count: ${itemG0.content.length} (Expected 1)`);
+} else {
+   console.error(`- Grace Container MISSING. Found type: ${itemG0?.type}`);
+}
+
+if (itemG1 && itemG1.notes) {
+   console.log(`- Main Note found following grace notes (Correct).`);
+} else {
+   console.error(`- Main Note missing.`);
+}
+
 console.log("--- Demo Complete ---");
+
 
 
