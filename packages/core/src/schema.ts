@@ -166,6 +166,16 @@ export const WedgeSchema = z.object({
     voice: z.string().optional()
 });
 
+// [NEW] Ottava (8va, 8vb, 15ma, 15mb, etc.)
+// value: 1 = 8va (up one octave), -1 = 8vb (down), 2 = 15ma (two octaves up), etc.
+export const OttavaSchema = z.object({
+    value: z.union([z.literal(1), z.literal(-1), z.literal(2), z.literal(-2), z.literal(3), z.literal(-3)]),
+    position: RhythmicPositionSchema, // Start position in current measure
+    end: MeasureRhythmicPositionSchema, // End position (required)
+    staff: z.number().int().optional(),
+    voice: z.string().optional()
+});
+
 
 export const GlobalMeasureSchema = z.object({
     index: z.number().int().optional(),
@@ -201,7 +211,8 @@ export const PartMeasureSchema = z.object({
     sequences: z.array(SequenceSchema),
     clefs: z.array(PositionedClefSchema).optional(),
     beams: z.array(BeamSchema).optional(),
-    wedges: z.array(WedgeSchema).optional()
+    wedges: z.array(WedgeSchema).optional(),
+    ottavas: z.array(OttavaSchema).optional() // [NEW] Octave shifts (8va, 8vb, etc.)
 });
 
 export const PartSchema = z.object({
@@ -248,3 +259,4 @@ export type Wedge = z.infer<typeof WedgeSchema>;
 export type RhythmicPosition = z.infer<typeof RhythmicPositionSchema>;
 export type MeasureRhythmicPosition = z.infer<typeof MeasureRhythmicPositionSchema>;
 export type Articulation = z.infer<typeof ArticulationSchema>;
+export type Ottava = z.infer<typeof OttavaSchema>;

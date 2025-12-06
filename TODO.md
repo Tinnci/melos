@@ -104,8 +104,8 @@ Features defined in W3C MNX Schema (`mnx-schema.json`) but not yet implemented i
     - [ ] `coda`: Coda sign.
     - **Impact**: Without this, scores with repeats must be "unrolled" (expanding file size) or playback order will be incorrect.
 
-- [ ] **Ottavas (Octave Shifts)**
-    - [ ] `ottava`: 8va, 8vb, 15ma, 15mb octave displacement lines.
+- [x] **Ottavas (Octave Shifts)** ✅ IMPLEMENTED
+    - [x] `ottava`: 8va, 8vb, 15ma, 15mb octave displacement lines.
     - **Impact**: High-register piano/violin music will have excessive ledger lines, making scores unreadable.
 
 - [ ] **Multimeasure Rests**

@@ -191,6 +191,16 @@ export class Renderer {
                     }
                 }
 
+                // --- 5c. Render Ottavas (8va, 8vb, etc.) ---
+                if ((measure as any).ottavas) {
+                    for (const ottava of (measure as any).ottavas) {
+                        // Simplified: render ottava spanning the measure where it starts
+                        const startX = currentX + this.config.measurePadding;
+                        const endX = currentX + measureWidth - this.config.measurePadding;
+                        svgContent += this.renderOttava(startX, endX, currentY, ottava.value);
+                    }
+                }
+
                 // --- 6. Advance X position ---
                 currentX += measureWidth;
                 if (currentX > maxX) maxX = currentX;
@@ -581,6 +591,44 @@ export class Renderer {
 
         return `<path d="M${source.x},${startY} Q${midX},${controlY} ${target.x},${endY}" 
                 fill="none" stroke="black" stroke-width="${strokeWidth}" stroke-linecap="round" />\n`;
+    }
+
+    /**
+     * Render an Ottava (8va, 8vb, 15ma, etc.) line.
+     * value: 1 = 8va, -1 = 8vb, 2 = 15ma, -2 = 15mb, 3 = 22ma, -3 = 22mb
+     */
+    private renderOttava(startX: number, endX: number, staffTopY: number, value: number): string {
+        // Determine label and position
+        let label: string;
+        let above: boolean;
+
+        switch (value) {
+            case 1: label = "8va"; above = true; break;
+            case -1: label = "8vb"; above = false; break;
+            case 2: label = "15ma"; above = true; break;
+            case -2: label = "15mb"; above = false; break;
+            case 3: label = "22ma"; above = true; break;
+            case -3: label = "22mb"; above = false; break;
+            default: label = "8va"; above = true;
+        }
+
+        // Calculate Y position (above or below staff)
+        const staffBottom = staffTopY + 4 * this.config.lineSpacing;
+        const lineY = above ? staffTopY - 20 : staffBottom + 20;
+        const textY = above ? lineY - 5 : lineY + 15;
+
+        // Draw label text
+        let svg = `<text x="${startX}" y="${textY}" font-family="Times New Roman" font-style="italic" font-size="12">${label}</text>\n`;
+
+        // Draw dashed line from after text to endX
+        const lineStartX = startX + 25; // After the text
+        svg += `<line x1="${lineStartX}" y1="${lineY}" x2="${endX}" y2="${lineY}" stroke="black" stroke-width="1" stroke-dasharray="4,3" />\n`;
+
+        // Draw hook at the end (vertical line going toward the staff)
+        const hookLength = above ? 8 : -8;
+        svg += `<line x1="${endX}" y1="${lineY}" x2="${endX}" y2="${lineY + hookLength}" stroke="black" stroke-width="1" />\n`;
+
+        return svg;
     }
 
     /**

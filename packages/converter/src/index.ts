@@ -77,6 +77,7 @@ export class MusicXMLToMNX {
                 activeSlurs: {},
                 activeTies: {},
                 activeWedges: {},
+                activeOttavas: {}, // [NEW] Ottava tracking
                 lyricLines: sharedLyricLines // Pass shared map
             };
 

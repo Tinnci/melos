@@ -1,4 +1,4 @@
-import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Tie, Slur, Lyric, DynamicEvent, Wedge } from "@melos/core";
+import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Tie, Slur, Lyric, DynamicEvent, Wedge, Ottava } from "@melos/core";
 import { generateEventId, generateNoteId } from "./Utils";
 import { TimeTracker } from "./TimeTracker";
 import { XmlEventStream, type XmlToken } from "./XmlEventStream";
@@ -12,10 +12,15 @@ interface ActiveWedgeState {
     wedgeObj: Wedge;
 }
 
+interface ActiveOttavaState {
+    ottavaObj: Ottava;
+}
+
 export interface PartParsingContext {
     activeSlurs: Record<number, { sourceEvent: Event }>;
     activeTies: Record<string, { sourceNote: Note }>;
     activeWedges: Record<number, ActiveWedgeState>;
+    activeOttavas: Record<number, ActiveOttavaState>; // [NEW] Ottava tracking
     lyricLines: Map<string, { id: string, name: string }>;
 }
 
@@ -61,6 +66,7 @@ export class MeasureParser {
         // Use the extracted logic stream
         const xmlEvents = XmlEventStream.extract(this.xmlMeasure);
         const wedges: Wedge[] = [];
+        const ottavas: Ottava[] = []; // [NEW] Ottava collection
 
         for (const token of xmlEvents) {
             const voiceId = token.voice ? String(token.voice) : "1";
@@ -84,6 +90,10 @@ export class MeasureParser {
                     }
                     if (dt.wedge) {
                         this.handleWedge(dt.wedge, wedges, voiceId);
+                    }
+                    // [NEW] Handle octave-shift (8va, 8vb, etc.)
+                    if (dt["octave-shift"]) {
+                        this.handleOttava(dt["octave-shift"], ottavas, voiceId);
                     }
                 });
             }
@@ -118,7 +128,8 @@ export class MeasureParser {
             sequences: sequences,
             clefs: clefs,
             beams: this.beams.length > 0 ? this.beams : undefined,
-            wedges: wedges.length > 0 ? wedges : undefined
+            wedges: wedges.length > 0 ? wedges : undefined,
+            ottavas: ottavas.length > 0 ? ottavas : undefined // [NEW]
         };
     }
 
@@ -148,6 +159,51 @@ export class MeasureParser {
                     position: this.timeTracker.getCurrentPosition(voiceId)
                 };
                 delete this.context.activeWedges[number];
+            }
+        }
+    }
+
+    /**
+     * Handle octave-shift (8va, 8vb, 15ma, etc.)
+     * MusicXML: <octave-shift type="up|down|stop" size="8|15|22" number="n"/>
+     * MNX: { value: 1|-1|2|-2, position, end }
+     */
+    private handleOttava(octaveShiftXml: any, ottavasList: Ottava[], voiceId: string) {
+        const type = octaveShiftXml["@_type"]; // up | down | stop | continue
+        const size = parseInt(octaveShiftXml["@_size"] || "8"); // 8, 15, or 22
+        const number = parseInt(octaveShiftXml["@_number"] || "1");
+
+        // Convert size to MNX value: 8=1, 15=2, 22=3
+        // Direction: up means play higher (value positive), down means value negative
+        let valueAbs = 1;
+        if (size === 15) valueAbs = 2;
+        else if (size === 22) valueAbs = 3;
+
+        if (type === "up" || type === "down") {
+            const value = (type === "up" ? valueAbs : -valueAbs) as 1 | -1 | 2 | -2 | 3 | -3;
+
+            const ottavaObj: Ottava = {
+                value: value,
+                position: this.timeTracker.getCurrentPosition(voiceId),
+                end: { measure: this.measureIndex, position: this.timeTracker.getCurrentPosition(voiceId) }, // Placeholder, will be updated on stop
+                voice: voiceId
+            };
+
+            // Add to current measure
+            ottavasList.push(ottavaObj);
+
+            // Track active ottava
+            this.context.activeOttavas[number] = { ottavaObj };
+
+        } else if (type === "stop") {
+            const active = this.context.activeOttavas[number];
+            if (active) {
+                // Update the End Position of the ORIGINAL object
+                active.ottavaObj.end = {
+                    measure: this.measureIndex,
+                    position: this.timeTracker.getCurrentPosition(voiceId)
+                };
+                delete this.context.activeOttavas[number];
             }
         }
     }
