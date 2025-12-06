@@ -6,22 +6,27 @@ This document outlines the development roadmap for **Melos**.
 
 The goal is to make the `MusicXML -> MNX` conversion robust enough to handle standard music scores, not just simple examples.
 
-- [ ] **Schema Completion** (`@melos/core`)
-    - [ ] Complete Zod definitions for all MNX objects (referencing `src/spec/mnx-schema.json`).
-    - [ ] Add rigorous types for `Directions` (dynamics, tempo marks, wedges).
+- [x] **Schema Completion** (`@melos/core`)
+    - [x] Complete Zod definitions for basic MNX objects (Root, Parts, Measures, Sequences, Events).
+    - [x] Add types for `Tuplets`, `Beams`, `Slurs`, `Ties`.
+    - [x] Add types for `Lyrics` (Global Line & Event Syllables).
+    - [x] Add types for `Directions` (Dynamics, Wedges).
     - [ ] Add support for `Layout` definitions (system breaks, page breaks).
 
-- [ ] **Advanced Converter Logic** (`@melos/converter`)
-    - [ ] **Voices**: Support multi-voice staves (Polyphony).
-    - [ ] **Beams**: Implement logic to translate XML beams to MNX `beam` objects (requires ID tracking).
-    - [ ] **Slurs & Ties**: detailed ID mapping for start/end notes.
-    - [ ] **Tuplets**: robust handling of nested tuplets and logic for `inner`/`outer` duration.
+- [x] **Advanced Converter Logic** (`@melos/converter`)
+    - [x] **Voices**: Support multi-voice staves (Polyphony) using `VoiceContext`.
+    - [x] **Beams**: Implement logic to translate XML beams to MNX `beam` objects.
+    - [x] **Slurs & Ties**: Detailed ID mapping for start/end notes using `PartParsingContext`.
+    - [x] **Tuplets**: Robust handling of nested tuplets via Stack-based parsing.
+    - [x] **Dynamics**: p, f, etc. (Implemented via `Sort-by-Layout` strategy).
+    - [x] **Wedges**: Crescendo/Diminuendo lines (Implemented via `TimeTracker` for Rhythmic Positions).
+    - [x] **Lyrics**: Full support for歌詞 and Verse metadata.
+    - [x] **Internal Refactoring**: Split `MeasureParser` into `TimeTracker` and `XmlEventStream`.
     - [ ] **Articulations**: Staccato, tenuto, accents, etc.
-    - [ ] **Dynamics**: p, f, cresc, dim lines.
 
 - [ ] **Testing Infrastructure**
-    - [ ] Set up a snapshot test suite running against all W3C MNX example pairs.
-    - [ ] Ensure round-trip integrity where possible.
+    - [x] **Playground**: End-to-end integration tests for all implemented features (Chords, Voices, Wedges, etc.).
+    - [ ] Set up a rigorous snapshot test suite running against all W3C MNX example pairs.
 
 ## Phase 2: Semantic Validation (The "Linter")
 
