@@ -89,7 +89,19 @@ Enable programmatic creation of music.
 
 ---
 
-## Phase 5: Missing MNX Standard Features (Gap Analysis)
+## Phase 5: Web Editor Integration (The "Studio") 🚧 STARTING
+Integrate all packages into a comprehensive Web Editor to allow users to Create, Edit, and Play scores interactively.
+
+*   **Tech Stack**: Vite, React, TailwindCSS, shadcn/ui.
+*   **Editor UI**:
+    *   Toolbars, Property Panels (using shadcn/ui).
+    *   Score Canvas (using `@melos/renderer`).
+    *   Playback Controls (using `@melos/player`).
+    *   State Management (syncing Builder state with UI).
+
+---
+
+## Phase 6: Missing MNX Standard Features (Gap Analysis)
 
 Features defined in W3C MNX Schema (`mnx-schema.json`) but not yet implemented in Melos.
 
