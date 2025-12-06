@@ -21,6 +21,7 @@ export interface PartParsingContext {
     activeTies: Record<string, { sourceNote: Note }>;
     activeWedges: Record<number, ActiveWedgeState>;
     activeOttavas: Record<number, ActiveOttavaState>; // [NEW] Ottava tracking
+    activeTremolos: Record<number, { id: string }>; // [NEW] Multi-note Tremolo tracking
     lyricLines: Map<string, { id: string, name: string }>;
 }
 
@@ -287,25 +288,44 @@ export class MeasureParser {
         if (xNote.dot !== undefined) {
             dots = Array.isArray(xNote.dot) ? xNote.dot.length : 1;
         }
-
         // Pitch Logic
         let noteObj: Note | null = null;
         let pitchKey = "";
 
-        if (!isRest && xNote.pitch) {
-            noteObj = {
-                id: generateNoteId(),
-                pitch: {
-                    step: xNote.pitch.step,
-                    octave: parseInt(xNote.pitch.octave),
-                    alter: xNote.pitch.alter ? parseInt(xNote.pitch.alter) : undefined
+        if (!isRest) {
+            if (xNote.pitch) {
+                noteObj = {
+                    id: generateNoteId(),
+                    pitch: {
+                        step: xNote.pitch.step,
+                        octave: parseInt(xNote.pitch.octave),
+                        alter: xNote.pitch.alter ? parseInt(xNote.pitch.alter) : undefined
+                    }
+                };
+                if (xNote.accidental) {
+                    noteObj.accidentalDisplay = {
+                        show: xNote.accidental["@_parentheses"] === "yes"
+                    };
                 }
-            };
-            if (xNote.accidental) {
-                noteObj.accidentalDisplay = { show: true };
+                pitchKey = `${noteObj.pitch!.step}${noteObj.pitch!.octave}`;
+
+            } else if (xNote.unpitched) {
+                noteObj = {
+                    id: generateNoteId(),
+                    unpitched: {
+                        step: xNote.unpitched["display-step"] || "C",
+                        octave: parseInt(xNote.unpitched["display-octave"] || "4")
+                    }
+                };
+                pitchKey = "unpitched";
             }
 
-            pitchKey = `${xNote.pitch.step}${xNote.pitch.octave}`;
+            if (noteObj && xNote.notehead) {
+                const nh = typeof xNote.notehead === 'string' ? xNote.notehead : xNote.notehead["#text"];
+                if (["x", "diamond", "triangle", "slash", "square", "circle-x", "normal"].includes(nh)) {
+                    noteObj.notehead = nh;
+                }
+            }
         }
 
         // Event Generation
@@ -401,10 +421,22 @@ export class MeasureParser {
                     const marks = parseInt(tremolo["#text"] || tremolo || "3");
                     const type = tremolo["@_type"]; // "single", "start", or "stop"
 
-                    // Only handle single-note tremolo for now
+                    // [UPDATED] Multi-note Tremolo Support
                     if (type === "single" || type === undefined) {
                         if (ctx.currentEvent) {
-                            ctx.currentEvent.tremolo = marks;
+                            ctx.currentEvent.tremolo = marks; // Keep as number for single
+                        }
+                    } else if (type === "start") {
+                        const id = `trem-${generateEventId()}`;
+                        if (ctx.currentEvent) {
+                            ctx.currentEvent.tremolo = { type: "start", marks, id };
+                        }
+                        this.context.activeTremolos[1] = { id };
+                    } else if (type === "stop") {
+                        const active = this.context.activeTremolos[1];
+                        if (active && ctx.currentEvent) {
+                            ctx.currentEvent.tremolo = { type: "stop", marks, id: active.id };
+                            delete this.context.activeTremolos[1];
                         }
                     }
                 }

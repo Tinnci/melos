@@ -41,6 +41,11 @@ export const TieSchema = z.object({
 export const NoteSchema = z.object({
     id: z.string().optional(),
     pitch: PitchSchema.optional(),
+    unpitched: z.object({ // [NEW] For percussion
+        step: z.string().min(1).max(1),
+        octave: z.number().int()
+    }).optional(),
+    notehead: z.enum(["normal", "x", "diamond", "triangle", "slash", "square", "circle-x"]).optional(), // [NEW] Notehead shapes
     staff: z.number().int().optional(),
     accidentalDisplay: AccidentalDisplaySchema.optional(),
     ties: z.array(TieSchema).optional(),
@@ -86,7 +91,15 @@ export const BaseEventSchema = z.object({
     slurs: z.array(SlurSchema).optional(),
     lyrics: z.array(LyricSchema).optional(),
     articulations: z.array(ArticulationSchema).optional(),
-    tremolo: z.number().int().min(1).max(5).optional(), // [NEW] Tremolo marks (1-5 slashes)
+    // [UPDATED] Tremolo: number (single) or detailed object (multi-note)
+    tremolo: z.union([
+        z.number().int().min(1).max(5), // Simple single-note
+        z.object({
+            type: z.enum(["single", "start", "stop"]),
+            marks: z.number().int().min(1).max(5),
+            id: z.string().optional() // ID for linking start/stop
+        })
+    ]).optional(),
     measure: z.boolean().optional()
 });
 
@@ -246,10 +259,19 @@ export const PartMeasureSchema = z.object({
     multimeasureRest: MultimeasureRestSchema.optional() // [NEW] Consolidated multi-bar rest
 });
 
+export const SoundDefinitionSchema = z.object({
+    id: z.string().optional(),
+    name: z.string().optional(),
+    "midi-program": z.number().int().optional(),
+    "midi-channel": z.number().int().optional(),
+    "midi-bank": z.number().int().optional()
+});
+
 export const PartSchema = z.object({
     id: z.string().optional(),
     name: z.string().optional(),
     "short-name": z.string().optional(),
+    sounds: z.array(SoundDefinitionSchema).optional(), // [NEW] Sound definitions
     measures: z.array(PartMeasureSchema),
     dim: z.number().int().optional()
 });

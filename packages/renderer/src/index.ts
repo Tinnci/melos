@@ -25,9 +25,10 @@ export class Renderer {
         let currentY = this.config.paddingY;
         let maxX = 0;
 
-        // Global position registry for deferred Tie/Slur rendering
-        const globalPositions: Map<string, { x: number, y: number, stemUp: boolean }> = new Map();
-        const curveRequests: Array<{ type: 'tie' | 'slur', sourceId: string, targetId: string, side?: string }> = [];
+        // Global position registry for deferred Tie/Slur/Tremolo rendering
+        const globalPositions: Map<string, { x: number, y: number, stemUp: boolean, stemTipY: number }> = new Map();
+        const curveRequests: Array<{ type: 'tie' | 'slur' | 'tremolo', sourceId: string, targetId: string, side?: string, marks?: number }> = [];
+        const pendingTremolos: Map<string, { sourceId: string, marks: number }> = new Map();
 
         score.parts.forEach((part, pIndex) => {
             // Track current position
@@ -57,16 +58,16 @@ export class Renderer {
                 // --- 3. Draw Clef, Key, Time if new system or changes ---
                 if (isNewSystem) {
                     // Draw clef at start of system
-                    svgContent += this.renderClef(currentX + 10, currentY + 40);
+                    let clefSign = "G";
+                    const firstMeasure = part.measures[0] as any;
+                    // Check for clef in first measure
+                    if (firstMeasure?.clefs && firstMeasure.clefs.length > 0) {
+                        clefSign = firstMeasure.clefs[0].clef.sign;
+                    }
+                    svgContent += this.renderClef(currentX + 10, currentY + 40, clefSign);
                     currentX += this.config.clefWidth;
 
-                    // Draw Key Signature (Initial only for now, can be expanded)
-                    // TODO: Get actual key from Measure 1 attributes if available
-                    // For demo, we'll check the first measure's attributes if they match our internal structure
-                    // The core type definition isn't fully visible, but we can try to access sensible defaults
-                    // or just placeholder for now if data is missing.
-                    // Actually, let's check the first measure for attributes.
-                    const firstMeasure = part.measures[0] as any;
+                    // Draw Key Signature (Initial only for now)
                     const initialKey = firstMeasure?.attributes?.key;
                     if (initialKey) {
                         const keyWidth = this.renderKeySignature(currentX, currentY, initialKey);
@@ -149,7 +150,8 @@ export class Renderer {
                                     globalPositions.set(eventId, {
                                         x: noteX,
                                         y: noteHeadY,
-                                        stemUp: chordResult.layout.stemUp
+                                        stemUp: chordResult.layout.stemUp,
+                                        stemTipY: chordResult.layout.stemTipY
                                     });
                                 }
 
@@ -183,14 +185,43 @@ export class Renderer {
                                     }
                                 }
 
-                                // [NEW] Render Tremolo slashes
-                                if (item.tremolo && chordResult.layout) {
-                                    svgContent += this.renderTremolo(
-                                        noteX,
-                                        chordResult.layout.stemTipY,
-                                        chordResult.layout.stemUp,
-                                        item.tremolo
-                                    );
+                                // [UPDATED] Render Tremolo (Single & Multi)
+                                if (item.tremolo) {
+                                    if (typeof item.tremolo === 'number') {
+                                        // Single (Legacy/Simple)
+                                        if (chordResult.layout) {
+                                            svgContent += this.renderTremolo(
+                                                noteX,
+                                                chordResult.layout.stemTipY,
+                                                chordResult.layout.stemUp,
+                                                item.tremolo
+                                            );
+                                        }
+                                    } else {
+                                        // Object (Multi-note or explicit single)
+                                        const t = item.tremolo;
+                                        if (t.type === 'single' && chordResult.layout) {
+                                            svgContent += this.renderTremolo(
+                                                noteX,
+                                                chordResult.layout.stemTipY,
+                                                chordResult.layout.stemUp,
+                                                t.marks
+                                            );
+                                        } else if (t.type === 'start' && t.id) {
+                                            pendingTremolos.set(t.id, { sourceId: eventId, marks: t.marks });
+                                        } else if (t.type === 'stop' && t.id) {
+                                            const startData = pendingTremolos.get(t.id);
+                                            if (startData) {
+                                                curveRequests.push({
+                                                    type: 'tremolo',
+                                                    sourceId: startData.sourceId,
+                                                    targetId: eventId,
+                                                    marks: startData.marks
+                                                });
+                                                pendingTremolos.delete(t.id);
+                                            }
+                                        }
+                                    }
                                 }
 
                                 noteX += this.getNoteWidth(duration);
@@ -262,8 +293,13 @@ export class Renderer {
         for (const req of curveRequests) {
             const sourcePos = globalPositions.get(req.sourceId);
             const targetPos = globalPositions.get(req.targetId);
+
             if (sourcePos && targetPos) {
-                svgContent += this.renderCurve(sourcePos, targetPos, req.type, req.side);
+                if (req.type === 'tie' || req.type === 'slur') {
+                    svgContent += this.renderCurve(sourcePos, targetPos, req.type, req.side);
+                } else if (req.type === 'tremolo' && req.marks) {
+                    svgContent += this.renderMultiNoteTremolo(sourcePos, targetPos, req.marks);
+                }
             }
         }
 
@@ -277,12 +313,29 @@ export class Renderer {
     }
 
     /**
-     * Render G-Clef at specific position.
+     * Render Clef at specific position.
      */
-    private renderClef(x: number, y: number): string {
+    private renderClef(x: number, y: number, sign: string = "G"): string {
         // Scale factor for Bravura (1000 units = 4 spaces = 40px)
         const scale = 0.04;
 
+        if (sign === "percussion") {
+            // Percussion Clef: two vertical bars or a solid block.
+            // Drawing a block from line 2 to 4 (approx 20px height) centered roughly
+            // y is bottom line? G-Clef anchor is usually baseline.
+            // Staff is y-40 to y.
+            // Line 2 (from top) = y - 30. Line 4 = y - 10.
+            // Let's draw a simple neutral clef (rectangle)
+            return `<rect x="${x}" y="${y - 30}" width="10" height="20" fill="#666" />\n`;
+        } else if (sign === "F") {
+            // Bass Clef (Placeholder or Path if available)
+            // For now, use G-Clef but maybe vertically shifted or different path?
+            // Real implementation needs F-Clef path.
+            // Returning G-Clef as fallback for now or text 'F'
+            return `<text x="${x}" y="${y - 10}" font-family="Times New Roman" font-size="30" font-weight="bold">F</text>\n`;
+        }
+
+        // Default G-Clef
         return `<g transform="translate(${x}, ${y}) scale(${scale})">
             <path d="${GCLEF_PATH}" fill="black" />
         </g>\n`;
@@ -596,7 +649,7 @@ export class Renderer {
         // Draw all note heads with potential offsets
         noteData.forEach((nd) => {
             const noteX = cx + nd.offsetX;
-            svg += this.renderNoteHead(noteX, nd.y, duration, r);
+            svg += this.renderNoteHead(noteX, nd.y, duration, r, nd.note.notehead);
             svg += this.renderLedgerLines(noteX, nd.y, staffTopY);
         });
 
@@ -660,7 +713,7 @@ export class Renderer {
         // Draw all note heads
         noteData.forEach((nd) => {
             const noteX = cx + nd.offsetX;
-            svg += this.renderNoteHead(noteX, nd.y, duration, r);
+            svg += this.renderNoteHead(noteX, nd.y, duration, r, nd.note.notehead);
             svg += this.renderLedgerLines(noteX, nd.y, staffTopY);
         });
 
@@ -840,9 +893,37 @@ export class Renderer {
     }
 
     /**
-     * Render just the note head (shape depends on duration).
+     * Render just the note head (shape depends on duration and type).
      */
-    private renderNoteHead(cx: number, cy: number, duration: string, r: number): string {
+    private renderNoteHead(cx: number, cy: number, duration: string, r: number, type?: string): string {
+        const fill = (duration === "whole" || duration === "half") ? "none" : "black";
+        const stroke = "black";
+
+        if (type === "x" || type === "circle-x") {
+            // X shape
+            const s = r * 1.2;
+            let svg = `<line x1="${cx - s}" y1="${cy - s}" x2="${cx + s}" y2="${cy + s}" stroke="${stroke}" stroke-width="2" />
+                       <line x1="${cx + s}" y1="${cy - s}" x2="${cx - s}" y2="${cy + s}" stroke="${stroke}" stroke-width="2" />\n`;
+            if (type === "circle-x") {
+                svg += `<circle cx="${cx}" cy="${cy}" r="${r * 1.4}" fill="none" stroke="${stroke}" stroke-width="1.5" />\n`;
+            }
+            return svg;
+        } else if (type === "diamond") {
+            // Diamond
+            const w = r * 1.3;
+            const h = r * 1.3;
+            return `<polygon points="${cx},${cy - h} ${cx + w},${cy} ${cx},${cy + h} ${cx - w},${cy}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+        } else if (type === "triangle") {
+            // Triangle pointing up
+            const h = r * 1.5;
+            const w = r * 1.3;
+            return `<polygon points="${cx},${cy - h} ${cx + w},${cy + h / 2} ${cx - w},${cy + h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />\n`;
+        } else if (type === "slash") {
+            const s = r * 1.2;
+            return `<line x1="${cx + s}" y1="${cy - s}" x2="${cx - s}" y2="${cy + s}" stroke="${stroke}" stroke-width="2" />\n`;
+        }
+
+        // Normal Oval
         if (duration === "whole") {
             return `<ellipse cx="${cx}" cy="${cy}" rx="${r * 1.3}" ry="${r}" fill="none" stroke="black" stroke-width="1.5" />\n`;
         } else if (duration === "half") {
@@ -855,31 +936,6 @@ export class Renderer {
     /**
      * Render tremolo slashes on a note's stem.
      * @param x - X position of the stem
-     * @param stemTipY - Y position of the stem tip
-     * @param stemUp - Whether the stem points up
-     * @param marks - Number of slash marks (1-3 typically)
-     */
-    private renderTremolo(x: number, stemTipY: number, stemUp: boolean, marks: number): string {
-        let svg = "";
-
-        // Position slashes on the stem, away from both ends
-        // Start point is 1/3 down from the tip
-        const stemLength = this.config.stemLength;
-        const slashSpacing = 6;
-        const slashWidth = 8;
-        const slashHeight = 3;
-
-        // Calculate starting Y position (on the stem, 1/3 from the tip)
-        const startOffset = stemUp ? stemLength * 0.4 : -stemLength * 0.4;
-        const baseY = stemTipY + startOffset;
-
-        for (let i = 0; i < marks; i++) {
-            const slashY = baseY + (stemUp ? i * slashSpacing : -i * slashSpacing);
-
-            // Draw diagonal slashes (parallelogram shape)
-            // Slashes slant from top-left to bottom-right
-            const x1 = x - slashWidth / 2;
-            const x2 = x + slashWidth / 2;
             const y1 = slashY - slashHeight;
             const y2 = slashY + slashHeight;
 
@@ -1025,17 +1081,66 @@ export class Renderer {
     }
 
     /**
-     * Calculate Y position for a note based on pitch.
+     * Calculate Y position for a note based on pitch or unpitched display.
      */
     private calculateY(note: Note, staffTopY: number): number {
-        if (!note.pitch) return staffTopY + 20;
-
         const stepMap: Record<string, number> = { "C": 0, "D": 1, "E": 2, "F": 3, "G": 4, "A": 5, "B": 6 };
-        const absoluteStep = (note.pitch.octave * 7) + stepMap[note.pitch.step];
+        let step = "B";
+        let octave = 4;
+
+        if (note.pitch) {
+            step = note.pitch.step;
+            octave = note.pitch.octave;
+        } else if (note.unpitched) {
+            step = note.unpitched.step;
+            octave = note.unpitched.octave;
+        } else {
+            return staffTopY + 20; // Fallback
+        }
+
+        const absoluteStep = (octave * 7) + stepMap[step];
         const g4Step = (4 * 7) + 4; // G4 = 32
         const diff = absoluteStep - g4Step;
         const g4Y = staffTopY + (3 * this.config.lineSpacing);
 
         return g4Y - (diff * (this.config.lineSpacing / 2));
+    }
+    private renderTremolo(x: number, stemTipY: number, stemUp: boolean, marks: number): string {
+        const spacing = 4;
+        const length = 12;
+        const slant = 3;
+        const startX = x - length / 2;
+
+        // Tremolo positioning
+        const yOffset = stemUp ? 15 : -15;
+        const centerY = stemTipY + yOffset;
+
+        let svg = "";
+        for (let i = 0; i < marks; i++) {
+            const y = centerY + (i * spacing * (stemUp ? 1 : -1));
+            svg += `<line x1="${startX}" y1="${y + slant}" x2="${startX + length}" y2="${y - slant}" stroke="black" stroke-width="2" />\n`;
+        }
+        return svg;
+    }
+
+    private renderMultiNoteTremolo(sourcePos: any, targetPos: any, marks: number): string {
+        const midX = (sourcePos.x + targetPos.x) / 2;
+        const midY = (sourcePos.y + targetPos.y) / 2;
+
+        const length = (targetPos.x - sourcePos.x) * 0.6;
+        const startX = midX - length / 2;
+
+        let svg = "";
+        const spacing = 6;
+        const slantY = 4;
+
+        for (let i = 0; i < marks; i++) {
+            const offset = (i - (marks - 1) / 2) * spacing;
+            const barY = midY + offset;
+
+            svg += `<line x1="${startX}" y1="${barY + slantY}" x2="${startX + length}" y2="${barY - slantY}" stroke="black" stroke-width="2" />\n`;
+        }
+
+        return svg;
     }
 }

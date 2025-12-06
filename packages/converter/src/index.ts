@@ -148,6 +148,33 @@ export class MusicXMLToMNX {
         // Shared lyric lines collection across all parts
         const sharedLyricLines = new Map<string, { id: string, name: string }>();
 
+        // 1.5 Parse Part Metadata (Sound definitions)
+        const partMetaMap = new Map<string, any>();
+        if (root["part-list"] && root["part-list"]["score-part"]) {
+            const spArr = Array.isArray(root["part-list"]["score-part"])
+                ? root["part-list"]["score-part"]
+                : [root["part-list"]["score-part"]];
+
+            spArr.forEach((sp: any) => {
+                const partId = sp["@_id"];
+                const name = typeof sp["part-name"] === 'object' ? sp["part-name"]["#text"] : sp["part-name"];
+                const sounds: any[] = [];
+
+                if (sp["midi-instrument"]) {
+                    const miArr = Array.isArray(sp["midi-instrument"]) ? sp["midi-instrument"] : [sp["midi-instrument"]];
+                    miArr.forEach((mi: any) => {
+                        sounds.push({
+                            id: mi["@_id"],
+                            "midi-program": mi["midi-program"] ? parseInt(mi["midi-program"]) : undefined,
+                            "midi-channel": mi["midi-channel"] ? parseInt(mi["midi-channel"]) : undefined,
+                            "midi-bank": mi["midi-bank"] ? parseInt(mi["midi-bank"]) : undefined
+                        });
+                    });
+                }
+                partMetaMap.set(partId, { name, sounds });
+            });
+        }
+
         // 2. Build Parts
         const mnxParts: Part[] = partsArray.map((p: any, pIndex: number) => {
             const partMeasuresRaw = Array.isArray(p.measure) ? p.measure : [p.measure];
@@ -158,6 +185,7 @@ export class MusicXMLToMNX {
                 activeTies: {},
                 activeWedges: {},
                 activeOttavas: {}, // [NEW] Ottava tracking
+                activeTremolos: {}, // [NEW] Multi-note Tremolo
                 lyricLines: sharedLyricLines // Pass shared map
             };
 
@@ -167,9 +195,13 @@ export class MusicXMLToMNX {
                 return parser.parse();
             });
 
+            const partId = p["@_id"];
+            const meta = partMetaMap.get(partId);
+
             return {
-                id: `P${pIndex + 1}`,
-                name: `Part ${pIndex + 1}`,
+                id: partId,
+                name: meta?.name || `Part ${pIndex + 1}`,
+                sounds: meta?.sounds && meta.sounds.length > 0 ? meta.sounds : undefined,
                 measures: mnxMeasures
             };
         });

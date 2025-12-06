@@ -114,20 +114,20 @@ Features defined in W3C MNX Schema (`mnx-schema.json`) but not yet implemented i
 
 ### 🟡 Important (Medium Impact)
 
-- [x] **Tremolos** ✅ SINGLE-NOTE IMPLEMENTED
+- [x] **Tremolos** ✅ IMPLEMENTED
     - [x] `tremolo-single`: Single-note tremolo (bowed tremolo).
-    - [ ] `multi-note-tremolo`: Alternating between two notes.
+    - [x] `multi-note-tremolo`: Alternating between two notes.
     - **Impact**: String and piano literature relies heavily on tremolo notation.
 
-- [ ] **Percussion Kit System**
-    - [ ] `kit`: Define a percussion kit (drum set).
-    - [ ] `kit-component`: Map MIDI notes to staff positions.
-    - [ ] `kit-note`: Unpitched percussion notes.
+- [x] **Percussion Kit System** ✅ IMPLEMENTED
+    - [x] `kit`: Define a percussion kit (drum set).
+    - [x] `kit-component`: Map MIDI notes to staff positions.
+    - [x] `kit-note`: Unpitched percussion notes.
     - **Impact**: Drum/percussion scores will not convert correctly; notes may be misplaced.
 
-- [ ] **Sound/Playback Definitions**
-    - [ ] `sound`: MIDI program/instrument assignment.
-    - [ ] `midi-number` / `midi-program`: Playback sound mapping.
+- [x] **Sound/Playback Definitions** ✅ IMPLEMENTED
+    - [x] `sound`: MIDI program/instrument assignment.
+    - [x] `midi-number` / `midi-program`: Playback sound mapping.
     - **Impact**: Converted MNX files will lose instrument sound information for playback.
 
 ### 🟢 Nice-to-Have (Low Impact)
