@@ -1,0 +1,14 @@
+{
+    "name": "@melos/playground",
+    "version": "0.0.1",
+    "module": "index.ts",
+    "type": "module",
+    "scripts": {
+        "start": "bun run index.ts"
+    },
+    "dependencies": {
+        "@melos/mnx": "workspace:*",
+        "@melos/converter": "workspace:*",
+        "@melos/core": "workspace:*"
+    }
+}

@@ -1,0 +1,13 @@
+{
+    "name": "@melos/mnx",
+    "version": "0.0.1",
+    "main": "src/index.ts",
+    "type": "module",
+    "scripts": {
+        "build": "bun build ./src/index.ts --outdir ./dist --target bun",
+        "test": "bun test"
+    },
+    "dependencies": {
+        "@melos/core": "workspace:*"
+    }
+}

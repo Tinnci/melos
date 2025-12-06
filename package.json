@@ -1,0 +1,15 @@
+{
+    "name": "melos-monorepo",
+    "version": "0.0.1",
+    "workspaces": [
+        "packages/*"
+    ],
+    "devDependencies": {
+        "typescript": "^5.0.0",
+        "bun-types": "latest"
+    },
+    "scripts": {
+        "build": "bun run --filter '*' build",
+        "test": "bun test"
+    }
+}
