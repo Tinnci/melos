@@ -1,4 +1,4 @@
-import type { Score, Part, MeasureRhythmicPosition, Note, Event } from "@melos/core";
+import type { Score, Part, MeasureRhythmicPosition, Note, Event, GlobalMeasure, Jump } from "@melos/core";
 
 // SMuFL G-Clef path extracted from Bravura font (uniE050)
 // Original glyph designed at 1000 units per em, roughly 4 spaces high.
@@ -84,7 +84,13 @@ export class Renderer {
                 }
 
                 // --- 4. Draw barline at start of measure ---
-                svgContent += this.renderBarline(currentX, currentY);
+                const currentGlobalMeasure = score.global.measures[mIndex];
+                svgContent += this.renderBarline(currentX, currentY, "start", currentGlobalMeasure);
+
+                // --- 4b. Draw Jumps (Start of measure: Segno, Coda) ---
+                if (currentGlobalMeasure?.jumps) {
+                    svgContent += this.renderJumps(currentX, currentY, currentGlobalMeasure.jumps, "start");
+                }
 
                 isNewSystem = false;
 
@@ -228,8 +234,21 @@ export class Renderer {
                 currentX += measureWidth;
                 if (currentX > maxX) maxX = currentX;
 
+                // Access Global Measure for barline/repeat/ending info
+                const globalMeasure = score.global.measures[mIndex];
+
                 // --- 7. Draw ending barline ---
-                svgContent += this.renderBarline(currentX, currentY);
+                svgContent += this.renderBarline(currentX, currentY, "end", globalMeasure);
+
+                // --- 7b. Draw Voltas (Endings) ---
+                if (globalMeasure?.ending) {
+                    svgContent += this.renderEnding(currentX, measureWidth, currentY, globalMeasure.ending);
+                }
+
+                // --- 7c. Draw Jumps (End of measure: Fine, D.C., D.S.) ---
+                if (globalMeasure?.jumps) {
+                    svgContent += this.renderJumps(currentX, currentY, globalMeasure.jumps, "end");
+                }
             });
 
             // Draw stave lines for the last system
@@ -373,8 +392,147 @@ export class Renderer {
     /**
      * Render a barline at specified position.
      */
-    private renderBarline(x: number, y: number): string {
-        return `<line x1="${x}" y1="${y}" x2="${x}" y2="${y + 4 * this.config.lineSpacing}" stroke="black" stroke-width="1" />\n`;
+    /**
+     * Render a barline at specified position.
+     */
+    private renderBarline(x: number, y: number, position: "start" | "end", globalMeasure?: GlobalMeasure): string {
+        const type = globalMeasure?.barline?.type;
+        const spacing = this.config.lineSpacing;
+        const topY = y;
+        const bottomY = y + 4 * spacing;
+        let svg = "";
+
+        // Helper to draw vertical line
+        const drawLine = (lx: number, width: number) =>
+            `<line x1="${lx}" y1="${topY}" x2="${lx}" y2="${bottomY}" stroke="black" stroke-width="${width}" />\n`;
+
+        // Helper to draw dots
+        const drawDots = (dx: number) =>
+            `<circle cx="${dx}" cy="${y + 1.5 * spacing}" r="2" fill="black" />\n` +
+            `<circle cx="${dx}" cy="${y + 2.5 * spacing}" r="2" fill="black" />\n`;
+
+        if (position === "start") {
+            if (type === "repeat-forward") {
+                // Heavy-Light + Dots
+                svg += drawLine(x, 3); // Heavy
+                svg += drawLine(x + 5, 1); // Light
+                svg += drawDots(x + 10);
+                return svg;
+            }
+            // Default start barline (System start)
+            return drawLine(x, 1);
+        }
+
+        // Position === "end"
+        if (type === "repeat-backward") {
+            // Dots + Light + Heavy
+            svg += drawDots(x - 10);
+            svg += drawLine(x - 5, 1);
+            svg += drawLine(x, 3);
+        } else if (type === "final") {
+            // Light + Heavy
+            svg += drawLine(x - 5, 1);
+            svg += drawLine(x, 3);
+        } else if (type === "double") {
+            // Light + Light
+            svg += drawLine(x - 4, 1);
+            svg += drawLine(x, 1);
+        } else if (type === "repeat-forward") {
+            // If we are at the end, but the measure implies a start repeat (left), 
+            // we still need to close the current measure with a regular barline?
+            svg += drawLine(x, 1);
+        } else {
+            // Regular
+            svg += drawLine(x, 1);
+        }
+
+        return svg;
+    }
+
+    private renderEnding(endX: number, width: number, y: number, ending: any): string {
+        // ending: { numbers: number[], duration: number, open: boolean }
+        // Draw bracket above staff
+        const startX = endX - width;
+        const bracketY = y - 20; // Above staff
+        const bracketHeight = 15;
+        let svg = "";
+
+        const label = ending.numbers ? ending.numbers.join(",") + "." : "";
+
+        // Top line
+        svg += `<polyline points="${startX},${bracketY + bracketHeight} ${startX},${bracketY} ${endX},${bracketY}" fill="none" stroke="black" stroke-width="1" />\n`;
+
+        // Closing leg if not open
+        if (!ending.open) {
+            svg += `<line x1="${endX}" y1="${bracketY}" x2="${endX}" y2="${bracketY + bracketHeight}" stroke="black" stroke-width="1" />\n`;
+        }
+
+        if (label) {
+            svg += `<text x="${startX + 5}" y="${bracketY + 12}" font-family="Times New Roman" font-size="12">${label}</text>\n`;
+        }
+
+        return svg;
+    }
+
+    private renderJumps(x: number, y: number, jumps: Jump[], position: "start" | "end"): string {
+        const topY = y - 10; // Base Y above staff
+        let svg = "";
+
+        const relevantJumps = jumps.filter(j =>
+            position === "end"
+                ? ["fine", "dc", "ds", "dc-al-fine", "ds-al-fine", "dc-al-coda", "ds-al-coda"].includes(j.type)
+                : ["segno", "coda"].includes(j.type)
+        );
+
+        relevantJumps.forEach((j, i) => {
+            const currentY = topY - (i * 15);
+
+            // Text Instructions
+            let text = "";
+            switch (j.type) {
+                case "fine": text = "Fine"; break;
+                case "dc": text = "D.C."; break;
+                case "ds": text = "D.S."; break;
+                case "dc-al-fine": text = "D.C. al Fine"; break;
+                case "ds-al-fine": text = "D.S. al Fine"; break;
+                case "dc-al-coda": text = "D.C. al Coda"; break;
+                case "ds-al-coda": text = "D.S. al Coda"; break;
+            }
+
+            if (text) {
+                // Determine Anchor: End position -> Text-Anchor End
+                const anchor = position === "end" ? "end" : "start";
+                svg += `<text x="${x}" y="${currentY}" font-family="Times New Roman" font-weight="bold" font-size="12" text-anchor="${anchor}">${text}</text>\n`;
+            } else if (j.type === "segno") {
+                svg += this.renderSegno(x, currentY - 10);
+            } else if (j.type === "coda") {
+                svg += this.renderCoda(x, currentY - 10);
+            }
+        });
+
+        return svg;
+    }
+
+    private renderSegno(x: number, y: number): string {
+        // Stylized S with slash and dots
+        const scale = 0.8;
+        return `<g transform="translate(${x}, ${y}) scale(${scale})">
+            <path d="M10,0 C15,0 20,5 20,10 C20,15 10,15 10,20 C10,25 15,30 20,30" fill="none" stroke="black" stroke-width="3"/>
+            <path d="M20,0 C15,0 10,5 10,10 C10,15 20,15 20,20 C20,25 10,30 10,30" fill="none" stroke="black" stroke-width="3"/>
+            <line x1="5" y1="35" x2="25" y2="-5" stroke="black" stroke-width="2"/>
+            <circle cx="8" cy="15" r="2" fill="black"/>
+            <circle cx="22" cy="15" r="2" fill="black"/>
+        </g>\n`;
+    }
+
+    private renderCoda(x: number, y: number): string {
+        // Circle with Cross
+        const scale = 0.8;
+        return `<g transform="translate(${x}, ${y}) scale(${scale})">
+            <ellipse cx="15" cy="15" rx="10" ry="14" stroke="black" stroke-width="2" fill="none"/>
+            <line x1="15" y1="0" x2="15" y2="30" stroke="black" stroke-width="2"/>
+            <line x1="2" y1="15" x2="28" y2="15" stroke="black" stroke-width="2"/>
+        </g>\n`;
     }
 
     /**

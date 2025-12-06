@@ -95,13 +95,13 @@ Features defined in W3C MNX Schema (`mnx-schema.json`) but not yet implemented i
 
 ### 🔴 Critical (High Impact)
 
-- [ ] **Repeats, Jumps & Endings** (Navigation)
-    - [ ] `repeat-start` / `repeat-end`: Repeat barlines.
-    - [ ] `ending`: Volta brackets (1st/2nd endings).
-    - [ ] `jump`: D.S. al Fine, D.S. al Coda, etc.
-    - [ ] `segno`: Segno sign for navigation.
-    - [ ] `fine`: End of piece marker.
-    - [ ] `coda`: Coda sign.
+- [x] **Repeats, Jumps & Endings** (Navigation)
+    - [x] `repeat-start` / `repeat-end`: Repeat barlines.
+    - [x] `ending`: Volta brackets (1st/2nd endings).
+    - [x] `jump`: D.S. al Fine, D.S. al Coda, etc.
+    - [x] `segno`: Segno sign for navigation.
+    - [x] `fine`: End of piece marker.
+    - [x] `coda`: Coda sign.
     - **Impact**: Without this, scores with repeats must be "unrolled" (expanding file size) or playback order will be incorrect.
 
 - [x] **Ottavas (Octave Shifts)** ✅ IMPLEMENTED

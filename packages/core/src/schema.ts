@@ -184,6 +184,23 @@ export const MultimeasureRestSchema = z.object({
     label: z.string().optional() // Optional display label
 });
 
+// [NEW] Repeat and Ending schemas
+export const RepeatStartSchema = z.object({});
+
+export const RepeatEndSchema = z.object({
+    times: z.number().int().min(1).optional() // How many times to repeat (default 2)
+});
+
+export const EndingSchema = z.object({
+    numbers: z.array(z.number().int()).optional(), // Which endings (e.g., [1] or [1,2])
+    duration: z.number().int().min(1), // How many measures this ending spans
+    open: z.boolean().optional() // Whether the ending bracket is open (no right side)
+});
+
+export const JumpSchema = z.object({
+    type: z.enum(["segno", "coda", "fine", "dc", "ds", "dc-al-fine", "ds-al-fine", "dc-al-coda", "ds-al-coda"])
+});
+
 export const GlobalMeasureSchema = z.object({
     index: z.number().int().optional(),
     time: TimeSignatureSchema.optional(),
@@ -193,9 +210,15 @@ export const GlobalMeasureSchema = z.object({
         location: z.number().optional()
     })).optional(),
     barline: z.object({
-        type: z.enum(["regular", "double", "final", "dashed", "light-heavy"])
+        type: z.enum(["regular", "double", "final", "dashed", "light-heavy", "repeat-forward", "repeat-backward", "repeat-both"])
     }).optional(),
-    break: z.enum(["system", "page"]).optional() // [NEW] Added break
+    break: z.enum(["system", "page"]).optional(),
+    // [NEW] Repeat navigation
+    repeatStart: RepeatStartSchema.optional(),
+    repeatEnd: RepeatEndSchema.optional(),
+    ending: EndingSchema.optional(),
+    // [NEW] Jumps and Markers
+    jumps: z.array(JumpSchema).optional()
 });
 
 export const LyricLineSchema = z.object({
@@ -269,3 +292,7 @@ export type MeasureRhythmicPosition = z.infer<typeof MeasureRhythmicPositionSche
 export type Articulation = z.infer<typeof ArticulationSchema>;
 export type Ottava = z.infer<typeof OttavaSchema>;
 export type MultimeasureRest = z.infer<typeof MultimeasureRestSchema>;
+export type RepeatStart = z.infer<typeof RepeatStartSchema>;
+export type RepeatEnd = z.infer<typeof RepeatEndSchema>;
+export type Ending = z.infer<typeof EndingSchema>;
+export type Jump = z.infer<typeof JumpSchema>;

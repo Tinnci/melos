@@ -1,5 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
-import type { Score, GlobalMeasure, Part, PartMeasure, LyricLine } from "@melos/core";
+import type { Score, GlobalMeasure, Part, PartMeasure, LyricLine, Jump } from "@melos/core";
 import { MeasureParser, type PartParsingContext } from "./parsers/MeasureParser";
 import { resetIdCounters } from "./parsers/Utils";
 
@@ -47,10 +47,47 @@ export class MusicXMLToMNX {
             }
 
             if (m.barline) {
-                const style = m.barline["bar-style"];
-                if (style === "light-heavy") {
-                    gm.barline = { type: "final" };
-                }
+                // Handle single barline or array of barlines (left/right)
+                const barlines = Array.isArray(m.barline) ? m.barline : [m.barline];
+
+                barlines.forEach((bl: any) => {
+                    const style = bl["bar-style"];
+                    const location = bl["@_location"] || "right";
+
+                    // Bar style
+                    if (style === "light-heavy") {
+                        gm.barline = { type: "final" };
+                    }
+
+                    // Repeat signs
+                    if (bl.repeat) {
+                        const direction = bl.repeat["@_direction"];
+                        if (direction === "forward") {
+                            gm.repeatStart = {};
+                            gm.barline = { type: "repeat-forward" };
+                        } else if (direction === "backward") {
+                            const times = bl.repeat["@_times"] ? parseInt(bl.repeat["@_times"]) : undefined;
+                            gm.repeatEnd = times ? { times } : {};
+                            gm.barline = { type: "repeat-backward" };
+                        }
+                    }
+
+                    // Volta endings (1st, 2nd ending brackets)
+                    if (bl.ending) {
+                        const endingType = bl.ending["@_type"]; // start, stop, discontinue
+                        const number = bl.ending["@_number"];
+
+                        if (endingType === "start" && number) {
+                            // Parse ending numbers (e.g., "1" or "1, 2")
+                            const numbers = number.split(/[,\s]+/).map((n: string) => parseInt(n.trim())).filter((n: number) => !isNaN(n));
+                            gm.ending = {
+                                numbers: numbers,
+                                duration: 1, // Will be updated when we see the stop
+                                open: endingType === "discontinue"
+                            };
+                        }
+                    }
+                });
             }
 
             // [NEW] Layout Breaks (from <print>)
@@ -59,6 +96,49 @@ export class MusicXMLToMNX {
                     gm.break = "page";
                 } else if (m.print["@_new-system"] === "yes") {
                     gm.break = "system";
+                }
+            }
+
+            // [NEW] Jumps & Markers (Segno, Coda, Fine, D.C., D.S.)
+            if (m.direction) {
+                const directions = Array.isArray(m.direction) ? m.direction : [m.direction];
+                const jumps: Jump[] = [];
+
+                directions.forEach((d: any) => {
+                    const dTypes = Array.isArray(d["direction-type"]) ? d["direction-type"] : [d["direction-type"]];
+
+                    dTypes.forEach((dt: any) => {
+                        if (dt.segno) {
+                            jumps.push({ type: "segno" });
+                        }
+                        if (dt.coda) {
+                            jumps.push({ type: "coda" });
+                        }
+                        if (dt.words) {
+                            const rawText = (typeof dt.words === "object" ? dt.words["#text"] : dt.words) || "";
+                            const text = String(rawText).trim().toLowerCase().replace(/\./g, ""); // "d.c." -> "dc"
+
+                            if (text === "fine") {
+                                jumps.push({ type: "fine" });
+                            } else if (text.includes("dc") && text.includes("fine")) {
+                                jumps.push({ type: "dc-al-fine" });
+                            } else if (text.includes("ds") && text.includes("fine")) {
+                                jumps.push({ type: "ds-al-fine" });
+                            } else if (text.includes("dc") && text.includes("coda")) {
+                                jumps.push({ type: "dc-al-coda" });
+                            } else if (text.includes("ds") && text.includes("coda")) {
+                                jumps.push({ type: "ds-al-coda" });
+                            } else if (text === "dc") {
+                                jumps.push({ type: "dc" });
+                            } else if (text === "ds") {
+                                jumps.push({ type: "ds" });
+                            }
+                        }
+                    });
+                });
+
+                if (jumps.length > 0) {
+                    gm.jumps = jumps;
                 }
             }
 
