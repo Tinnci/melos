@@ -5,6 +5,12 @@ export function generateEventId() {
     return `ev${++eventIdCounter}`;
 }
 
-export function resetEventIdCounter() {
+let noteIdCounter = 0;
+export function generateNoteId() {
+    return `n${++noteIdCounter}`;
+}
+
+export function resetIdCounters() {
     eventIdCounter = 0;
+    noteIdCounter = 0;
 }

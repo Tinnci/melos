@@ -1,79 +1,68 @@
-import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet } from "@melos/core";
-import { generateEventId } from "./Utils";
+import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Tie, Slur } from "@melos/core";
+import { generateEventId, generateNoteId } from "./Utils";
 
 // Container interface for handling nested structures like Tuplets
 export interface Container {
     content: any[];
-    // To track if this container corresponds to a MusicXML tuplet start/stop
     endCondition?: { type: 'tuplet'; number?: number };
+}
+
+// Context to track state across measures (Slurs, Ties)
+export interface PartParsingContext {
+    // Key: slur number
+    activeSlurs: Record<number, { sourceEvent: Event }>;
+    // Key: pitch string (e.g., "C4") as tie connects same pitches usually. 
+    // Or tracked by <tied number="..."> if available. 
+    // Using a composite key or simple number if provided.
+    activeTies: Record<string, { sourceNote: Note }>;
 }
 
 export class MeasureParser {
     private beams: Beam[] = [];
-
-    // Track active beams
     private activeBeams: Record<number, { eventIds: string[] }> = {};
 
-    constructor(private xmlMeasure: any) { }
+    constructor(
+        private xmlMeasure: any,
+        private context: PartParsingContext
+    ) { }
 
     parse(): PartMeasure {
         const rootContent: any[] = [];
-        // The Stack: starts with the root sequence content
         const containerStack: Container[] = [{ content: rootContent }];
 
         let currentEvent: Event | null = null;
 
-        // Notes mapping
         const xmlNotes = this.xmlMeasure.note ? (Array.isArray(this.xmlMeasure.note) ? this.xmlMeasure.note : [this.xmlMeasure.note]) : [];
 
         for (const xNote of xmlNotes) {
             // --- 0. Stack Management (Tuplet Start/Stop) ---
-
-            // Get current container (Top of Stack)
             let currentContainer = containerStack[containerStack.length - 1];
 
-            // Handle Tuplet START
-            // Look for <notations><tuplet type="start">
             if (xNote.notations) {
                 const notations = Array.isArray(xNote.notations) ? xNote.notations : [xNote.notations];
                 const tupletStartNode = notations.find((n: any) => n?.tuplet?.["@_type"] === "start");
 
                 if (tupletStartNode) {
-                    // Calculate timings if available (MusicXML <time-modification>)
-                    let outerDur = { base: xNote.type || "quarter", dots: 0 };
-                    let innerDur = { base: xNote.type || "quarter", dots: 0 };
-
-                    // Simple heuristic for now: usually you want to display the note type (inner) 
-                    // and calculating outer is complex without more context.
-                    // For MVP we create the structure.
-
                     const newTuplet: Tuplet = {
                         type: "tuplet",
-                        // outer/inner calculations would go here based on <time-modification>
-                        // <actual-notes>3</actual-notes> in the time of <normal-notes>2</normal-notes>
                         content: []
                     };
-
-                    // Add to current container
                     currentContainer.content.push(newTuplet);
 
-                    // Push to stack -> it becomes the new current container
                     const newContainer: Container = {
                         content: newTuplet.content,
-                        endCondition: { type: 'tuplet' } // Could track number/ID if XML provides
+                        endCondition: { type: 'tuplet' }
                     };
                     containerStack.push(newContainer);
                     currentContainer = newContainer;
                 }
             }
 
-
             // --- 1. Event / Note Logic ---
             const isRest = xNote.rest !== undefined;
             const isChord = xNote.chord !== undefined;
             const durBase: any = xNote.type || "quarter";
 
-            // Handle dots
             let dots = 0;
             if (xNote.dot) {
                 dots = Array.isArray(xNote.dot) ? xNote.dot.length : 1;
@@ -81,8 +70,12 @@ export class MeasureParser {
 
             // Pitch Logic
             let noteObj: Note | null = null;
+            let pitchKey = ""; // for tie tracking
+
             if (!isRest && xNote.pitch) {
                 noteObj = {
+                    // Generate ID for notes to support Ties
+                    id: generateNoteId(),
                     pitch: {
                         step: xNote.pitch.step,
                         octave: parseInt(xNote.pitch.octave),
@@ -92,22 +85,19 @@ export class MeasureParser {
                 if (xNote.accidental) {
                     noteObj.accidentalDisplay = { show: true };
                 }
+
+                pitchKey = `${xNote.pitch.step}${xNote.pitch.octave}`;
             }
 
             // Event Generation
             let eventId: string;
 
             if (isChord && currentEvent && !isRest) {
-                // Determine if we are still in same container as previous event?
-                // Chords should share the event, so we just modify currentEvent.
-                // NOTE: Chords crossing tuplet boundaries is theoretically invalid MusicXML usually.
-
                 if (noteObj && currentEvent.notes) {
                     currentEvent.notes.push(noteObj);
                 }
                 eventId = currentEvent.id!;
             } else {
-                // New Event
                 eventId = generateEventId();
                 const evt: Event = {
                     id: eventId,
@@ -120,18 +110,83 @@ export class MeasureParser {
                     evt.notes = [noteObj];
                 }
 
-                // Add event to the CURRENT container (which might be a Tuplet)
                 currentContainer.content.push(evt);
                 currentEvent = evt;
             }
 
+            // --- 1.2 Slurs Logic (Event Level) ---
+            if (xNote.notations) {
+                const notations = Array.isArray(xNote.notations) ? xNote.notations : [xNote.notations];
+
+                // Find all slurs
+                notations.forEach((n: any) => {
+                    if (n.slur) {
+                        const slurs = Array.isArray(n.slur) ? n.slur : [n.slur];
+                        slurs.forEach((s: any) => {
+                            const number = parseInt(s["@_number"] || "1");
+                            const type = s["@_type"]; // start or stop
+
+                            if (type === "start" && currentEvent) {
+                                // Record start
+                                this.context.activeSlurs[number] = { sourceEvent: currentEvent };
+                            } else if (type === "stop" && currentEvent) {
+                                // Resolve end
+                                const pending = this.context.activeSlurs[number];
+                                if (pending) {
+                                    // Add Slur object to SOURCE event, pointing to CURRENT event (target)
+                                    const source = pending.sourceEvent;
+
+                                    if (!source.slurs) source.slurs = [];
+
+                                    source.slurs.push({
+                                        target: currentEvent.id!,
+                                        side: s["@_placement"] === "below" ? "down" : "up"
+                                    });
+
+                                    delete this.context.activeSlurs[number];
+                                }
+                            }
+                        });
+                    }
+
+                    // --- 1.3 Ties Logic (Note Level) ---
+                    // MusicXML uses <tied type="start/stop"/>
+                    if (n.tied && noteObj) {
+                        const tieds = Array.isArray(n.tied) ? n.tied : [n.tied];
+                        tieds.forEach((t: any) => {
+                            const type = t["@_type"];
+
+                            // Use pitchKey as identifier if number not present
+                            // Actually, MusicXML ties usually just link adjacent notes of same pitch
+                            const key = t["@_number"] ? `num:${t["@_number"]}` : pitchKey;
+
+                            if (type === "start") {
+                                this.context.activeTies[key] = { sourceNote: noteObj! };
+                            } else if (type === "stop") {
+                                const pending = this.context.activeTies[key];
+                                if (pending) {
+                                    const source = pending.sourceNote;
+
+                                    if (!source.ties) source.ties = [];
+                                    source.ties.push({
+                                        target: noteObj!.id!
+                                    });
+
+                                    delete this.context.activeTies[key];
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+
+
             // --- 1.5 Beam Logic ---
             if (xNote.beam) {
                 const beamList = Array.isArray(xNote.beam) ? xNote.beam : [xNote.beam];
-
                 beamList.forEach((b: any) => {
                     const number = parseInt(b["@_number"] || "1");
-                    const type = b["#text"]; // begin, continue, end, forward, backward
+                    const type = b["#text"];
 
                     if (type === "begin") {
                         this.activeBeams[number] = { eventIds: [eventId] };
@@ -142,34 +197,23 @@ export class MeasureParser {
                     } else if (type === "end") {
                         if (this.activeBeams[number]) {
                             this.activeBeams[number].eventIds.push(eventId);
-
                             this.beams.push({
                                 events: this.activeBeams[number].eventIds
                             });
-
                             delete this.activeBeams[number];
                         }
                     }
                 });
             }
 
-
             // --- 2. Tuplet STOP Logic ---
-            // Look for <notations><tuplet type="stop">
-            // Important: Logic order matters. 
-            // - Start Tuplet: affects THIS note and subsequent
-            // - Stop Tuplet: affects THIS note (it's the last one IN the tuplet), then we pop.
-
             if (xNote.notations) {
                 const notations = Array.isArray(xNote.notations) ? xNote.notations : [xNote.notations];
                 const tupletStopNode = notations.find((n: any) => n?.tuplet?.["@_type"] === "stop");
 
                 if (tupletStopNode) {
-                    // Logic check: ensure we are actually inside a tuplet
                     if (containerStack.length > 1 && currentContainer.endCondition?.type === 'tuplet') {
                         containerStack.pop();
-                        // currentContainer automatically updates next loop iteration or we reset it now roughly
-                        // currentContainer = containerStack[containerStack.length - 1]; 
                     }
                 }
             }
@@ -189,7 +233,7 @@ export class MeasureParser {
         }
 
         return {
-            sequences: [{ content: rootContent }], // content now has nested Tuplets!
+            sequences: [{ content: rootContent }],
             clefs: clefs,
             beams: this.beams.length > 0 ? this.beams : undefined
         };

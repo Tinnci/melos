@@ -1,13 +1,13 @@
 import { XMLParser } from "fast-xml-parser";
 import type { Score, GlobalMeasure, Part, PartMeasure } from "@melos/core";
-import { MeasureParser } from "./parsers/MeasureParser";
-import { resetEventIdCounter } from "./parsers/Utils";
+import { MeasureParser, type PartParsingContext } from "./parsers/MeasureParser";
+import { resetIdCounters } from "./parsers/Utils";
 
 export class MusicXMLToMNX {
     private xmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_" });
 
     convert(xmlContent: string): Score {
-        resetEventIdCounter();
+        resetIdCounters();
         const xmlObj = this.xmlParser.parse(xmlContent);
         const root = xmlObj["score-partwise"];
 
@@ -22,9 +22,8 @@ export class MusicXMLToMNX {
         const globalMeasures: GlobalMeasure[] = [];
 
         firstPartMeasures.forEach((m: any, index: number) => {
-            const gm: GlobalMeasure = {}; // index is implicit or optional
+            const gm: GlobalMeasure = {};
 
-            // Extract Time Signature
             if (m.attributes && m.attributes.time) {
                 gm.time = {
                     count: parseInt(m.attributes.time.beats),
@@ -32,7 +31,6 @@ export class MusicXMLToMNX {
                 };
             }
 
-            // Extract Key Signature
             if (m.attributes && m.attributes.key) {
                 gm.key = {
                     fifths: parseInt(m.attributes.key.fifths)
@@ -42,7 +40,6 @@ export class MusicXMLToMNX {
                 }
             }
 
-            // Extract Barline
             if (m.barline) {
                 const style = m.barline["bar-style"];
                 if (style === "light-heavy") {
@@ -57,9 +54,15 @@ export class MusicXMLToMNX {
         const mnxParts: Part[] = partsArray.map((p: any, pIndex: number) => {
             const partMeasuresRaw = Array.isArray(p.measure) ? p.measure : [p.measure];
 
+            // Initialize Context for this Part (persists across measures)
+            const context: PartParsingContext = {
+                activeSlurs: {},
+                activeTies: {}
+            };
+
             const mnxMeasures: PartMeasure[] = partMeasuresRaw.map((m: any, mIndex: number) => {
-                // Use the new MeasureParser
-                const parser = new MeasureParser(m);
+                // Pass context to MeasureParser
+                const parser = new MeasureParser(m, context);
                 return parser.parse();
             });
 

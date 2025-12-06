@@ -171,6 +171,7 @@ export type NoteValue = z.infer<typeof NoteValueSchema>;
 export type Pitch = z.infer<typeof PitchSchema>;
 export type Tie = z.infer<typeof TieSchema>;
 export type Note = z.infer<typeof NoteSchema>;
+export type Slur = z.infer<typeof SlurSchema>;
 export type Event = z.infer<typeof BaseEventSchema>;
 export type Tuplet = z.infer<typeof TupletSchema>;
 export type Grace = z.infer<typeof GraceSchema>;
