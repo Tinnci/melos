@@ -85,7 +85,8 @@ export const BaseEventSchema = z.object({
     rest: z.object({}).optional(),
     slurs: z.array(SlurSchema).optional(),
     lyrics: z.array(LyricSchema).optional(),
-    articulations: z.array(ArticulationSchema).optional(), // [NEW] Added articulations
+    articulations: z.array(ArticulationSchema).optional(),
+    tremolo: z.number().int().min(1).max(5).optional(), // [NEW] Tremolo marks (1-5 slashes)
     measure: z.boolean().optional()
 });
 

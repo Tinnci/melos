@@ -177,6 +177,16 @@ export class Renderer {
                                     }
                                 }
 
+                                // [NEW] Render Tremolo slashes
+                                if (item.tremolo && chordResult.layout) {
+                                    svgContent += this.renderTremolo(
+                                        noteX,
+                                        chordResult.layout.stemTipY,
+                                        chordResult.layout.stemUp,
+                                        item.tremolo
+                                    );
+                                }
+
                                 noteX += this.getNoteWidth(duration);
 
                             } else if (item.rest) {
@@ -682,6 +692,43 @@ export class Renderer {
         } else {
             return `<ellipse cx="${cx}" cy="${cy}" rx="${r * 1.1}" ry="${r * 0.9}" fill="black" />\n`;
         }
+    }
+
+    /**
+     * Render tremolo slashes on a note's stem.
+     * @param x - X position of the stem
+     * @param stemTipY - Y position of the stem tip
+     * @param stemUp - Whether the stem points up
+     * @param marks - Number of slash marks (1-3 typically)
+     */
+    private renderTremolo(x: number, stemTipY: number, stemUp: boolean, marks: number): string {
+        let svg = "";
+
+        // Position slashes on the stem, away from both ends
+        // Start point is 1/3 down from the tip
+        const stemLength = this.config.stemLength;
+        const slashSpacing = 6;
+        const slashWidth = 8;
+        const slashHeight = 3;
+
+        // Calculate starting Y position (on the stem, 1/3 from the tip)
+        const startOffset = stemUp ? stemLength * 0.4 : -stemLength * 0.4;
+        const baseY = stemTipY + startOffset;
+
+        for (let i = 0; i < marks; i++) {
+            const slashY = baseY + (stemUp ? i * slashSpacing : -i * slashSpacing);
+
+            // Draw diagonal slashes (parallelogram shape)
+            // Slashes slant from top-left to bottom-right
+            const x1 = x - slashWidth / 2;
+            const x2 = x + slashWidth / 2;
+            const y1 = slashY - slashHeight;
+            const y2 = slashY + slashHeight;
+
+            svg += `<polygon points="${x1},${y1 + slashHeight} ${x2},${y1} ${x2},${y2 - slashHeight} ${x1},${y2}" fill="black" />\n`;
+        }
+
+        return svg;
     }
 
     /**

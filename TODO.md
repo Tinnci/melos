@@ -114,8 +114,8 @@ Features defined in W3C MNX Schema (`mnx-schema.json`) but not yet implemented i
 
 ### 🟡 Important (Medium Impact)
 
-- [ ] **Tremolos**
-    - [ ] `tremolo-single`: Single-note tremolo (bowed tremolo).
+- [x] **Tremolos** ✅ SINGLE-NOTE IMPLEMENTED
+    - [x] `tremolo-single`: Single-note tremolo (bowed tremolo).
     - [ ] `multi-note-tremolo`: Alternating between two notes.
     - **Impact**: String and piano literature relies heavily on tremolo notation.
 

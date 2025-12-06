@@ -392,6 +392,23 @@ export class MeasureParser {
             if (collectedArticulations.length > 0 && ctx.currentEvent) {
                 ctx.currentEvent.articulations = collectedArticulations as any[];
             }
+
+            // [NEW] Tremolo parsing from ornaments
+            notations.forEach((n: any) => {
+                if (n.ornaments?.tremolo) {
+                    const tremolo = n.ornaments.tremolo;
+                    // Get the number value (slashes count)
+                    const marks = parseInt(tremolo["#text"] || tremolo || "3");
+                    const type = tremolo["@_type"]; // "single", "start", or "stop"
+
+                    // Only handle single-note tremolo for now
+                    if (type === "single" || type === undefined) {
+                        if (ctx.currentEvent) {
+                            ctx.currentEvent.tremolo = marks;
+                        }
+                    }
+                }
+            });
         }
 
         // --- 1.3 Slurs Logic (Event Level) ---
