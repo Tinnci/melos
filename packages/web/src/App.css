@@ -480,6 +480,20 @@
   color: var(--color-text-secondary);
 }
 
+.dropzone__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.dropzone__or {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    Right Panel (Properties)
    ───────────────────────────────────────────────────────────────────────────── */
@@ -867,5 +881,75 @@
 
   .score-canvas {
     padding: var(--space-4);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   History Buttons (Undo/Redo)
+   ───────────────────────────────────────────────────────────────────────────── */
+.studio__history {
+  display: flex;
+  gap: var(--space-1);
+  padding-right: var(--space-3);
+  border-right: 1px solid var(--color-border-subtle);
+  margin-right: var(--space-3);
+}
+
+.studio__history .btn--icon {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+}
+
+.studio__history .btn--icon:not(:disabled):hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-surface);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Keyboard Shortcuts Hint
+   ───────────────────────────────────────────────────────────────────────────── */
+.canvas-header__shortcuts {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.canvas-header__shortcuts kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-right: var(--space-1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Canvas Header Status
+   ───────────────────────────────────────────────────────────────────────────── */
+.canvas-header__status {
+  color: var(--color-accent-success);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Mobile: Hide shortcuts hint
+   ───────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .canvas-header__shortcuts {
+    display: none;
+  }
+
+  .studio__history {
+    display: none;
   }
 }

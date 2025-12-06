@@ -4,7 +4,8 @@
  */
 
 import { useCallback, useEffect } from 'react'
-import { useScoreStore, createDemoScore } from './store'
+import { useScoreStore, useTransportStore, createDemoScore } from './store'
+import { useKeyboardShortcuts, usePersistence } from './hooks'
 import {
   Dropzone,
   ScoreCanvas,
@@ -23,24 +24,19 @@ function App() {
   const error = useScoreStore((s) => s.error)
   const setScore = useScoreStore((s) => s.setScore)
   const setError = useScoreStore((s) => s.setError)
+  const canUndo = useScoreStore((s) => s.canUndo)
+  const canRedo = useScoreStore((s) => s.canRedo)
+  const status = useTransportStore((s) => s.status)
+
+  // Initialize hooks
+  useKeyboardShortcuts()
+  usePersistence()
 
   // Load demo score on button click
   const handleLoadDemo = useCallback(() => {
     const demo = createDemoScore()
     setScore(demo)
   }, [setScore])
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (_e: KeyboardEvent) => {
-      // Ctrl/Cmd + Z = Undo (placeholder)
-      // Ctrl/Cmd + Shift + Z = Redo (placeholder)
-      // Space = Play/Stop (placeholder)
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
 
   // Clear error after 5 seconds
   useEffect(() => {
@@ -65,6 +61,25 @@ function App() {
         <TransportBar />
 
         <div className="studio__actions">
+          {/* Undo/Redo indicators */}
+          <div className="studio__history">
+            <button
+              className="btn btn--ghost btn--icon"
+              disabled={!canUndo()}
+              data-tooltip="Undo (Ctrl+Z)"
+              aria-label="Undo"
+            >
+              ↩
+            </button>
+            <button
+              className="btn btn--ghost btn--icon"
+              disabled={!canRedo()}
+              data-tooltip="Redo (Ctrl+Shift+Z)"
+              aria-label="Redo"
+            >
+              ↪
+            </button>
+          </div>
           <button className="btn btn--secondary btn--sm" onClick={handleLoadDemo}>
             Load Demo
           </button>
@@ -83,10 +98,19 @@ function App() {
         <div className="canvas-container">
           <div className="canvas-header">
             <div className="canvas-header__info">
-              <span className="canvas-header__label">Score Preview</span>
+              <span className="canvas-header__label">
+                Score Preview
+                {status === 'playing' && (
+                  <span className="canvas-header__status"> • Playing</span>
+                )}
+              </span>
               <h2 className="canvas-header__title">
                 {score ? 'Piano Exercise' : 'No Score Loaded'}
               </h2>
+            </div>
+            <div className="canvas-header__shortcuts">
+              <kbd>Space</kbd> Play/Stop
+              <kbd>Ctrl+Z</kbd> Undo
             </div>
             {error && (
               <div className="error-toast">

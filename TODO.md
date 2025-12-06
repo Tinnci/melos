@@ -92,12 +92,12 @@ Enable programmatic creation of music.
 ## Phase 5: Web Editor Integration (The "Studio") 🚧 IN PROGRESS
 Integrate all packages into a comprehensive Web Editor to allow users to Create, Edit, and Play scores interactively.
 
-*   **Tech Stack**: Vite, React, TailwindCSS, shadcn/ui.
+*   **Tech Stack**: Vite, React, Vanilla CSS (Design System), Zustand.
 *   **Editor UI**:
-    *   Toolbars, Property Panels (using shadcn/ui).
+    *   DAW-style three-column layout (Sidebar / Canvas / Properties).
     *   Score Canvas (using `@melos/renderer`).
-    *   Playback Controls (using `@melos/player`).
-    *   State Management (syncing Builder state with UI).
+    *   Transport Bar with Playback Controls (using `@melos/player`).
+    *   State Management (Zustand store syncing Score with UI).
 
 Current progress and short-term plan:
 
@@ -106,17 +106,21 @@ Current progress and short-term plan:
 - [x] Basic Studio shell (App.tsx with header/panels and layout)
 - [x] Renderer preview + demo `ScoreBuilder` example renders to the canvas
 - [x] Basic playback prototype with `AudioPlayer` (Play/Stop, tempo slider)
-- [ ] MusicXML importer & conversion pipeline (dropzone + `@melos/converter` integration)
+- [x] MusicXML importer & conversion pipeline (Dropzone + `@melos/converter` integration)
+- [x] Zustand store for Score state (`scoreStore.ts`, `transportStore.ts`)
+- [x] Component modularization (Dropzone, ScoreCanvas, TransportBar, PropertiesPanel, Sidebar)
+- [x] Premium dark theme with glassmorphism design system
+- [x] Keyboard shortcuts (Space = Play/Stop, Ctrl+Z = Undo, Ctrl+Shift+Z = Redo)
+- [x] localStorage persistence for Score auto-save/restore
 - [ ] Builder -> Editor mutations (property panel to mutate builder state and re-render)
-- [ ] Persistent state and undo/redo (local storage and change history)
 - [ ] Snapshot & visual regression tests for the full conversion -> render -> play pipeline
 - [ ] Accessibility, keyboard navigation and responsive refinements
 
 Immediate next steps (short-term):
 
-1. Add a minimal MusicXML import UI and wire the converter to the renderer preview so the app can validate and display converted MNX live.
-2. Add a small shared store (Zustand) that holds the current `Score` and exposes mutation helpers used by property panels.
-3. Write a small set of integration snapshot tests for a handful of W3C MNX samples to cover the convert->render flow.
+1. Create editable property fields in PropertiesPanel (metadata, tempo).
+2. Wire property changes to rebuild Score via Builder API and re-render.
+3. Add file input button as alternative to drag-and-drop for MusicXML import.
 
 ---
 
