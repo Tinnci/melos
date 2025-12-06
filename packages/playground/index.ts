@@ -863,6 +863,44 @@ const kitchenSinkXML = `
             <duration>4</duration><type>quarter</type>
          </note>
       </measure>
+      
+      <!-- Measure 8: Second Interval Collision Test (C-D, E-F clusters) -->
+      <measure number="8">
+         <note>
+            <pitch><step>C</step><octave>5</octave></pitch>
+            <duration>8</duration><type>half</type>
+         </note>
+         <note>
+            <chord/>
+            <pitch><step>D</step><octave>5</octave></pitch>
+            <duration>8</duration><type>half</type>
+         </note>
+         
+         <note>
+            <pitch><step>E</step><octave>4</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <chord/>
+            <pitch><step>F</step><octave>4</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <chord/>
+            <pitch><step>G</step><octave>4</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         
+         <note>
+            <pitch><step>B</step><octave>4</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <chord/>
+            <pitch><step>C</step><octave>5</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+      </measure>
    </part>
 </score-partwise>
 `;

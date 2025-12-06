@@ -87,12 +87,37 @@ export class Renderer {
                 // --- 5. Render measure content ---
                 let noteX = currentX + this.config.measurePadding;
 
+                // Beam data collection: eventId -> position info
+                const eventPositions: Map<string, { x: number, stemTipY: number, stemUp: boolean }> = new Map();
+                // Determine which events are beamed
+                const beamedEventIds: Set<string> = new Set();
+                if (measure.beams) {
+                    for (const beam of measure.beams) {
+                        for (const eventId of beam.events) {
+                            beamedEventIds.add(eventId);
+                        }
+                    }
+                }
+
                 const voice = measure.sequences[0];
                 if (voice) {
                     voice.content.forEach((item: any) => {
                         if (item.notes && item.notes.length > 0) {
                             const duration = item.duration?.base || "quarter";
-                            svgContent += this.renderChord(noteX, item.notes, duration, currentY);
+                            const eventId = item.id || `event-${noteX}`; // Use item.id if available
+                            const isBeamed = beamedEventIds.has(eventId);
+
+                            // Render the chord, passing beam info
+                            const chordResult = this.renderChordWithLayout(
+                                noteX, item.notes, duration, currentY, 1, isBeamed
+                            );
+                            svgContent += chordResult.svg;
+
+                            // Store position for beam drawing
+                            if (isBeamed && chordResult.layout) {
+                                eventPositions.set(eventId, chordResult.layout);
+                            }
+
                             noteX += this.getNoteWidth(duration);
 
                         } else if (item.rest) {
@@ -110,6 +135,13 @@ export class Renderer {
                             });
                         }
                     });
+                }
+
+                // --- 5b. Render Beams ---
+                if (measure.beams && eventPositions.size > 0) {
+                    for (const beam of measure.beams) {
+                        svgContent += this.renderBeam(beam.events, eventPositions);
+                    }
                 }
 
                 // --- 6. Advance X position ---
@@ -258,15 +290,26 @@ export class Renderer {
 
     /**
      * Render a chord (one or more notes with a shared stem).
+     * Handles second interval collisions by offsetting note heads.
      */
     private renderChord(cx: number, notes: Note[], duration: string, staffTopY: number, scale: number = 1): string {
         let svg = "";
         const r = this.config.noteRadius * scale;
+        const halfSpace = this.config.lineSpacing / 2; // Distance for a second interval
 
-        // Calculate Y positions for all notes
-        const noteYs = notes.map(n => this.calculateY(n, staffTopY));
-        const minY = Math.min(...noteYs);
-        const maxY = Math.max(...noteYs);
+        // Calculate Y positions for all notes and sort by pitch (highest first = lowest Y)
+        const noteData = notes.map((n, i) => ({
+            note: n,
+            y: this.calculateY(n, staffTopY),
+            originalIndex: i,
+            offsetX: 0 // Will be set if collision detected
+        }));
+
+        // Sort by Y position (ascending = top to bottom on staff)
+        noteData.sort((a, b) => a.y - b.y);
+
+        const minY = noteData[0].y;
+        const maxY = noteData[noteData.length - 1].y;
 
         // Determine stem direction based on the note furthest from middle line
         const middleLineY = staffTopY + 2 * this.config.lineSpacing;
@@ -274,11 +317,40 @@ export class Renderer {
         const bottomDistance = Math.abs(maxY - middleLineY);
         const stemUp = bottomDistance >= topDistance;
 
-        // Draw all note heads
-        notes.forEach((note, i) => {
-            const cy = noteYs[i];
-            svg += this.renderNoteHead(cx, cy, duration, r);
-            svg += this.renderLedgerLines(cx, cy, staffTopY);
+        // --- Second Interval Collision Detection ---
+        // When stem is UP: offset notes go to the LEFT of the stem (cx - offset)
+        // When stem is DOWN: offset notes go to the RIGHT of the stem (cx + offset)
+        // For seconds, we alternate which note gets offset.
+        // Standard rule: in a second, the HIGHER note (lower Y) goes on the stem side,
+        // the LOWER note (higher Y) goes on the opposite side.
+        // When stem up: stem is on right, so lower note of second goes LEFT.
+        // When stem down: stem is on left, so lower note of second goes RIGHT.
+
+        const noteHeadWidth = r * 2.2; // Approximate width for offset
+
+        for (let i = 1; i < noteData.length; i++) {
+            const prevY = noteData[i - 1].y;
+            const currY = noteData[i].y;
+            const interval = currY - prevY; // Positive means curr is lower on staff
+
+            // Check for second (interval ~= halfSpace, i.e., 5px with default config)
+            if (Math.abs(interval - halfSpace) < 2) {
+                // It's a second! Offset one of them.
+                if (stemUp) {
+                    // Stem on right. Lower note (curr) goes LEFT.
+                    noteData[i].offsetX = -noteHeadWidth;
+                } else {
+                    // Stem on left. Lower note (curr) goes RIGHT.
+                    noteData[i].offsetX = noteHeadWidth;
+                }
+            }
+        }
+
+        // Draw all note heads with potential offsets
+        noteData.forEach((nd) => {
+            const noteX = cx + nd.offsetX;
+            svg += this.renderNoteHead(noteX, nd.y, duration, r);
+            svg += this.renderLedgerLines(noteX, nd.y, staffTopY);
         });
 
         // Draw shared stem (if not a whole note)
@@ -291,6 +363,128 @@ export class Renderer {
                 svg += this.renderFlag(cx, flagY, r, stemUp, duration, scale);
             }
         }
+
+        return svg;
+    }
+
+    /**
+     * Render a chord and return both SVG and layout info for beam calculations.
+     * Similar to renderChord but also returns stem position data.
+     */
+    private renderChordWithLayout(
+        cx: number,
+        notes: Note[],
+        duration: string,
+        staffTopY: number,
+        scale: number = 1,
+        isBeamed: boolean = false
+    ): { svg: string, layout?: { x: number, stemTipY: number, stemUp: boolean } } {
+        let svg = "";
+        const r = this.config.noteRadius * scale;
+        const halfSpace = this.config.lineSpacing / 2;
+
+        // Calculate Y positions for all notes and sort by pitch
+        const noteData = notes.map((n, i) => ({
+            note: n,
+            y: this.calculateY(n, staffTopY),
+            originalIndex: i,
+            offsetX: 0
+        }));
+        noteData.sort((a, b) => a.y - b.y);
+
+        const minY = noteData[0].y;
+        const maxY = noteData[noteData.length - 1].y;
+
+        // Determine stem direction
+        const middleLineY = staffTopY + 2 * this.config.lineSpacing;
+        const topDistance = Math.abs(minY - middleLineY);
+        const bottomDistance = Math.abs(maxY - middleLineY);
+        const stemUp = bottomDistance >= topDistance;
+
+        // Second interval collision detection
+        const noteHeadWidth = r * 2.2;
+        for (let i = 1; i < noteData.length; i++) {
+            const interval = noteData[i].y - noteData[i - 1].y;
+            if (Math.abs(interval - halfSpace) < 2) {
+                noteData[i].offsetX = stemUp ? -noteHeadWidth : noteHeadWidth;
+            }
+        }
+
+        // Draw all note heads
+        noteData.forEach((nd) => {
+            const noteX = cx + nd.offsetX;
+            svg += this.renderNoteHead(noteX, nd.y, duration, r);
+            svg += this.renderLedgerLines(noteX, nd.y, staffTopY);
+        });
+
+        let layout: { x: number, stemTipY: number, stemUp: boolean } | undefined;
+
+        // Draw stem (if not a whole note)
+        if (duration !== "whole") {
+            const stemLen = this.config.stemLength * scale;
+            const stemX = stemUp ? cx + r : cx - r;
+            const stemTipY = stemUp ? (minY - stemLen) : (maxY + stemLen);
+
+            svg += this.renderChordStem(cx, minY, maxY, r, stemUp, scale);
+
+            // Store layout for beam
+            layout = { x: stemX, stemTipY, stemUp };
+
+            // Flags (only if NOT beamed)
+            if (!isBeamed && (duration === "eighth" || duration === "16th" || duration === "32nd")) {
+                const flagY = stemUp ? minY : maxY;
+                svg += this.renderFlag(cx, flagY, r, stemUp, duration, scale);
+            }
+        }
+
+        return { svg, layout };
+    }
+
+    /**
+     * Render a beam connecting multiple events.
+     * Uses a simple flat/sloped beam algorithm.
+     */
+    private renderBeam(
+        eventIds: string[],
+        eventPositions: Map<string, { x: number, stemTipY: number, stemUp: boolean }>
+    ): string {
+        if (eventIds.length < 2) return "";
+
+        // Gather positions for all events in this beam
+        const positions: Array<{ x: number, y: number }> = [];
+        let stemUp = true; // Default
+
+        for (const eventId of eventIds) {
+            const pos = eventPositions.get(eventId);
+            if (pos) {
+                positions.push({ x: pos.x, y: pos.stemTipY });
+                stemUp = pos.stemUp; // Use the last known direction
+            }
+        }
+
+        if (positions.length < 2) return "";
+
+        // Simple beam: connect first and last stem tips with a thick line
+        const first = positions[0];
+        const last = positions[positions.length - 1];
+
+        // Beam thickness
+        const beamHeight = 5;
+
+        // Calculate slope
+        const dx = last.x - first.x;
+        const dy = last.y - first.y;
+
+        // For a simple implementation, we'll use a polygon for the beam
+        // The beam is a parallelogram following the slope
+        let svg = "";
+
+        // Primary beam (8th notes)
+        const y1 = first.y;
+        const y2 = last.y;
+        const offsetY = stemUp ? beamHeight : -beamHeight;
+
+        svg += `<polygon points="${first.x},${y1} ${last.x},${y2} ${last.x},${y2 + offsetY} ${first.x},${y1 + offsetY}" fill="black" />\n`;
 
         return svg;
     }
