@@ -727,13 +727,110 @@ if (itemG1 && itemG1.notes) {
 }
 
 
-// --- Renderer Visual Test ---
-console.log("\n(Visualizer) Rendering Grace Notes Example to SVG...");
-const svgOutput = renderer.render(scoreGrace);
+// --- Phase 4.2: Kitchen Sink Visual Test ---
+const kitchenSinkXML = `
+<score-partwise version="3.1">
+   <part-list>
+      <score-part id="P1"><part-name>Kitchen Sink Test</part-name></score-part>
+   </part-list>
+   <part id="P1">
+      <!-- Measure 1: All durations (whole, half, quarter) -->
+      <measure number="1">
+         <attributes>
+            <divisions>4</divisions>
+            <time><beats>4</beats><beat-type>4</beat-type></time>
+         </attributes>
+         <note>
+            <pitch><step>G</step><octave>4</octave></pitch>
+            <duration>16</duration><type>whole</type>
+         </note>
+      </measure>
+      
+      <measure number="2">
+         <note>
+            <pitch><step>B</step><octave>4</octave></pitch>
+            <duration>8</duration><type>half</type>
+         </note>
+         <note>
+            <pitch><step>D</step><octave>5</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <pitch><step>F</step><octave>5</octave></pitch>
+            <duration>2</duration><type>eighth</type>
+         </note>
+         <note>
+            <pitch><step>A</step><octave>5</octave></pitch>
+            <duration>1</duration><type>16th</type>
+         </note>
+      </measure>
+      
+      <!-- Measure 3: Stem direction test (high vs low notes) -->
+      <measure number="3">
+         <note>
+            <pitch><step>E</step><octave>4</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <pitch><step>F</step><octave>4</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <pitch><step>A</step><octave>4</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <pitch><step>C</step><octave>5</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+      </measure>
+      
+      <!-- Measure 4: Ledger lines (extreme high/low) -->
+      <measure number="4">
+         <note>
+            <pitch><step>C</step><octave>4</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <pitch><step>A</step><octave>3</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <pitch><step>A</step><octave>5</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <pitch><step>C</step><octave>6</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+      </measure>
+      
+      <!-- Measure 5: Rests -->
+      <measure number="5">
+         <note><rest/><duration>16</duration><type>whole</type></note>
+      </measure>
+      
+      <measure number="6">
+         <note><rest/><duration>8</duration><type>half</type></note>
+         <note><rest/><duration>4</duration><type>quarter</type></note>
+         <note><rest/><duration>2</duration><type>eighth</type></note>
+      </measure>
+   </part>
+</score-partwise>
+`;
+
+console.log("\n(Visualizer) Rendering Kitchen Sink Test to SVG...");
+const scoreKitchenSink = converter.convert(kitchenSinkXML);
+const svgOutput = renderer.render(scoreKitchenSink);
 const outputPath = "output.svg";
 fs.writeFileSync(outputPath, svgOutput);
 console.log(`- SVG written to: ${outputPath}`);
-console.log("- Open this file in your browser to verify rendering.");
+console.log("- Open this file in your browser to verify:");
+console.log("  * M1: Whole note (G4, hollow, no stem)");
+console.log("  * M2: Half, Quarter, Eighth, 16th notes");
+console.log("  * M3: Stem direction flip (low=up, high=down)");
+console.log("  * M4: Ledger lines (C4, A3, A5, C6)");
+console.log("  * M5-M6: Rests (whole, half, quarter, eighth)");
 
 console.log("--- Demo Complete ---");
 
