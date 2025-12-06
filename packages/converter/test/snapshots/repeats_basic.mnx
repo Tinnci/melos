@@ -1,0 +1,65 @@
+{
+  "mnx": {
+    "version": 1
+  },
+  "global": {
+    "measures": [
+      {
+        "time": {
+          "count": 4,
+          "unit": 4
+        },
+        "key": {
+          "fifths": 0,
+          "mode": "major"
+        },
+        "repeatStart": {},
+        "barline": {
+          "type": "repeat-backward"
+        },
+        "repeatEnd": {}
+      }
+    ]
+  },
+  "parts": [
+    {
+      "id": "P1",
+      "name": "Music",
+      "measures": [
+        {
+          "sequences": [
+            {
+              "content": [
+                {
+                  "id": "ev1",
+                  "duration": {
+                    "base": "whole",
+                    "dots": 0
+                  },
+                  "notes": [
+                    {
+                      "id": "n1",
+                      "pitch": {
+                        "step": "C",
+                        "octave": 5
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "clefs": [
+            {
+              "clef": {
+                "sign": "G",
+                "line": 2
+              },
+              "staff": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

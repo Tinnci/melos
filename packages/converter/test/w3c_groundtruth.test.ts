@@ -12,7 +12,7 @@ describe("W3C Ground Truth Consistency", () => {
     const converter = new MusicXMLToMNX();
 
     // Get list of XML files
-    const xmlFiles = fs.readdirSync(MUSICXML_DIR).filter(f => f.endsWith(".xml"));
+    const xmlFiles = fs.readdirSync(MUSICXML_DIR).filter(f => f.endsWith(".musicxml"));
 
     if (xmlFiles.length === 0) {
         console.warn("No MusicXML files found. Skipping ground truth tests.");
@@ -20,7 +20,7 @@ describe("W3C Ground Truth Consistency", () => {
 
     xmlFiles.forEach(file => {
         // Find corresponding MNX file
-        const mnxFilename = file.replace(".xml", ".mnx");
+        const mnxFilename = file.replace(".musicxml", ".mnx");
         const mnxPath = path.join(GROUNDTRUTH_DIR, mnxFilename);
         const xmlPath = path.join(MUSICXML_DIR, file);
 

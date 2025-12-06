@@ -16,7 +16,7 @@ describe("W3C MNX Snapshot Suite", () => {
     const converter = new MusicXMLToMNX();
 
     // Read all XML files from the data directory
-    const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith(".xml"));
+    const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith(".musicxml"));
 
     if (files.length === 0) {
         console.warn("No MusicXML files found in test/data/musicxml. Skipping snapshot tests.");
@@ -35,7 +35,9 @@ describe("W3C MNX Snapshot Suite", () => {
                 const mnxJson = JSON.stringify(mnx, null, 2);
 
                 // Define snapshot path
-                const snapshotPath = path.join(SNAPSHOT_DIR, `${file}.mnx`);
+                // Replace .musicxml with .mnx for clean filename (e.g. basic.musicxml -> basic.mnx)
+                const snapshotName = file.replace(".musicxml", ".mnx");
+                const snapshotPath = path.join(SNAPSHOT_DIR, snapshotName);
 
                 // If snapshot doesn't exist, create it (Update mode)
                 // In a real CI env, we might want to fail if missing, but for dev setup we create.
