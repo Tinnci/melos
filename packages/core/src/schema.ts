@@ -49,6 +49,7 @@ export const NoteSchema = z.object({
     staff: z.number().int().optional(),
     accidentalDisplay: AccidentalDisplaySchema.optional(),
     ties: z.array(TieSchema).optional(),
+    color: z.string().optional() // [NEW] Hex color code
 });
 
 export const SlurSchema = z.object({
@@ -234,7 +235,7 @@ export const GlobalMeasureSchema = z.object({
         location: z.number().optional()
     })).optional(),
     barline: z.object({
-        type: z.enum(["regular", "double", "final", "dashed", "light-heavy", "repeat-forward", "repeat-backward", "repeat-both"])
+        type: z.enum(["regular", "double", "final", "dashed", "dotted", "heavy", "light-heavy", "heavy-light", "heavy-heavy", "tick", "short", "none", "repeat-forward", "repeat-backward", "repeat-both"])
     }).optional(),
     break: z.enum(["system", "page"]).optional(),
     // [NEW] Repeat navigation

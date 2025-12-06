@@ -479,6 +479,10 @@ export class Renderer {
         const drawLine = (lx: number, width: number) =>
             `<line x1="${lx}" y1="${topY}" x2="${lx}" y2="${bottomY}" stroke="black" stroke-width="${width}" />\n`;
 
+        // Helper to draw dashed line
+        const drawDashedLine = (lx: number, width: number) =>
+            `<line x1="${lx}" y1="${topY}" x2="${lx}" y2="${bottomY}" stroke="black" stroke-width="${width}" stroke-dasharray="5,5" />\n`;
+
         // Helper to draw dots
         const drawDots = (dx: number) =>
             `<circle cx="${dx}" cy="${y + 1.5 * spacing}" r="2" fill="black" />\n` +
@@ -510,6 +514,9 @@ export class Renderer {
             // Light + Light
             svg += drawLine(x - 4, 1);
             svg += drawLine(x, 1);
+        } else if (type === "dashed") {
+            // Dashed
+            svg += drawDashedLine(x, 1);
         } else if (type === "repeat-forward") {
             // If we are at the end, but the measure implies a start repeat (left), 
             // we still need to close the current measure with a regular barline?
@@ -667,9 +674,10 @@ export class Renderer {
         }
 
         // Draw all note heads with potential offsets
+        // Draw all note heads with potential offsets
         noteData.forEach((nd) => {
             const noteX = cx + nd.offsetX;
-            svg += this.renderNoteHead(noteX, nd.y, duration, r, nd.note.notehead);
+            svg += this.renderNoteHead(noteX, nd.y, duration, r, nd.note.notehead, nd.note.color);
             svg += this.renderLedgerLines(noteX, nd.y, staffTopY);
         });
 
@@ -733,7 +741,7 @@ export class Renderer {
         // Draw all note heads
         noteData.forEach((nd) => {
             const noteX = cx + nd.offsetX;
-            svg += this.renderNoteHead(noteX, nd.y, duration, r, nd.note.notehead);
+            svg += this.renderNoteHead(noteX, nd.y, duration, r, nd.note.notehead, nd.note.color);
             svg += this.renderLedgerLines(noteX, nd.y, staffTopY);
         });
 
@@ -915,9 +923,10 @@ export class Renderer {
     /**
      * Render just the note head (shape depends on duration and type).
      */
-    private renderNoteHead(cx: number, cy: number, duration: string, r: number, type?: string): string {
-        const fill = (duration === "whole" || duration === "half") ? "none" : "black";
-        const stroke = "black";
+    private renderNoteHead(cx: number, cy: number, duration: string, r: number, type?: string, color?: string): string {
+        const baseColor = color || "black";
+        const fill = (duration === "whole" || duration === "half") ? "none" : baseColor;
+        const stroke = baseColor;
 
         if (type === "x" || type === "circle-x") {
             // X shape

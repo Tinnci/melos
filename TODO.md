@@ -133,12 +133,12 @@ Features defined in W3C MNX Schema (`mnx-schema.json`) but not yet implemented i
 ### 🟢 Nice-to-Have (Low Impact)
 
 - [ ] **Styling & Appearance**
-    - [ ] `color`: Support for colored notes/objects (educational scores, analysis).
+    - [x] `color`: Support for colored notes/objects (educational scores, analysis).
     - [ ] `accidental-display`: Parenthesized accidentals (cautionary/courtesy accidentals).
     - [ ] `staff-symbol`: Custom staff lines (e.g., 1-line percussion staff).
 
 - [ ] **Advanced Barlines**
-    - [ ] `barline-type`: dotted, dashed, heavy, double, final, tick, short.
+    - [x] `barline-type`: dotted, dashed, heavy, double, final, tick, short.
 
 - [ ] **Pedaling & Technique**
     - [x] Pedal markings (piano sustain pedal).

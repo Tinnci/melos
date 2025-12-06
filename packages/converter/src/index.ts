@@ -57,6 +57,10 @@ export class MusicXMLToMNX {
                     // Bar style
                     if (style === "light-heavy") {
                         gm.barline = { type: "final" };
+                    } else if (style === "light-light") {
+                        gm.barline = { type: "double" };
+                    } else if (style === "dashed" || style === "dotted") {
+                        gm.barline = { type: "dashed" };
                     }
 
                     // Repeat signs

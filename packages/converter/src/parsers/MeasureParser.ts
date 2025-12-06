@@ -397,6 +397,9 @@ export class MeasureParser {
                     noteObj.notehead = nh;
                 }
             }
+            if (noteObj && xNote["@_color"]) {
+                noteObj.color = xNote["@_color"];
+            }
         }
 
         // Event Generation
