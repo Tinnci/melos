@@ -177,7 +177,8 @@ export const GlobalMeasureSchema = z.object({
     })).optional(),
     barline: z.object({
         type: z.enum(["regular", "double", "final", "dashed", "light-heavy"])
-    }).optional()
+    }).optional(),
+    break: z.enum(["system", "page"]).optional() // [NEW] Added break
 });
 
 export const LyricLineSchema = z.object({

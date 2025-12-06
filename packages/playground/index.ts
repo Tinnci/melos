@@ -631,5 +631,45 @@ if (evA3.articulations) {
    console.error("- Note 3: No articulations found.");
 }
 
+
+// Test 10: Layout Breaks (System & Page)
+const mockMusicXMLLayout = `
+<score-partwise version="3.1">
+   <part-list>
+      <score-part id="P1"><part-name>Music</part-name></score-part>
+   </part-list>
+   <part id="P1">
+      <measure number="1">
+         <print new-system="yes"/>
+         <attributes><divisions>1</divisions></attributes>
+         <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>whole</type></note>
+      </measure>
+      <measure number="2">
+         <print new-page="yes"/>
+         <note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration><type>whole</type></note>
+      </measure>
+   </part>
+</score-partwise>
+`;
+
+console.log("\n(New Test) Converting MusicXML with Layout Breaks...");
+const scoreLayout = converter.convert(mockMusicXMLLayout);
+const gmLayout = scoreLayout.global.measures;
+
+// Measure 1: System Break
+if (gmLayout[0].break === "system") {
+   console.log(`- Measure 1: System Break DETECTED (Correct).`);
+} else {
+   console.error(`- Measure 1: System Break MISSING. Found: ${gmLayout[0].break}`);
+}
+
+// Measure 2: Page Break
+if (gmLayout[1].break === "page") {
+   console.log(`- Measure 2: Page Break DETECTED (Correct).`);
+} else {
+   console.error(`- Measure 2: Page Break MISSING. Found: ${gmLayout[1].break}`);
+}
+
 console.log("--- Demo Complete ---");
+
 

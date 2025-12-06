@@ -53,6 +53,15 @@ export class MusicXMLToMNX {
                 }
             }
 
+            // [NEW] Layout Breaks (from <print>)
+            if (m.print) {
+                if (m.print["@_new-page"] === "yes") {
+                    gm.break = "page";
+                } else if (m.print["@_new-system"] === "yes") {
+                    gm.break = "system";
+                }
+            }
+
             globalMeasures.push(gm);
         });
 
