@@ -66,7 +66,7 @@ Fill the gap of a native MNX renderer.
 - [ ] **Engraving Rules (Next Steps)**
     - [ ] Beam slope calculations (connect beamed notes).
     - [ ] Slur/Tie curves (Bezier curves).
-    - [ ] Clef symbols (using SMuFL font).
+    - [x] Clef symbols (G-Clef implemented via Bravura SVG path extraction).
     - [ ] Key/Time signature display.
     - [ ] Second interval collision handling in chords.
 

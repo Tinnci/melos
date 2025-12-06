@@ -42,6 +42,14 @@
         "@melos/converter": "workspace:*",
         "@melos/core": "workspace:*",
         "@melos/mnx": "workspace:*",
+        "@melos/renderer": "workspace:*",
+      },
+    },
+    "packages/renderer": {
+      "name": "@melos/renderer",
+      "version": "0.0.1",
+      "dependencies": {
+        "@melos/core": "workspace:*",
       },
     },
   },
@@ -57,6 +65,8 @@
     "@melos/mnx": ["@melos/mnx@workspace:packages/mnx"],
 
     "@melos/playground": ["@melos/playground@workspace:packages/playground"],
+
+    "@melos/renderer": ["@melos/renderer@workspace:packages/renderer"],
 
     "@types/json-schema": ["@types/json-schema@7.0.15", "https://registry.npmmirror.com/@types/json-schema/-/json-schema-7.0.15.tgz", {}, "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA=="],
 
