@@ -68,6 +68,16 @@ export const DynamicEventSchema = z.object({
     value: DynamicValueSchema
 });
 
+// [NEW] Articulation Enum
+export const ArticulationSchema = z.enum([
+    "staccato",
+    "tenuto",
+    "accent",
+    "strong-accent",
+    "staccatissimo",
+    "fermata"
+]);
+
 export const BaseEventSchema = z.object({
     id: z.string().optional(),
     duration: NoteValueSchema.optional(),
@@ -75,6 +85,7 @@ export const BaseEventSchema = z.object({
     rest: z.object({}).optional(),
     slurs: z.array(SlurSchema).optional(),
     lyrics: z.array(LyricSchema).optional(),
+    articulations: z.array(ArticulationSchema).optional(), // [NEW] Added articulations
     measure: z.boolean().optional()
 });
 
@@ -189,7 +200,7 @@ export const PartMeasureSchema = z.object({
     sequences: z.array(SequenceSchema),
     clefs: z.array(PositionedClefSchema).optional(),
     beams: z.array(BeamSchema).optional(),
-    wedges: z.array(WedgeSchema).optional() // [NEW] Added wedges
+    wedges: z.array(WedgeSchema).optional()
 });
 
 export const PartSchema = z.object({
@@ -235,3 +246,4 @@ export type Beam = z.infer<typeof BeamSchema>;
 export type Wedge = z.infer<typeof WedgeSchema>;
 export type RhythmicPosition = z.infer<typeof RhythmicPositionSchema>;
 export type MeasureRhythmicPosition = z.infer<typeof MeasureRhythmicPositionSchema>;
+export type Articulation = z.infer<typeof ArticulationSchema>;

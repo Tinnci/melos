@@ -273,7 +273,38 @@ export class MeasureParser {
             ctx.currentEvent = evt;
         }
 
-        // --- 1.2 Slurs Logic (Event Level) ---
+        // --- 1.2 Articulations Logic ---
+        if (xNote.notations) {
+            const notations = Array.isArray(xNote.notations) ? xNote.notations : [xNote.notations];
+            const collectedArticulations: string[] = [];
+
+            notations.forEach((n: any) => {
+                // 1. Fermata
+                if (n.fermata) {
+                    collectedArticulations.push("fermata");
+                }
+
+                // 2. Articulations container
+                if (n.articulations) {
+                    const arts = n.articulations;
+                    const keys = Object.keys(arts);
+
+                    keys.forEach(key => {
+                        if (key === "staccato") collectedArticulations.push("staccato");
+                        else if (key === "accent") collectedArticulations.push("accent");
+                        else if (key === "tenuto") collectedArticulations.push("tenuto");
+                        else if (key === "strong-accent") collectedArticulations.push("strong-accent");
+                        else if (key === "staccatissimo") collectedArticulations.push("staccatissimo");
+                    });
+                }
+            });
+
+            if (collectedArticulations.length > 0 && ctx.currentEvent) {
+                ctx.currentEvent.articulations = collectedArticulations as any[];
+            }
+        }
+
+        // --- 1.3 Slurs Logic (Event Level) ---
         if (xNote.notations) {
             const notations = Array.isArray(xNote.notations) ? xNote.notations : [xNote.notations];
 

@@ -550,4 +550,86 @@ if (mWedge.wedges && mWedge.wedges.length > 0) {
    console.error("- Error: No wedges generated.");
 }
 
+
+// Test 9: Articulations Example
+const mockMusicXMLArticulations = `
+<score-partwise version="3.1">
+   <part-list>
+      <score-part id="P1"><part-name>Music</part-name></score-part>
+   </part-list>
+   <part id="P1">
+      <measure number="1">
+         <attributes><divisions>1</divisions></attributes>
+         
+         <!-- Note 1: Staccato -->
+         <note>
+            <pitch><step>C</step><octave>4</octave></pitch>
+            <duration>1</duration>
+            <type>quarter</type>
+            <notations>
+               <articulations><staccato/></articulations>
+            </notations>
+         </note>
+         
+         <!-- Note 2: Accent -->
+         <note>
+            <pitch><step>D</step><octave>4</octave></pitch>
+            <duration>1</duration>
+            <type>quarter</type>
+            <notations>
+               <articulations><accent/></articulations>
+            </notations>
+         </note>
+
+         <!-- Note 3: Tenuto + Fermata -->
+         <note>
+            <pitch><step>E</step><octave>4</octave></pitch>
+            <duration>2</duration>
+            <type>half</type>
+            <notations>
+               <articulations><tenuto/></articulations>
+               <fermata type="upright"/>
+            </notations>
+         </note>
+      </measure>
+   </part>
+</score-partwise>
+`;
+
+console.log("\n(New Test) Converting MusicXML with Articulations...");
+const scoreArticulations = converter.convert(mockMusicXMLArticulations);
+const mArticulations = scoreArticulations.parts[0].measures[0];
+const eventsArticulations = mArticulations.sequences[0].content as any[];
+
+// Validate Staccato
+const evA1 = eventsArticulations[0];
+if (evA1.articulations && evA1.articulations.includes("staccato")) {
+   console.log("- Note 1: Staccato found (Correct).");
+} else {
+   // console.error(`- Note 1: Staccato missing. Found: ${JSON.stringify(evA1.articulations)}`);
+}
+
+// Validate Accent
+const evA2 = eventsArticulations[1];
+if (evA2.articulations && evA2.articulations.includes("accent")) {
+   console.log("- Note 2: Accent found (Correct).");
+} else {
+   // console.error(`- Note 2: Accent missing. Found: ${JSON.stringify(evA2.articulations)}`);
+}
+
+// Validate Tenuto + Fermata
+const evA3 = eventsArticulations[2];
+if (evA3.articulations) {
+   const hasTenuto = evA3.articulations.includes("tenuto");
+   const hasFermata = evA3.articulations.includes("fermata");
+   if (hasTenuto && hasFermata) {
+      console.log("- Note 3: Tenuto and Fermata found (Correct).");
+   } else {
+      console.error(`- Note 3: Missing items. Found: ${JSON.stringify(evA3.articulations)}`);
+   }
+} else {
+   console.error("- Note 3: No articulations found.");
+}
+
 console.log("--- Demo Complete ---");
+
