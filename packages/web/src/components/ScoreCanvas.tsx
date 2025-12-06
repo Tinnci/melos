@@ -1,11 +1,10 @@
 /**
- * Melos Studio – Score Canvas Component
- * Renders the MNX score using the SVG renderer
+ * Melos Studio – ScoreCanvas Component
  */
 
 import { useMemo } from 'react'
 import { Renderer } from '@melos/renderer'
-import { useScoreStore } from '../store'
+import { useScoreStore } from '@/store'
 
 export function ScoreCanvas() {
     const score = useScoreStore((s) => s.score)
@@ -25,8 +24,8 @@ export function ScoreCanvas() {
 
     if (isLoading) {
         return (
-            <div className="score-canvas">
-                <div className="skeleton skeleton--block" style={{ height: '300px' }} />
+            <div className="flex-1 rounded-2xl bg-slate-900/80 border border-slate-800/50 p-6 animate-pulse">
+                <div className="h-[300px] bg-slate-800/50 rounded-xl" />
             </div>
         )
     }
@@ -37,8 +36,21 @@ export function ScoreCanvas() {
 
     return (
         <div
-            className="score-canvas"
-            dangerouslySetInnerHTML={{ __html: scoreMarkup }}
-        />
+            className="
+        flex-1 rounded-2xl bg-slate-900/80 backdrop-blur-xl 
+        border border-slate-800/50 p-6 overflow-auto
+        shadow-xl shadow-indigo-500/5 animate-slide-up
+        relative
+      "
+        >
+            {/* Glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-t from-indigo-500/5 to-transparent rounded-2xl pointer-events-none" />
+
+            {/* Score SVG */}
+            <div
+                className="relative z-10 [&_svg]:w-full [&_svg]:h-auto [&_svg]:min-w-[600px]"
+                dangerouslySetInnerHTML={{ __html: scoreMarkup }}
+            />
+        </div>
     )
 }

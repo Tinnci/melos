@@ -1,13 +1,11 @@
 /**
  * Melos Studio – Keyboard Shortcuts Hook
- * Handles global keyboard shortcuts for the editor
  */
 
 import { useEffect, useCallback } from 'react'
-import { useScoreStore, useTransportStore } from '../store'
+import { useScoreStore, useTransportStore } from '@/store'
 import { AudioPlayer } from '@melos/player'
 
-// Singleton player instance for keyboard control
 let playerInstance: AudioPlayer | null = null
 
 function getPlayer(): AudioPlayer {
@@ -54,7 +52,6 @@ export function useKeyboardShortcuts() {
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Ignore if user is typing in an input
             const target = e.target as HTMLElement
             if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
                 return
@@ -63,43 +60,32 @@ export function useKeyboardShortcuts() {
             const isMac = navigator.platform.toUpperCase().includes('MAC')
             const modifier = isMac ? e.metaKey : e.ctrlKey
 
-            // Space = Play/Stop (prevent page scroll)
             if (e.code === 'Space') {
                 e.preventDefault()
                 handlePlay()
                 return
             }
 
-            // Escape = Stop playback
             if (e.code === 'Escape') {
                 handleStop()
                 return
             }
 
-            // Ctrl/Cmd + Z = Undo
             if (modifier && !e.shiftKey && e.code === 'KeyZ') {
                 e.preventDefault()
-                if (canUndo()) {
-                    undo()
-                }
+                if (canUndo()) undo()
                 return
             }
 
-            // Ctrl/Cmd + Shift + Z = Redo (or Ctrl+Y on Windows)
             if (modifier && e.shiftKey && e.code === 'KeyZ') {
                 e.preventDefault()
-                if (canRedo()) {
-                    redo()
-                }
+                if (canRedo()) redo()
                 return
             }
 
-            // Ctrl/Cmd + Y = Redo (Windows convention)
             if (modifier && e.code === 'KeyY') {
                 e.preventDefault()
-                if (canRedo()) {
-                    redo()
-                }
+                if (canRedo()) redo()
                 return
             }
         }

@@ -1,11 +1,13 @@
 /**
- * Melos Studio – MusicXML Dropzone Component
- * Handles drag-and-drop and file input for MusicXML file import
+ * Melos Studio – Dropzone Component
+ * File import with TailwindCSS + shadcn/ui
  */
 
 import { useCallback, useState, useRef, type DragEvent, type ChangeEvent } from 'react'
-import { useScoreStore } from '../store'
+import { useScoreStore } from '@/store'
 import { MusicXMLToMNX } from '@melos/converter'
+import { Button } from '@/components/ui/button'
+import { Upload, Music, FileMusic } from 'lucide-react'
 
 interface DropzoneProps {
     onLoadDemo?: () => void
@@ -78,7 +80,6 @@ export function Dropzone({ onLoadDemo }: DropzoneProps) {
             if (file) {
                 await processFile(file)
             }
-            // Reset input so same file can be selected again
             if (fileInputRef.current) {
                 fileInputRef.current.value = ''
             }
@@ -91,61 +92,82 @@ export function Dropzone({ onLoadDemo }: DropzoneProps) {
         fileInputRef.current?.click()
     }, [])
 
-    const handleDropzoneClick = useCallback(() => {
-        onLoadDemo?.()
-    }, [onLoadDemo])
-
     return (
         <div
-            className={`dropzone ${isDragOver ? 'dropzone--active' : ''}`}
+            className={`
+        flex-1 flex flex-col items-center justify-center gap-6 p-12
+        bg-slate-900/60 border-2 border-dashed rounded-2xl
+        transition-all duration-300 cursor-pointer group
+        ${isDragOver
+                    ? 'border-indigo-500 bg-indigo-500/5 shadow-lg shadow-indigo-500/10'
+                    : 'border-slate-700 hover:border-indigo-500/50 hover:bg-slate-900/80'
+                }
+      `}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={handleDropzoneClick}
+            onClick={() => onLoadDemo?.()}
             role="button"
             tabIndex={0}
-            aria-label="Drop MusicXML file here or click to load demo"
         >
             <input
                 ref={fileInputRef}
                 type="file"
                 accept=".musicxml,.mxl,.xml"
                 onChange={handleFileInput}
-                style={{ display: 'none' }}
-                aria-hidden="true"
+                className="hidden"
             />
 
-            <div className="dropzone__icon">🎼</div>
-            <div className="dropzone__title">Drop MusicXML or Click to Load Demo</div>
-            <div className="dropzone__hint">
-                Import .musicxml, .mxl, or .xml files to convert them to MNX format
+            {/* Icon */}
+            <div className={`
+        w-20 h-20 rounded-2xl flex items-center justify-center
+        bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700
+        shadow-xl transition-transform duration-300
+        ${isDragOver ? 'scale-110 border-indigo-500/50' : 'group-hover:-translate-y-1'}
+      `}>
+                <FileMusic className="w-10 h-10 text-indigo-400" />
             </div>
 
-            <div className="dropzone__actions">
-                <button
-                    type="button"
-                    className="btn btn--primary btn--sm"
-                    onClick={handleBrowseClick}
-                >
-                    📂 Browse Files
-                </button>
-                <span className="dropzone__or">or</span>
-                <button
-                    type="button"
-                    className="btn btn--secondary btn--sm"
+            {/* Text */}
+            <div className="text-center">
+                <h3 className="text-xl font-semibold text-white mb-2">
+                    Drop MusicXML or Click to Load Demo
+                </h3>
+                <p className="text-slate-400 text-sm">
+                    Import .musicxml, .mxl, or .xml files to convert them to MNX format
+                </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-4">
+                <Button onClick={handleBrowseClick} className="gap-2">
+                    <Upload className="w-4 h-4" />
+                    Browse Files
+                </Button>
+                <span className="text-slate-600 text-sm uppercase tracking-wider">or</span>
+                <Button
+                    variant="outline"
                     onClick={(e) => {
                         e.stopPropagation()
                         onLoadDemo?.()
                     }}
+                    className="gap-2"
                 >
-                    🎹 Load Demo Score
-                </button>
+                    <Music className="w-4 h-4" />
+                    Load Demo Score
+                </Button>
             </div>
 
-            <div className="dropzone__formats">
-                <span className="dropzone__format">.musicxml</span>
-                <span className="dropzone__format">.mxl</span>
-                <span className="dropzone__format">.xml</span>
+            {/* Format badges */}
+            <div className="flex gap-2">
+                {['.musicxml', '.mxl', '.xml'].map((format) => (
+                    <span
+                        key={format}
+                        className="px-2 py-1 text-xs font-mono bg-slate-800 text-slate-400 rounded border border-slate-700"
+                    >
+                        {format}
+                    </span>
+                ))}
             </div>
         </div>
     )
