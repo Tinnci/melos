@@ -1,4 +1,4 @@
-import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Tie, Slur } from "@melos/core";
+import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Tie, Slur, Lyric } from "@melos/core";
 import { generateEventId, generateNoteId } from "./Utils";
 
 export interface Container {
@@ -9,6 +9,9 @@ export interface Container {
 export interface PartParsingContext {
     activeSlurs: Record<number, { sourceEvent: Event }>;
     activeTies: Record<string, { sourceNote: Note }>;
+    // To track Lyric Lines found in this part. 
+    // We use a Map <lineId, name/number> to eventually bubble up to Global Track
+    lyricLines: Map<string, { id: string, name: string }>;
 }
 
 // Track state per Voice
@@ -128,6 +131,34 @@ export class MeasureParser {
                     evt.rest = {};
                 } else if (noteObj) {
                     evt.notes = [noteObj];
+                }
+
+                // --- 1.1 Lyrics Logic ---
+                if (xNote.lyric) {
+                    const lyrics = Array.isArray(xNote.lyric) ? xNote.lyric : [xNote.lyric];
+                    const eventLyrics: Lyric[] = [];
+
+                    lyrics.forEach((l: any) => {
+                        const num = l["@_number"] || "1";
+                        const lineId = `line${num}`;
+
+                        // Update Global Context if new line found
+                        if (!this.context.lyricLines.has(lineId)) {
+                            // Try to infer name (e.g., from 'name' attribute or 'number')
+                            const name = l["@_name"] || `Verse ${num}`;
+                            this.context.lyricLines.set(lineId, { id: lineId, name });
+                        }
+
+                        eventLyrics.push({
+                            text: l.text,
+                            syllabic: l.syllabic, // begin, single, end, middle
+                            line: lineId
+                        });
+                    });
+
+                    if (eventLyrics.length > 0) {
+                        evt.lyrics = eventLyrics;
+                    }
                 }
 
                 currentContainer.content.push(evt);

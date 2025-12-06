@@ -321,4 +321,77 @@ if (mVoices.sequences.length >= 2) {
    console.error("- Error: Failed to generate multiple sequences.");
 }
 
+// Test 6: Lyrics Example
+const mockMusicXMLLyrics = `
+<score-partwise version="3.1">
+   <part-list>
+      <score-part id="P1"><part-name>Vocal</part-name></score-part>
+   </part-list>
+   <part id="P1">
+      <measure number="1">
+         <attributes><divisions>1</divisions></attributes>
+         
+         <!-- Note 1: "Hel-" (begin) -->
+         <note>
+            <pitch><step>C</step><octave>4</octave></pitch>
+            <duration>1</duration>
+            <type>quarter</type>
+            <lyric number="1" name="Verse 1">
+               <syllabic>begin</syllabic>
+               <text>Hel</text>
+            </lyric>
+         </note>
+         
+         <!-- Note 2: "-lo" (end) -->
+         <note>
+            <pitch><step>D</step><octave>4</octave></pitch>
+            <duration>1</duration>
+            <type>quarter</type>
+            <lyric number="1">
+               <syllabic>end</syllabic>
+               <text>lo</text>
+            </lyric>
+         </note>
+
+         <!-- Note 3: "World" (single) -->
+         <note>
+            <pitch><step>E</step><octave>4</octave></pitch>
+            <duration>2</duration>
+            <type>half</type>
+            <lyric number="1">
+               <syllabic>single</syllabic>
+               <text>World</text>
+            </lyric>
+         </note>
+      </measure>
+   </part>
+</score-partwise>
+`;
+
+console.log("\n(New Test) Converting MusicXML with Lyrics...");
+const scoreLyrics = converter.convert(mockMusicXMLLyrics);
+const mLyrics = scoreLyrics.parts[0].measures[0];
+const eventsLyrics = mLyrics.sequences[0].content as any[];
+
+// Validate Global Metadata
+if (scoreLyrics.global.lyrics && scoreLyrics.global.lyrics.length > 0) {
+   console.log(`- Global Lyric Lines found: ${scoreLyrics.global.lyrics.length} (Expected 1)`);
+   console.log(`- Line ID: ${scoreLyrics.global.lyrics[0].id}, Name: ${scoreLyrics.global.lyrics[0].name}`);
+} else {
+   console.error("- Error: No global lyric lines generated.");
+}
+
+// Validate Event Lyrics
+const evL1 = eventsLyrics[0];
+if (evL1.lyrics && evL1.lyrics.length > 0) {
+   console.log(`- Event 1 Lyric: "${evL1.lyrics[0].text}" (${evL1.lyrics[0].syllabic})`);
+   if (evL1.lyrics[0].text === "Hel" && evL1.lyrics[0].syllabic === "begin") {
+      console.log("  -> Lyric 1 content CORRECT.");
+   } else {
+      console.error("  -> Lyric 1 content INCORRECT.");
+   }
+} else {
+   console.error("- Error: No lyric generated on Event 1");
+}
+
 console.log("--- Demo Complete ---");

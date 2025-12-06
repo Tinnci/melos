@@ -1,5 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
-import type { Score, GlobalMeasure, Part, PartMeasure } from "@melos/core";
+import type { Score, GlobalMeasure, Part, PartMeasure, LyricLine } from "@melos/core";
 import { MeasureParser, type PartParsingContext } from "./parsers/MeasureParser";
 import { resetIdCounters } from "./parsers/Utils";
 
@@ -50,6 +50,9 @@ export class MusicXMLToMNX {
             globalMeasures.push(gm);
         });
 
+        // Shared lyric lines collection across all parts
+        const sharedLyricLines = new Map<string, { id: string, name: string }>();
+
         // 2. Build Parts
         const mnxParts: Part[] = partsArray.map((p: any, pIndex: number) => {
             const partMeasuresRaw = Array.isArray(p.measure) ? p.measure : [p.measure];
@@ -57,7 +60,8 @@ export class MusicXMLToMNX {
             // Initialize Context for this Part (persists across measures)
             const context: PartParsingContext = {
                 activeSlurs: {},
-                activeTies: {}
+                activeTies: {},
+                lyricLines: sharedLyricLines // Pass shared map
             };
 
             const mnxMeasures: PartMeasure[] = partMeasuresRaw.map((m: any, mIndex: number) => {
@@ -73,9 +77,15 @@ export class MusicXMLToMNX {
             };
         });
 
+        // Convert sharedLyricLines map to array for Global schema
+        const lyricLinesArray: LyricLine[] = Array.from(sharedLyricLines.values());
+
         return {
             mnx: { version: 1 },
-            global: { measures: globalMeasures },
+            global: {
+                measures: globalMeasures,
+                lyrics: lyricLinesArray.length > 0 ? lyricLinesArray : undefined
+            },
             parts: mnxParts
         };
     }

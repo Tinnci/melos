@@ -51,12 +51,19 @@ export const SlurSchema = z.object({
     side: z.enum(["up", "down"]).optional(),
 });
 
+export const LyricSchema = z.object({
+    text: z.string(),
+    syllabic: z.enum(["begin", "start", "middle", "end", "stop", "single"]).optional(),
+    line: z.string().optional() // References a LyricLine ID
+});
+
 export const BaseEventSchema = z.object({
     id: z.string().optional(),
     duration: NoteValueSchema.optional(),
     notes: z.array(NoteSchema).optional(),
     rest: z.object({}).optional(),
     slurs: z.array(SlurSchema).optional(),
+    lyrics: z.array(LyricSchema).optional(),
     measure: z.boolean().optional()
 });
 
@@ -129,8 +136,14 @@ export const GlobalMeasureSchema = z.object({
     }).optional()
 });
 
+export const LyricLineSchema = z.object({
+    id: z.string(),
+    name: z.string().optional()
+});
+
 export const GlobalSchema = z.object({
-    measures: z.array(GlobalMeasureSchema)
+    measures: z.array(GlobalMeasureSchema),
+    lyrics: z.array(LyricLineSchema).optional()
 });
 
 export const PositionedClefSchema = z.object({
@@ -172,6 +185,8 @@ export type Pitch = z.infer<typeof PitchSchema>;
 export type Tie = z.infer<typeof TieSchema>;
 export type Note = z.infer<typeof NoteSchema>;
 export type Slur = z.infer<typeof SlurSchema>;
+export type Lyric = z.infer<typeof LyricSchema>;
+export type LyricLine = z.infer<typeof LyricLineSchema>;
 export type Event = z.infer<typeof BaseEventSchema>;
 export type Tuplet = z.infer<typeof TupletSchema>;
 export type Grace = z.infer<typeof GraceSchema>;
