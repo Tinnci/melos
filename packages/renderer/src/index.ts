@@ -2,73 +2,145 @@ import type { Score, Part, MeasureRhythmicPosition, Note, Event } from "@melos/c
 
 export class Renderer {
     private config = {
-        staveWidth: 800,
-        staveHeight: 100,
-        lineSpacing: 10,
-        paddingX: 20,
-        paddingY: 40,
+        pageWidth: 800,          // Maximum width before wrapping
+        lineSpacing: 10,         // Space between staff lines
+        systemSpacing: 100,      // Space between systems (rows)
+        paddingX: 40,            // Left/right padding
+        paddingY: 50,            // Top padding
+        measurePadding: 15,      // Padding inside each measure
         noteRadius: 5,
         stemLength: 35
     };
 
     /**
-     * Renders a Score object to an SVG string.
+     * Renders a Score object to an SVG string with automatic system wrapping.
      */
     render(score: Score): string {
         let svgContent = "";
         let currentY = this.config.paddingY;
+        let maxX = 0;
 
         score.parts.forEach((part, pIndex) => {
-            // Render Part Name
-            svgContent += `<text x="${this.config.paddingX}" y="${currentY - 20}" font-family="Arial" font-size="14">${part.name || part.id}</text>\n`;
+            // Track current position
+            let currentX = this.config.paddingX;
+            let systemStartY = currentY;
+            let isNewSystem = true;
 
-            // Draw Stave Lines (5 lines)
-            for (let i = 0; i < 5; i++) {
-                const y = currentY + (i * this.config.lineSpacing);
-                svgContent += `<line x1="${this.config.paddingX}" y1="${y}" x2="${this.config.staveWidth + this.config.paddingX}" y2="${y}" stroke="black" stroke-width="1" />\n`;
-            }
+            // Render Part Name (only on first system)
+            svgContent += `<text x="${this.config.paddingX}" y="${currentY - 15}" font-family="Arial" font-size="14">${part.name || part.id}</text>\n`;
 
-            let currentX = this.config.paddingX + 20;
+            part.measures.forEach((measure, mIndex) => {
+                // --- 1. Calculate measure width ---
+                const measureWidth = this.calculateMeasureWidth(measure);
 
-            part.measures.forEach((measure) => {
-                // Draw Barline (Start)
-                svgContent += `<line x1="${currentX}" y1="${currentY}" x2="${currentX}" y2="${currentY + 4 * this.config.lineSpacing}" stroke="black" stroke-width="1" />\n`;
+                // --- 2. Check if we need to wrap to next system ---
+                if (currentX + measureWidth > this.config.pageWidth + this.config.paddingX && !isNewSystem) {
+                    // Finish current system's stave lines
+                    svgContent += this.renderStaveLines(this.config.paddingX, systemStartY, currentX - this.config.paddingX);
+
+                    // Move to next system
+                    currentX = this.config.paddingX;
+                    currentY += this.config.systemSpacing;
+                    systemStartY = currentY;
+                    isNewSystem = true;
+                }
+
+                // --- 3. Draw barline at start of measure ---
+                svgContent += this.renderBarline(currentX, currentY);
+
+                isNewSystem = false;
+
+                // --- 4. Render measure content ---
+                let noteX = currentX + this.config.measurePadding;
 
                 const voice = measure.sequences[0];
                 if (voice) {
                     voice.content.forEach((item: any) => {
                         if (item.notes && item.notes.length > 0) {
                             const duration = item.duration?.base || "quarter";
-                            svgContent += this.renderChord(currentX + 15, item.notes, duration, currentY);
-                            currentX += this.getNoteWidth(duration);
+                            svgContent += this.renderChord(noteX, item.notes, duration, currentY);
+                            noteX += this.getNoteWidth(duration);
 
                         } else if (item.rest) {
                             const duration = item.duration?.base || "quarter";
-                            svgContent += this.renderRest(currentX + 10, currentY, duration);
-                            currentX += this.getNoteWidth(duration);
+                            svgContent += this.renderRest(noteX, currentY, duration);
+                            noteX += this.getNoteWidth(duration);
 
                         } else if (item.type === 'tuplet' || item.type === 'grace') {
                             item.content.forEach((subItem: any) => {
                                 if (subItem.notes && subItem.notes.length > 0) {
                                     const duration = subItem.duration?.base || "eighth";
-                                    svgContent += this.renderChord(currentX + 10, subItem.notes, duration, currentY, 0.7);
-                                    currentX += 20;
+                                    svgContent += this.renderChord(noteX, subItem.notes, duration, currentY, 0.7);
+                                    noteX += 20;
                                 }
                             });
                         }
                     });
                 }
 
-                currentX += 20;
-                svgContent += `<line x1="${currentX}" y1="${currentY}" x2="${currentX}" y2="${currentY + 4 * this.config.lineSpacing}" stroke="black" stroke-width="1" />\n`;
+                // --- 5. Advance X position ---
+                currentX += measureWidth;
+                if (currentX > maxX) maxX = currentX;
+
+                // --- 6. Draw ending barline ---
+                svgContent += this.renderBarline(currentX, currentY);
             });
 
-            currentY += 150;
+            // Draw stave lines for the last system
+            svgContent += this.renderStaveLines(this.config.paddingX, systemStartY, currentX - this.config.paddingX);
+
+            // Move down for next part
+            currentY += this.config.systemSpacing;
         });
 
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${this.config.staveWidth + 100}" height="${currentY}">
+        // Calculate final SVG dimensions
+        const svgWidth = Math.max(maxX + this.config.paddingX, this.config.pageWidth + this.config.paddingX * 2);
+        const svgHeight = currentY + 20;
+
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">
             ${svgContent}
         </svg>`;
+    }
+
+    /**
+     * Calculate the width needed for a measure based on its content.
+     */
+    private calculateMeasureWidth(measure: any): number {
+        let width = this.config.measurePadding * 2; // Start/end padding
+
+        const voice = measure.sequences[0];
+        if (voice) {
+            voice.content.forEach((item: any) => {
+                if (item.notes && item.notes.length > 0) {
+                    width += this.getNoteWidth(item.duration?.base || "quarter");
+                } else if (item.rest) {
+                    width += this.getNoteWidth(item.duration?.base || "quarter");
+                } else if (item.type === 'tuplet' || item.type === 'grace') {
+                    item.content.forEach(() => { width += 20; });
+                }
+            });
+        }
+
+        return Math.max(width, 60); // Minimum width
+    }
+
+    /**
+     * Render 5 staff lines for a system segment.
+     */
+    private renderStaveLines(startX: number, y: number, length: number): string {
+        let svg = "";
+        for (let i = 0; i < 5; i++) {
+            const lineY = y + (i * this.config.lineSpacing);
+            svg += `<line x1="${startX}" y1="${lineY}" x2="${startX + length}" y2="${lineY}" stroke="black" stroke-width="1" />\n`;
+        }
+        return svg;
+    }
+
+    /**
+     * Render a barline at specified position.
+     */
+    private renderBarline(x: number, y: number): string {
+        return `<line x1="${x}" y1="${y}" x2="${x}" y2="${y + 4 * this.config.lineSpacing}" stroke="black" stroke-width="1" />\n`;
     }
 
     /**
