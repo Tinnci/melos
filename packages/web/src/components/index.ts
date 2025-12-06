@@ -1,0 +1,5 @@
+export { Dropzone } from './Dropzone'
+export { ScoreCanvas } from './ScoreCanvas'
+export { TransportBar } from './TransportBar'
+export { PropertiesPanel } from './PropertiesPanel'
+export { Sidebar } from './Sidebar'

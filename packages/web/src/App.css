@@ -811,3 +811,61 @@
   height: 200px;
   width: 100%;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Error Toast
+   ───────────────────────────────────────────────────────────────────────────── */
+.error-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
+  color: var(--color-accent-danger);
+  font-size: 0.85rem;
+  font-weight: 500;
+  animation: slideUp 0.3s ease-out;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Part Item Selected State
+   ───────────────────────────────────────────────────────────────────────────── */
+.part-item--selected {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: var(--color-border-accent);
+}
+
+.part-item--selected .part-item__name {
+  color: var(--color-accent-primary);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Mobile Responsive Overrides
+   ───────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .studio__header {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .transport {
+    flex: 1;
+    min-width: 100%;
+    order: 3;
+  }
+
+  .studio__actions {
+    margin-left: auto;
+  }
+
+  .canvas-container {
+    padding: var(--space-3);
+  }
+
+  .score-canvas {
+    padding: var(--space-4);
+  }
+}
