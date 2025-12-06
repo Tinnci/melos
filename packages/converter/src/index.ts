@@ -15,14 +15,20 @@ export class MusicXMLToMNX {
             throw new Error("Invalid MusicXML: Missing score-partwise");
         }
 
-        // 1. Build Global Track (Time, Key) 
+        // 1. Build Global Track (Time, Key) & Global Divisions (Assumption: unified)
         const partsArray = Array.isArray(root.part) ? root.part : [root.part];
         const firstPartMeasures = Array.isArray(partsArray[0]?.measure) ? partsArray[0].measure : [partsArray[0]?.measure];
 
         const globalMeasures: GlobalMeasure[] = [];
+        let globalDivisions = 1;
 
         firstPartMeasures.forEach((m: any, index: number) => {
             const gm: GlobalMeasure = {};
+
+            // Capture divisions from the first relevant measure (usually measure 1)
+            if (m.attributes && m.attributes.divisions) {
+                globalDivisions = parseInt(m.attributes.divisions);
+            }
 
             if (m.attributes && m.attributes.time) {
                 gm.time = {
@@ -61,12 +67,13 @@ export class MusicXMLToMNX {
             const context: PartParsingContext = {
                 activeSlurs: {},
                 activeTies: {},
+                activeWedges: {},
                 lyricLines: sharedLyricLines // Pass shared map
             };
 
             const mnxMeasures: PartMeasure[] = partMeasuresRaw.map((m: any, mIndex: number) => {
-                // Pass context to MeasureParser
-                const parser = new MeasureParser(m, context);
+                // Pass context, divisions, and measure index
+                const parser = new MeasureParser(m, context, globalDivisions, mIndex + 1);
                 return parser.parse();
             });
 

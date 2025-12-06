@@ -57,6 +57,17 @@ export const LyricSchema = z.object({
     line: z.string().optional() // References a LyricLine ID
 });
 
+export const DynamicValueSchema = z.enum([
+    "p", "pp", "ppp", "pppp",
+    "f", "ff", "fff", "ffff",
+    "mf", "mp", "sfz", "fp", "rfz"
+]);
+
+export const DynamicEventSchema = z.object({
+    type: z.literal("dynamic"),
+    value: DynamicValueSchema
+});
+
 export const BaseEventSchema = z.object({
     id: z.string().optional(),
     duration: NoteValueSchema.optional(),
@@ -91,7 +102,8 @@ export const GraceSchema = z.object({
 export const SequenceContentSchema = z.union([
     BaseEventSchema,
     TupletSchema,
-    GraceSchema
+    GraceSchema,
+    DynamicEventSchema
 ]);
 
 export const SequenceSchema = z.object({
@@ -122,6 +134,27 @@ export const BeamSchema = z.object({
     direction: z.enum(["up", "down"]).optional(),
     inner: z.array(z.any()).optional()
 });
+
+// [NEW] Rhythmic Position (MNX: { fraction: [n, d] })
+export const RhythmicPositionSchema = z.object({
+    fraction: z.tuple([z.number(), z.number()])
+});
+
+// [NEW] Measure Rhythmic Position for cross-measure endpoints
+export const MeasureRhythmicPositionSchema = z.object({
+    measure: z.number().int(), // Global measure index (1-based)
+    position: RhythmicPositionSchema
+});
+
+// [NEW] Wedge (Hairpin)
+export const WedgeSchema = z.object({
+    type: z.enum(["crescendo", "diminuendo"]),
+    position: RhythmicPositionSchema, // Start position in current measure
+    end: MeasureRhythmicPositionSchema.optional(), // End position (can be cross-measure)
+    staff: z.number().int().optional(),
+    voice: z.string().optional()
+});
+
 
 export const GlobalMeasureSchema = z.object({
     index: z.number().int().optional(),
@@ -155,7 +188,8 @@ export const PartMeasureSchema = z.object({
     index: z.number().int().optional(),
     sequences: z.array(SequenceSchema),
     clefs: z.array(PositionedClefSchema).optional(),
-    beams: z.array(BeamSchema).optional()
+    beams: z.array(BeamSchema).optional(),
+    wedges: z.array(WedgeSchema).optional() // [NEW] Added wedges
 });
 
 export const PartSchema = z.object({
@@ -187,6 +221,8 @@ export type Note = z.infer<typeof NoteSchema>;
 export type Slur = z.infer<typeof SlurSchema>;
 export type Lyric = z.infer<typeof LyricSchema>;
 export type LyricLine = z.infer<typeof LyricLineSchema>;
+export type DynamicValue = z.infer<typeof DynamicValueSchema>;
+export type DynamicEvent = z.infer<typeof DynamicEventSchema>;
 export type Event = z.infer<typeof BaseEventSchema>;
 export type Tuplet = z.infer<typeof TupletSchema>;
 export type Grace = z.infer<typeof GraceSchema>;
@@ -196,3 +232,6 @@ export type PartMeasure = z.infer<typeof PartMeasureSchema>;
 export type Part = z.infer<typeof PartSchema>;
 export type Score = z.infer<typeof ScoreSchema>;
 export type Beam = z.infer<typeof BeamSchema>;
+export type Wedge = z.infer<typeof WedgeSchema>;
+export type RhythmicPosition = z.infer<typeof RhythmicPositionSchema>;
+export type MeasureRhythmicPosition = z.infer<typeof MeasureRhythmicPositionSchema>;
