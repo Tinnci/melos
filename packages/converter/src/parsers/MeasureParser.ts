@@ -215,7 +215,7 @@ export class MeasureParser {
         const durBase: any = xNote.type || "quarter";
 
         let dots = 0;
-        if (xNote.dot) {
+        if (xNote.dot !== undefined) {
             dots = Array.isArray(xNote.dot) ? xNote.dot.length : 1;
         }
 

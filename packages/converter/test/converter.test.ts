@@ -151,4 +151,69 @@ describe("MusicXMLToMNX Converter", () => {
         // 2. Main Note
         expect((content[1] as any).notes).toBeDefined();
     });
+
+    it("should handle mixed meters and pickup measures correctly", () => {
+        // Measure 1: Pickup (1/4 duration in 4/4 time usually, or explicit 1/4)
+        // Measure 2: 3/4 Time
+        const xml = `
+        <score-partwise version="3.1">
+           <part-list><score-part id="P1"><part-name>Music</part-name></score-part></part-list>
+           <part id="P1">
+              <!-- Measure 1: Pickup (implicit) -->
+              <measure number="1">
+                 <attributes>
+                    <divisions>1</divisions>
+                    <time><beats>4</beats><beat-type>4</beat-type></time>
+                 </attributes>
+                 <note>
+                    <pitch><step>C</step><octave>4</octave></pitch>
+                    <duration>1</duration><type>quarter</type>
+                 </note>
+              </measure>
+              
+              <!-- Measure 2: Change to 3/4 -->
+              <measure number="2">
+                 <attributes>
+                    <time><beats>3</beats><beat-type>4</beat-type></time>
+                 </attributes>
+                 <note>
+                    <pitch><step>D</step><octave>4</octave></pitch>
+                    <duration>3</duration><type>half</type><dot/>
+                 </note>
+              </measure>
+           </part>
+        </score-partwise>`;
+
+        const res = converter.convert(xml);
+        const globalMs = res.global.measures;
+
+        // Check Global Track for Time Signatures
+        expect(globalMs).toHaveLength(2);
+
+        // Measure 1: 4/4
+        expect(globalMs[0].time).toBeDefined();
+        expect(globalMs[0].time?.count).toBe(4);
+        expect(globalMs[0].time?.unit).toBe(4);
+
+        // Measure 2: 3/4
+        expect(globalMs[1].time).toBeDefined();
+        expect(globalMs[1].time?.count).toBe(3);
+        expect(globalMs[1].time?.unit).toBe(4);
+
+        // Validating Content
+        const pMeasures = res.parts[0].measures;
+        expect(pMeasures).toHaveLength(2);
+
+        const m1Content = pMeasures[0].sequences[0].content;
+        const m2Content = pMeasures[1].sequences[0].content;
+
+        // M1: 1 Quarter note (Pickup)
+        expect(m1Content).toHaveLength(1);
+        expect((m1Content[0] as any).duration.base).toBe("quarter");
+
+        // M2: 1 Dotted Half note (Filling 3/4)
+        expect(m2Content).toHaveLength(1);
+        expect((m2Content[0] as any).duration.base).toBe("half");
+        expect((m2Content[0] as any).duration.dots).toBe(1);
+    });
 });
