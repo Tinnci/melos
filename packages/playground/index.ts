@@ -815,6 +815,54 @@ const kitchenSinkXML = `
          <note><rest/><duration>4</duration><type>quarter</type></note>
          <note><rest/><duration>2</duration><type>eighth</type></note>
       </measure>
+      
+      <!-- Measure 7: Chords (C Major Triad, then G Major Triad) -->
+      <measure number="7">
+         <note>
+            <pitch><step>C</step><octave>4</octave></pitch>
+            <duration>8</duration><type>half</type>
+         </note>
+         <note>
+            <chord/>
+            <pitch><step>E</step><octave>4</octave></pitch>
+            <duration>8</duration><type>half</type>
+         </note>
+         <note>
+            <chord/>
+            <pitch><step>G</step><octave>4</octave></pitch>
+            <duration>8</duration><type>half</type>
+         </note>
+         
+         <note>
+            <pitch><step>G</step><octave>4</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <chord/>
+            <pitch><step>B</step><octave>4</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <chord/>
+            <pitch><step>D</step><octave>5</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         
+         <note>
+            <pitch><step>F</step><octave>5</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <chord/>
+            <pitch><step>A</step><octave>5</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+         <note>
+            <chord/>
+            <pitch><step>C</step><octave>6</octave></pitch>
+            <duration>4</duration><type>quarter</type>
+         </note>
+      </measure>
    </part>
 </score-partwise>
 `;
@@ -831,6 +879,7 @@ console.log("  * M2: Half, Quarter, Eighth, 16th notes");
 console.log("  * M3: Stem direction flip (low=up, high=down)");
 console.log("  * M4: Ledger lines (C4, A3, A5, C6)");
 console.log("  * M5-M6: Rests (whole, half, quarter, eighth)");
+console.log("  * M7: CHORDS (C-E-G half, G-B-D quarter, F-A-C quarter)");
 
 console.log("--- Demo Complete ---");
 

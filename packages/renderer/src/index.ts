@@ -38,11 +38,8 @@ export class Renderer {
                 if (voice) {
                     voice.content.forEach((item: any) => {
                         if (item.notes && item.notes.length > 0) {
-                            const note = item.notes[0];
                             const duration = item.duration?.base || "quarter";
-                            const cy = this.calculateY(note, currentY);
-
-                            svgContent += this.renderNote(currentX + 15, cy, duration, note, currentY);
+                            svgContent += this.renderChord(currentX + 15, item.notes, duration, currentY);
                             currentX += this.getNoteWidth(duration);
 
                         } else if (item.rest) {
@@ -53,10 +50,8 @@ export class Renderer {
                         } else if (item.type === 'tuplet' || item.type === 'grace') {
                             item.content.forEach((subItem: any) => {
                                 if (subItem.notes && subItem.notes.length > 0) {
-                                    const note = subItem.notes[0];
                                     const duration = subItem.duration?.base || "eighth";
-                                    const cy = this.calculateY(note, currentY);
-                                    svgContent += this.renderNote(currentX + 10, cy, duration, note, currentY, 0.7);
+                                    svgContent += this.renderChord(currentX + 10, subItem.notes, duration, currentY, 0.7);
                                     currentX += 20;
                                 }
                             });
@@ -77,39 +72,78 @@ export class Renderer {
     }
 
     /**
-     * Render a single note with proper head shape and stem.
+     * Render a chord (one or more notes with a shared stem).
      */
-    private renderNote(cx: number, cy: number, duration: string, note: Note, staffTopY: number, scale: number = 1): string {
+    private renderChord(cx: number, notes: Note[], duration: string, staffTopY: number, scale: number = 1): string {
         let svg = "";
         const r = this.config.noteRadius * scale;
 
-        // Determine stem direction: above middle line (B4) = down, below = up
+        // Calculate Y positions for all notes
+        const noteYs = notes.map(n => this.calculateY(n, staffTopY));
+        const minY = Math.min(...noteYs);
+        const maxY = Math.max(...noteYs);
+
+        // Determine stem direction based on the note furthest from middle line
         const middleLineY = staffTopY + 2 * this.config.lineSpacing;
-        const stemUp = cy >= middleLineY;
+        const topDistance = Math.abs(minY - middleLineY);
+        const bottomDistance = Math.abs(maxY - middleLineY);
+        const stemUp = bottomDistance >= topDistance;
 
-        // Note Head Shape
-        if (duration === "whole") {
-            // Hollow ellipse, no stem
-            svg += `<ellipse cx="${cx}" cy="${cy}" rx="${r * 1.3}" ry="${r}" fill="none" stroke="black" stroke-width="1.5" />\n`;
-        } else if (duration === "half") {
-            // Hollow ellipse with stem
-            svg += `<ellipse cx="${cx}" cy="${cy}" rx="${r * 1.1}" ry="${r * 0.9}" fill="none" stroke="black" stroke-width="1.5" />\n`;
-            svg += this.renderStem(cx, cy, r, stemUp, scale);
-        } else {
-            // Filled ellipse (quarter, eighth, 16th, etc.) with stem
-            svg += `<ellipse cx="${cx}" cy="${cy}" rx="${r * 1.1}" ry="${r * 0.9}" fill="black" />\n`;
-            svg += this.renderStem(cx, cy, r, stemUp, scale);
+        // Draw all note heads
+        notes.forEach((note, i) => {
+            const cy = noteYs[i];
+            svg += this.renderNoteHead(cx, cy, duration, r);
+            svg += this.renderLedgerLines(cx, cy, staffTopY);
+        });
 
-            // Add flags for eighth and shorter
+        // Draw shared stem (if not a whole note)
+        if (duration !== "whole") {
+            svg += this.renderChordStem(cx, minY, maxY, r, stemUp, scale);
+
+            // Flags (only for single notes or chord extremity)
             if (duration === "eighth" || duration === "16th" || duration === "32nd") {
-                svg += this.renderFlag(cx, cy, r, stemUp, duration, scale);
+                const flagY = stemUp ? minY : maxY;
+                svg += this.renderFlag(cx, flagY, r, stemUp, duration, scale);
             }
         }
 
-        // Ledger lines
-        svg += this.renderLedgerLines(cx, cy, staffTopY);
-
         return svg;
+    }
+
+    /**
+     * Render just the note head (shape depends on duration).
+     */
+    private renderNoteHead(cx: number, cy: number, duration: string, r: number): string {
+        if (duration === "whole") {
+            return `<ellipse cx="${cx}" cy="${cy}" rx="${r * 1.3}" ry="${r}" fill="none" stroke="black" stroke-width="1.5" />\n`;
+        } else if (duration === "half") {
+            return `<ellipse cx="${cx}" cy="${cy}" rx="${r * 1.1}" ry="${r * 0.9}" fill="none" stroke="black" stroke-width="1.5" />\n`;
+        } else {
+            return `<ellipse cx="${cx}" cy="${cy}" rx="${r * 1.1}" ry="${r * 0.9}" fill="black" />\n`;
+        }
+    }
+
+    /**
+     * Render stem for a chord (spans from lowest to highest note).
+     */
+    private renderChordStem(cx: number, minY: number, maxY: number, r: number, stemUp: boolean, scale: number): string {
+        const stemLen = this.config.stemLength * scale;
+        if (stemUp) {
+            const x = cx + r;
+            const stemTop = minY - stemLen;
+            return `<line x1="${x}" y1="${maxY}" x2="${x}" y2="${stemTop}" stroke="black" stroke-width="1" />\n`;
+        } else {
+            const x = cx - r;
+            const stemBottom = maxY + stemLen;
+            return `<line x1="${x}" y1="${minY}" x2="${x}" y2="${stemBottom}" stroke="black" stroke-width="1" />\n`;
+        }
+    }
+
+    /**
+     * Legacy single-note render (kept for compatibility, now delegates to renderChord).
+     */
+    private renderNote(cx: number, cy: number, duration: string, note: Note, staffTopY: number, scale: number = 1): string {
+        return this.renderChord(cx, [note], duration, staffTopY, scale);
     }
 
     /**
