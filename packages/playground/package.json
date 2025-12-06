@@ -10,6 +10,7 @@
         "@melos/mnx": "workspace:*",
         "@melos/converter": "workspace:*",
         "@melos/core": "workspace:*",
-        "@melos/renderer": "workspace:*"
+        "@melos/renderer": "workspace:*",
+        "@melos/player": "workspace:*"
     }
 }

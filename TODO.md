@@ -78,14 +78,14 @@ Fill the gap of a native MNX renderer.
 
 ---
 
-## Phase 4: Builder API & Editor Tools
+## Phase 4: Builder API & Editor Tools ✅ COMPLETE
 
 Enable programmatic creation of music.
 
-- [ ] **Fluent API**
-    - [ ] Create a "Builder" pattern for easy score generation (e.g., `new Score().addPart().addMeasure()...`).
-- [ ] **Audio Preview**
-    - [ ] Basic oscillator-based playback of MNX data in the browser.
+- [x] **Fluent API**
+    - [x] Create a "Builder" pattern for easy score generation (`ScoreBuilder`, `PartBuilder`, etc.).
+- [x] **Audio Preview**
+    - [x] Basic oscillator-based playback of MNX data in the browser (`@melos/player` using Web Audio API).
 
 ---
 

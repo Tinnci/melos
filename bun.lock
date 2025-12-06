@@ -41,6 +41,16 @@
         "@melos/core": "workspace:*",
       },
     },
+    "packages/player": {
+      "name": "@melos/player",
+      "version": "0.0.1",
+      "dependencies": {
+        "@melos/core": "workspace:*",
+      },
+      "devDependencies": {
+        "typescript": "^5.0.0",
+      },
+    },
     "packages/playground": {
       "name": "@melos/playground",
       "version": "0.0.1",
@@ -48,6 +58,7 @@
         "@melos/converter": "workspace:*",
         "@melos/core": "workspace:*",
         "@melos/mnx": "workspace:*",
+        "@melos/player": "workspace:*",
         "@melos/renderer": "workspace:*",
       },
     },
@@ -95,6 +106,8 @@
     "@melos/core": ["@melos/core@workspace:packages/core"],
 
     "@melos/mnx": ["@melos/mnx@workspace:packages/mnx"],
+
+    "@melos/player": ["@melos/player@workspace:packages/player"],
 
     "@melos/playground": ["@melos/playground@workspace:packages/playground"],
 

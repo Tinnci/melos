@@ -8,6 +8,23 @@
         ],
         "strict": true,
         "skipLibCheck": true,
-        "baseUrl": "."
+        "baseUrl": ".",
+        "paths": {
+            "@melos/core": [
+                "./packages/core/src/index.ts"
+            ],
+            "@melos/converter": [
+                "./packages/converter/src/index.ts"
+            ],
+            "@melos/mnx": [
+                "./packages/mnx/src/index.ts"
+            ],
+            "@melos/renderer": [
+                "./packages/renderer/src/index.ts"
+            ],
+            "@melos/player": [
+                "./packages/player/src/index.ts"
+            ]
+        }
     }
 }
