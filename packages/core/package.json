@@ -9,5 +9,9 @@
     },
     "dependencies": {
         "zod": "^3.22.0"
+    },
+    "devDependencies": {
+        "@types/node": "^24.10.1",
+        "json-schema-to-typescript": "^15.0.4"
     }
 }
