@@ -1,9 +1,12 @@
 import { MusicXMLToMNX } from "@melos/converter";
 import { MnxParser } from "@melos/mnx";
+import { Renderer } from "@melos/renderer";
+import * as fs from "fs";
 
 const converter = new MusicXMLToMNX();
+const renderer = new Renderer();
 
-console.log("--- Starting Melos Demo V3 (W3C Aligned) ---");
+console.log("--- Starting Melos Demo V3 (W3C Aligned + Renderer) ---");
 
 // Test 1: Chord Example
 const mockMusicXML = `
@@ -723,7 +726,17 @@ if (itemG1 && itemG1.notes) {
    console.error(`- Main Note missing.`);
 }
 
+
+// --- Renderer Visual Test ---
+console.log("\n(Visualizer) Rendering Grace Notes Example to SVG...");
+const svgOutput = renderer.render(scoreGrace);
+const outputPath = "output.svg";
+fs.writeFileSync(outputPath, svgOutput);
+console.log(`- SVG written to: ${outputPath}`);
+console.log("- Open this file in your browser to verify rendering.");
+
 console.log("--- Demo Complete ---");
+
 
 
 
