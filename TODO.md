@@ -38,15 +38,15 @@ The goal is to make the `MusicXML -> MNX` conversion robust enough to handle sta
 
 ---
 
-## Phase 2: Semantic Validation (The "Linter")
+## Phase 2: Semantic Validation (The "Linter") ✅ COMPLETE
 
 Unlike XML validation, we need *semantic* validation to ensure musical correctness.
 
 - [ ] **Validator Engine** (`@melos/mnx`)
-    - [ ] **Rhythmic Integrity**: Verify that notes in a measure add up to the Time Signature.
-    - [ ] **Structure Checks**: Ensure Part ID references in global tracks are valid.
-    - [ ] **Pitch Bounds**: Warn on unreasonable pitch values.
-    - [ ] **CLI Tool**: Create queryable CLI (`melos check my-score.mnx`).
+    - [x] **Rhythmic Integrity**: Verify that notes in a measure add up to the Time Signature.
+    - [x] **Structure Checks**: Ensure Part ID references in global tracks are valid.
+    - [x] **Pitch Bounds**: Warn on unreasonable pitch values.
+    - [x] **CLI Tool**: Create queryable CLI (`melos check my-score.mnx`).
 
 ---
 

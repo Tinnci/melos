@@ -1,4 +1,4 @@
-import { ScoreSchema, NoteSchema, type Score, type Note, type Event } from "@melos/core";
+import { ScoreSchema, NoteSchema, type Score, type Note } from "@melos/core";
 
 export class MnxParser {
     /**
