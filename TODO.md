@@ -89,7 +89,7 @@ Enable programmatic creation of music.
 
 ---
 
-## Phase 5: Web Editor Integration (The "Studio") 🚧 STARTING
+## Phase 5: Web Editor Integration (The "Studio") 🚧 IN PROGRESS
 Integrate all packages into a comprehensive Web Editor to allow users to Create, Edit, and Play scores interactively.
 
 *   **Tech Stack**: Vite, React, TailwindCSS, shadcn/ui.
@@ -98,6 +98,25 @@ Integrate all packages into a comprehensive Web Editor to allow users to Create,
     *   Score Canvas (using `@melos/renderer`).
     *   Playback Controls (using `@melos/player`).
     *   State Management (syncing Builder state with UI).
+
+Current progress and short-term plan:
+
+- [x] Initialize `packages/web` (Vite + React scaffold, ESLint, TS configs)
+- [x] Wire workspace packages (linked local `@melos/core`, `@melos/renderer`, `@melos/player`, `@melos/converter`)
+- [x] Basic Studio shell (App.tsx with header/panels and layout)
+- [x] Renderer preview + demo `ScoreBuilder` example renders to the canvas
+- [x] Basic playback prototype with `AudioPlayer` (Play/Stop, tempo slider)
+- [ ] MusicXML importer & conversion pipeline (dropzone + `@melos/converter` integration)
+- [ ] Builder -> Editor mutations (property panel to mutate builder state and re-render)
+- [ ] Persistent state and undo/redo (local storage and change history)
+- [ ] Snapshot & visual regression tests for the full conversion -> render -> play pipeline
+- [ ] Accessibility, keyboard navigation and responsive refinements
+
+Immediate next steps (short-term):
+
+1. Add a minimal MusicXML import UI and wire the converter to the renderer preview so the app can validate and display converted MNX live.
+2. Add a small shared store (Zustand) that holds the current `Score` and exposes mutation helpers used by property panels.
+3. Write a small set of integration snapshot tests for a handful of W3C MNX samples to cover the convert->render flow.
 
 ---
 
