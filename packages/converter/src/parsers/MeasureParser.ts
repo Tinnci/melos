@@ -1,42 +1,63 @@
 import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Tie, Slur } from "@melos/core";
 import { generateEventId, generateNoteId } from "./Utils";
 
-// Container interface for handling nested structures like Tuplets
 export interface Container {
     content: any[];
     endCondition?: { type: 'tuplet'; number?: number };
 }
 
-// Context to track state across measures (Slurs, Ties)
 export interface PartParsingContext {
-    // Key: slur number
     activeSlurs: Record<number, { sourceEvent: Event }>;
-    // Key: pitch string (e.g., "C4") as tie connects same pitches usually. 
-    // Or tracked by <tied number="..."> if available. 
-    // Using a composite key or simple number if provided.
     activeTies: Record<string, { sourceNote: Note }>;
+}
+
+// Track state per Voice
+interface VoiceContext {
+    root: any[]; // The top-level content array for this voice
+    stack: Container[];
+    currentEvent: Event | null; // Last created event in this voice (for chords)
 }
 
 export class MeasureParser {
     private beams: Beam[] = [];
     private activeBeams: Record<number, { eventIds: string[] }> = {};
 
+    // Map voice ID (string) to its context
+    private voiceContexts: Map<string, VoiceContext> = new Map();
+
+    // To preserve order of voices found
+    private voiceOrder: string[] = [];
+
     constructor(
         private xmlMeasure: any,
         private context: PartParsingContext
     ) { }
 
+    private getVoiceContext(voiceId: string): VoiceContext {
+        let ctx = this.voiceContexts.get(voiceId);
+        if (!ctx) {
+            const rootContent: any[] = [];
+            ctx = {
+                root: rootContent,
+                stack: [{ content: rootContent }],
+                currentEvent: null
+            };
+            this.voiceContexts.set(voiceId, ctx);
+            this.voiceOrder.push(voiceId);
+        }
+        return ctx;
+    }
+
     parse(): PartMeasure {
-        const rootContent: any[] = [];
-        const containerStack: Container[] = [{ content: rootContent }];
-
-        let currentEvent: Event | null = null;
-
         const xmlNotes = this.xmlMeasure.note ? (Array.isArray(this.xmlMeasure.note) ? this.xmlMeasure.note : [this.xmlMeasure.note]) : [];
 
         for (const xNote of xmlNotes) {
+            // Determine Voice ID (default to "1")
+            const voiceId = xNote.voice ? String(xNote.voice) : "1";
+            const ctx = this.getVoiceContext(voiceId);
+
             // --- 0. Stack Management (Tuplet Start/Stop) ---
-            let currentContainer = containerStack[containerStack.length - 1];
+            let currentContainer = ctx.stack[ctx.stack.length - 1];
 
             if (xNote.notations) {
                 const notations = Array.isArray(xNote.notations) ? xNote.notations : [xNote.notations];
@@ -53,7 +74,7 @@ export class MeasureParser {
                         content: newTuplet.content,
                         endCondition: { type: 'tuplet' }
                     };
-                    containerStack.push(newContainer);
+                    ctx.stack.push(newContainer);
                     currentContainer = newContainer;
                 }
             }
@@ -70,11 +91,10 @@ export class MeasureParser {
 
             // Pitch Logic
             let noteObj: Note | null = null;
-            let pitchKey = ""; // for tie tracking
+            let pitchKey = "";
 
             if (!isRest && xNote.pitch) {
                 noteObj = {
-                    // Generate ID for notes to support Ties
                     id: generateNoteId(),
                     pitch: {
                         step: xNote.pitch.step,
@@ -92,11 +112,11 @@ export class MeasureParser {
             // Event Generation
             let eventId: string;
 
-            if (isChord && currentEvent && !isRest) {
-                if (noteObj && currentEvent.notes) {
-                    currentEvent.notes.push(noteObj);
+            if (isChord && ctx.currentEvent && !isRest) {
+                if (noteObj && ctx.currentEvent.notes) {
+                    ctx.currentEvent.notes.push(noteObj);
                 }
-                eventId = currentEvent.id!;
+                eventId = ctx.currentEvent.id!;
             } else {
                 eventId = generateEventId();
                 const evt: Event = {
@@ -111,14 +131,13 @@ export class MeasureParser {
                 }
 
                 currentContainer.content.push(evt);
-                currentEvent = evt;
+                ctx.currentEvent = evt;
             }
 
             // --- 1.2 Slurs Logic (Event Level) ---
             if (xNote.notations) {
                 const notations = Array.isArray(xNote.notations) ? xNote.notations : [xNote.notations];
 
-                // Find all slurs
                 notations.forEach((n: any) => {
                     if (n.slur) {
                         const slurs = Array.isArray(n.slur) ? n.slur : [n.slur];
@@ -126,38 +145,28 @@ export class MeasureParser {
                             const number = parseInt(s["@_number"] || "1");
                             const type = s["@_type"]; // start or stop
 
-                            if (type === "start" && currentEvent) {
-                                // Record start
-                                this.context.activeSlurs[number] = { sourceEvent: currentEvent };
-                            } else if (type === "stop" && currentEvent) {
-                                // Resolve end
+                            if (type === "start" && ctx.currentEvent) {
+                                this.context.activeSlurs[number] = { sourceEvent: ctx.currentEvent };
+                            } else if (type === "stop" && ctx.currentEvent) {
                                 const pending = this.context.activeSlurs[number];
                                 if (pending) {
-                                    // Add Slur object to SOURCE event, pointing to CURRENT event (target)
                                     const source = pending.sourceEvent;
 
                                     if (!source.slurs) source.slurs = [];
-
                                     source.slurs.push({
-                                        target: currentEvent.id!,
+                                        target: ctx.currentEvent!.id!,
                                         side: s["@_placement"] === "below" ? "down" : "up"
                                     });
-
                                     delete this.context.activeSlurs[number];
                                 }
                             }
                         });
                     }
 
-                    // --- 1.3 Ties Logic (Note Level) ---
-                    // MusicXML uses <tied type="start/stop"/>
                     if (n.tied && noteObj) {
                         const tieds = Array.isArray(n.tied) ? n.tied : [n.tied];
                         tieds.forEach((t: any) => {
                             const type = t["@_type"];
-
-                            // Use pitchKey as identifier if number not present
-                            // Actually, MusicXML ties usually just link adjacent notes of same pitch
                             const key = t["@_number"] ? `num:${t["@_number"]}` : pitchKey;
 
                             if (type === "start") {
@@ -166,12 +175,8 @@ export class MeasureParser {
                                 const pending = this.context.activeTies[key];
                                 if (pending) {
                                     const source = pending.sourceNote;
-
                                     if (!source.ties) source.ties = [];
-                                    source.ties.push({
-                                        target: noteObj!.id!
-                                    });
-
+                                    source.ties.push({ target: noteObj!.id! });
                                     delete this.context.activeTies[key];
                                 }
                             }
@@ -180,8 +185,8 @@ export class MeasureParser {
                 });
             }
 
-
-            // --- 1.5 Beam Logic ---
+            // --- 1.5 Beam Logic (Global per Measure usually, but cross-voice beams are rare/complex) ---
+            // We keep beams global to the measure for simplicity, assuming IDs are unique globally.
             if (xNote.beam) {
                 const beamList = Array.isArray(xNote.beam) ? xNote.beam : [xNote.beam];
                 beamList.forEach((b: any) => {
@@ -212,28 +217,41 @@ export class MeasureParser {
                 const tupletStopNode = notations.find((n: any) => n?.tuplet?.["@_type"] === "stop");
 
                 if (tupletStopNode) {
-                    if (containerStack.length > 1 && currentContainer.endCondition?.type === 'tuplet') {
-                        containerStack.pop();
+                    if (ctx.stack.length > 1 && currentContainer.endCondition?.type === 'tuplet') {
+                        ctx.stack.pop();
                     }
                 }
             }
         }
 
+        // --- Assemble Result ---
+        const sequences: Sequence[] = this.voiceOrder.map(vId => {
+            return { content: this.voiceContexts.get(vId)!.root };
+        });
+
         // Clefs
         let clefs = undefined;
         if (this.xmlMeasure.attributes && this.xmlMeasure.attributes.clef) {
-            const c = this.xmlMeasure.attributes.clef;
-            clefs = [{
+            const clefArr = Array.isArray(this.xmlMeasure.attributes.clef)
+                ? this.xmlMeasure.attributes.clef
+                : [this.xmlMeasure.attributes.clef];
+
+            clefs = clefArr.map((c: any, idx: number) => ({
                 clef: {
                     sign: c.sign,
                     line: c.line ? parseInt(c.line) : undefined
                 },
-                staff: 1
-            }];
+                staff: parseInt(c["@_number"] || (idx + 1).toString())
+            }));
+        }
+
+        // If no voices found (empty measure?), ensure at least one empty sequence
+        if (sequences.length === 0) {
+            sequences.push({ content: [] });
         }
 
         return {
-            sequences: [{ content: rootContent }],
+            sequences: sequences,
             clefs: clefs,
             beams: this.beams.length > 0 ? this.beams : undefined
         };

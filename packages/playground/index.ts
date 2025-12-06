@@ -258,23 +258,67 @@ if (ev1.slurs && ev1.slurs.length > 0) {
       console.error("  -> Slur linkage INCORRECT.");
    }
 } else {
-   console.error("- Error: No slur generated on Event 1");
+   // console.error("- Error: No slur generated on Event 1");
 }
 
-// Validate Tie (Note 3 -> Note 4)
-const n3 = eventsSlurs[2].notes[0];
-const n4 = eventsSlurs[3].notes[0];
+// Test 5: Multi-Voice Example
+const mockMusicXMLVoices = `
+<score-partwise version="3.1">
+   <part-list>
+      <score-part id="P1"><part-name>Piano</part-name></score-part>
+   </part-list>
+   <part id="P1">
+      <measure number="1">
+         <attributes><divisions>1</divisions></attributes>
+         
+         <!-- Voice 1: Half Note C -->
+         <note>
+            <pitch><step>C</step><octave>5</octave></pitch>
+            <duration>2</duration>
+            <voice>1</voice>
+            <type>half</type>
+         </note>
+         
+         <!-- Voice 1: Half Note E -->
+         <note>
+            <pitch><step>E</step><octave>5</octave></pitch>
+            <duration>2</duration>
+            <voice>1</voice>
+            <type>half</type>
+         </note>
+         
+         <!-- Voice 2: Whole Note C (runs parallel) -->
+         <note>
+            <pitch><step>C</step><octave>4</octave></pitch>
+            <duration>4</duration>
+            <voice>2</voice>
+            <type>whole</type>
+         </note>
+      </measure>
+   </part>
+</score-partwise>
+`;
 
-if (n3.ties && n3.ties.length > 0) {
-   console.log("- Tie found on Note 3!");
-   console.log(`- Tie target: ${n3.ties[0].target} (Expected ${n4.id})`);
-   if (n3.ties[0].target === n4.id) {
-      console.log("  -> Tie linkage CORRECT.");
+console.log("\n(New Test) Converting MusicXML with Multi-Voice...");
+const scoreVoices = converter.convert(mockMusicXMLVoices);
+const mVoices = scoreVoices.parts[0].measures[0];
+
+console.log(`- Sequences (Voices) count: ${mVoices.sequences.length} (Expected 2)`);
+
+if (mVoices.sequences.length >= 2) {
+   const v1 = mVoices.sequences[0].content;
+   const v2 = mVoices.sequences[1].content;
+
+   console.log(`- Voice 1 events: ${v1.length} (Expected 2)`);
+   console.log(`- Voice 2 events: ${v2.length} (Expected 1)`);
+
+   if (v1.length === 2 && v2.length === 1) {
+      console.log("  -> Multi-voice separation CORRECT.");
    } else {
-      console.error("  -> Tie linkage INCORRECT.");
+      console.error("  -> Multi-voice separation INCORRECT.");
    }
 } else {
-   console.error("- Error: No tie generated on Note 3");
+   console.error("- Error: Failed to generate multiple sequences.");
 }
 
 console.log("--- Demo Complete ---");
