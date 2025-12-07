@@ -1,4 +1,4 @@
-import type { Score, Part, MeasureRhythmicPosition, Note, Event, GlobalMeasure, Jump } from "@melos/core";
+import type { Score, Note, GlobalMeasure, Jump } from "@melos/core";
 
 // SMuFL G-Clef path extracted from Bravura font (uniE050)
 // Original glyph designed at 1000 units per em, roughly 4 spaces high.
