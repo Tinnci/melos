@@ -3,12 +3,15 @@
  * Editable score properties with TailwindCSS + shadcn/ui
  */
 
-import { useScoreStore } from '@/store'
+import { useState } from 'react'
+import { useScoreStore, useTransportStore } from '@/store'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ClipboardList, Music2, Link2, ExternalLink, Settings2 } from 'lucide-react'
+import { Music2, Link2, ExternalLink, Settings2, Download, FileText, Music, Clock } from 'lucide-react'
+import { exportToPdf, exportToMidi } from '@/lib/exporter'
 
 // Time signature options
 const timeSignatureOptions = [
@@ -48,6 +51,10 @@ export function PropertiesPanel() {
     const selectPart = useScoreStore((s) => s.selectPart)
     const updateTimeSignature = useScoreStore((s) => s.updateTimeSignature)
     const updateKeySignature = useScoreStore((s) => s.updateKeySignature)
+    const updatePartName = useScoreStore((s) => s.updatePartName)
+
+    const tempo = useTransportStore((s) => s.tempo)
+    const setTempo = useTransportStore((s) => s.setTempo)
 
     const timeSignature = score?.global?.measures?.[0]?.time
     const keySignature = score?.global?.measures?.[0]?.key
@@ -66,6 +73,13 @@ export function PropertiesPanel() {
 
     const handleKeySignatureChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         updateKeySignature(Number(e.target.value))
+    }
+
+    const handleTempoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = Number(e.target.value)
+        if (!isNaN(value) && value > 0) {
+            setTempo(value)
+        }
     }
 
     return (
@@ -103,6 +117,23 @@ export function PropertiesPanel() {
                                 />
                             </div>
 
+                            {/* Tempo */}
+                            <div className="space-y-2">
+                                <Label htmlFor="tempo">Tempo (BPM)</Label>
+                                <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-slate-500" />
+                                    <Input
+                                        id="tempo"
+                                        type="number"
+                                        min="20"
+                                        max="300"
+                                        value={tempo}
+                                        onChange={handleTempoChange}
+                                        className="font-mono"
+                                    />
+                                </div>
+                            </div>
+
                             {/* Measures (read-only) */}
                             <div className="space-y-2">
                                 <Label>Measures</Label>
@@ -125,6 +156,11 @@ export function PropertiesPanel() {
                 </CardContent>
             </Card>
 
+            {/* Export Options */}
+            {score && (
+                <ExportCard score={score} />
+            )}
+
             {/* Parts */}
             <Card>
                 <CardHeader>
@@ -137,11 +173,11 @@ export function PropertiesPanel() {
                     {parts.length > 0 ? (
                         <div className="space-y-2">
                             {parts.map((part) => (
-                                <button
+                                <div
                                     key={part.id}
                                     onClick={() => selectPart(part.id === selectedPartId ? null : part.id)}
                                     className={`
-                    w-full flex items-center gap-3 p-3 rounded-lg border transition-all
+                    w-full flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer
                     ${selectedPartId === part.id
                                             ? 'bg-indigo-500/10 border-indigo-500/50'
                                             : 'bg-slate-800/50 border-slate-700/50 hover:border-slate-600'
@@ -152,13 +188,27 @@ export function PropertiesPanel() {
                                         className="w-1 h-7 rounded-full"
                                         style={{ background: part.color }}
                                     />
-                                    <div className="text-left">
-                                        <div className="text-sm font-medium text-white">{part.name}</div>
-                                        {part.shortName && (
-                                            <div className="text-xs text-slate-500">{part.shortName}</div>
+                                    <div className="flex-1 text-left min-w-0">
+                                        {selectedPartId === part.id ? (
+                                            <div onClick={(e) => e.stopPropagation()}>
+                                                <Label htmlFor={`part-name-${part.id}`} className="sr-only">Part Name</Label>
+                                                <Input
+                                                    id={`part-name-${part.id}`}
+                                                    value={part.name}
+                                                    onChange={(e) => updatePartName(part.id, e.target.value)}
+                                                    className="h-7 py-1 text-sm bg-slate-900/50 border-indigo-500/50 focus:border-indigo-500"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="text-sm font-medium text-white truncate">{part.name}</div>
+                                                {part.shortName && (
+                                                    <div className="text-xs text-slate-500 truncate">{part.shortName}</div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
-                                </button>
+                                </div>
                             ))}
                         </div>
                     ) : (
@@ -216,5 +266,65 @@ function ResourceLink({ href, icon, label }: { href: string; icon: string; label
                 <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
             </a>
         </Button>
+    )
+}
+
+function ExportCard({ score }: { score: import('@melos/core').Score }) {
+    const [isExportingPdf, setIsExportingPdf] = useState(false)
+    const [isExportingMidi, setIsExportingMidi] = useState(false)
+
+    const handleExportPdf = async () => {
+        setIsExportingPdf(true)
+        try {
+            await exportToPdf(score, 'melos-score')
+        } catch (err) {
+            console.error('PDF export failed:', err)
+        } finally {
+            setIsExportingPdf(false)
+        }
+    }
+
+    const handleExportMidi = () => {
+        setIsExportingMidi(true)
+        try {
+            exportToMidi(score, 'melos-score')
+        } catch (err) {
+            console.error('MIDI export failed:', err)
+        } finally {
+            setIsExportingMidi(false)
+        }
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>
+                    <Download className="w-4 h-4 text-indigo-400" />
+                    Export
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={handleExportPdf}
+                    disabled={isExportingPdf}
+                >
+                    <FileText className="w-4 h-4" />
+                    {isExportingPdf ? 'Exporting...' : 'Export as PDF'}
+                </Button>
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={handleExportMidi}
+                    disabled={isExportingMidi}
+                >
+                    <Music className="w-4 h-4" />
+                    {isExportingMidi ? 'Exporting...' : 'Export as MIDI'}
+                </Button>
+            </CardContent>
+        </Card>
     )
 }

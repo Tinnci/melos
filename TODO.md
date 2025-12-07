@@ -122,8 +122,8 @@ Current progress and short-term plan:
 Immediate next steps (short-term):
 
 1. Write snapshot tests for MusicXML conversion pipeline.
-2. Add more editable properties (Part names, Tempo markings).
-3. Implement PDF/MIDI export functionality.
+2. [x] Add more editable properties (Part names, Tempo markings).
+3. [x] Implement PDF/MIDI export functionality.
 
 ---
 

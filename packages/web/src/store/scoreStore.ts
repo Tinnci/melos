@@ -57,6 +57,7 @@ export interface ScoreState {
     // Score Mutation Actions
     updateTimeSignature: (count: number, unit: number) => void
     updateKeySignature: (fifths: number) => void
+    updatePartName: (partId: string, name: string) => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -222,6 +223,21 @@ export const useScoreStore = create<ScoreState>()(
             }
             setScore(updatedScore)
         },
+
+        updatePartName: (partId: string, name: string) => {
+            const { score, setScore } = get()
+            if (!score) return
+
+            const updatedScore: Score = {
+                ...score,
+                parts: score.parts.map((part) =>
+                    part.id === partId ? { ...part, name } : part
+                ),
+            }
+            // Update parts derived list as well is handled by setScore logic
+            setScore(updatedScore)
+        },
+
     }))
 )
 

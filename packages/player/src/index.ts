@@ -138,3 +138,6 @@ export class AudioPlayer {
         osc.stop(startTime + duration + 0.1);
     }
 }
+
+export * from './utils';
+
