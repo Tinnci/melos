@@ -135,9 +135,9 @@ export class Renderer {
                                 const eventId = item.id || `event-${noteX}`; // Use item.id if available
                                 const isBeamed = beamedEventIds.has(eventId);
 
-                                // Render the chord, passing beam info
+                                // Render the chord, passing beam info and IDs for interaction
                                 const chordResult = this.renderChordWithLayout(
-                                    noteX, item.notes, duration, currentY, 1, isBeamed
+                                    noteX, item.notes, duration, currentY, 1, isBeamed, eventId, part.id
                                 );
                                 svgContent += chordResult.svg;
 
@@ -710,7 +710,9 @@ export class Renderer {
         duration: string,
         staffTopY: number,
         scale: number = 1,
-        isBeamed: boolean = false
+        isBeamed: boolean = false,
+        eventId?: string,
+        partId?: string
     ): { svg: string, layout?: { x: number, stemTipY: number, stemUp: boolean } } {
         let svg = "";
         const r = this.config.noteRadius * scale;
@@ -775,6 +777,17 @@ export class Renderer {
                 const flagY = stemUp ? minY : maxY;
                 svg += this.renderFlag(cx, flagY, r, stemUp, duration, scale);
             }
+        }
+
+        // Wrap in a group with data attributes for interaction
+        if (eventId || partId) {
+            const attrs = [
+                eventId ? `data-event-id="${eventId}"` : '',
+                partId ? `data-part-id="${partId}"` : '',
+                'class="note-group"',
+                'style="cursor: pointer;"'
+            ].filter(Boolean).join(' ');
+            svg = `<g ${attrs}>${svg}</g>\n`;
         }
 
         return { svg, layout };

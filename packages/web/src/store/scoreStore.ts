@@ -11,6 +11,16 @@ import { type Score, ScoreBuilder } from '@melos/core'
 // Types
 // ═══════════════════════════════════════════════════════════════════════════
 
+export type SelectionType = 'note' | 'measure' | 'part' | null
+
+export interface Selection {
+    type: SelectionType
+    /** Event ID for notes, measure index for measures, part ID for parts */
+    id: string
+    /** Additional context (e.g., part ID when selecting a note) */
+    partId?: string
+}
+
 export interface ScoreMetadata {
     title: string
     composer: string
@@ -58,6 +68,10 @@ export interface ScoreState {
     updateTimeSignature: (count: number, unit: number) => void
     updateKeySignature: (fifths: number) => void
     updatePartName: (partId: string, name: string) => void
+
+    // Selection Actions
+    selection: Selection | null
+    setSelection: (selection: Selection | null) => void
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -109,6 +123,7 @@ export const useScoreStore = create<ScoreState>()(
         metadata: defaultMetadata,
         parts: [],
         selectedPartId: null,
+        selection: null,
         isLoading: false,
         error: null,
         history: [],
@@ -236,6 +251,11 @@ export const useScoreStore = create<ScoreState>()(
             }
             // Update parts derived list as well is handled by setScore logic
             setScore(updatedScore)
+        },
+
+        // Selection Actions
+        setSelection: (selection) => {
+            set({ selection })
         },
 
     }))

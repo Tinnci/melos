@@ -3,7 +3,7 @@
  * MNX Music Notation Editor with TailwindCSS + shadcn/ui
  */
 
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useScoreStore, useTransportStore, createDemoScore } from './store'
 import { useKeyboardShortcuts, usePersistence } from './hooks'
 import { Dropzone } from './components/Dropzone'
@@ -13,7 +13,8 @@ import { PropertiesPanel } from './components/PropertiesPanel'
 import { Sidebar } from './components/Sidebar'
 import { Button } from './components/ui/button'
 import { Badge } from './components/ui/badge'
-import { Undo2, Redo2, Music } from 'lucide-react'
+import { Undo2, Redo2, Music, FileText, FileAudio } from 'lucide-react'
+import { exportToPdf, exportToMidi } from './lib/exporter'
 
 function App() {
   const score = useScoreStore((s) => s.score)
@@ -26,6 +27,9 @@ function App() {
   const redo = useScoreStore((s) => s.redo)
   const status = useTransportStore((s) => s.status)
 
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
+  const [isExportingMidi, setIsExportingMidi] = useState(false)
+
   // Initialize hooks
   useKeyboardShortcuts()
   usePersistence()
@@ -34,6 +38,32 @@ function App() {
     const demo = createDemoScore()
     setScore(demo)
   }, [setScore])
+
+  const handleExportPdf = useCallback(async () => {
+    if (!score) return
+    setIsExportingPdf(true)
+    try {
+      await exportToPdf(score, 'melos-score')
+    } catch (err) {
+      console.error('PDF export failed:', err)
+      setError('PDF export failed')
+    } finally {
+      setIsExportingPdf(false)
+    }
+  }, [score, setError])
+
+  const handleExportMidi = useCallback(() => {
+    if (!score) return
+    setIsExportingMidi(true)
+    try {
+      exportToMidi(score, 'melos-score')
+    } catch (err) {
+      console.error('MIDI export failed:', err)
+      setError('MIDI export failed')
+    } finally {
+      setIsExportingMidi(false)
+    }
+  }, [score, setError])
 
   // Clear error after 5 seconds
   useEffect(() => {
@@ -83,6 +113,28 @@ function App() {
               <Redo2 className="w-4 h-4" />
             </Button>
           </div>
+          {score && (
+            <div className="flex items-center gap-1 pr-3 mr-3 border-r border-slate-700">
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={isExportingPdf}
+                onClick={handleExportPdf}
+                title="Export as PDF"
+              >
+                <FileText className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={isExportingMidi}
+                onClick={handleExportMidi}
+                title="Export as MIDI"
+              >
+                <FileAudio className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
           <Button variant="secondary" size="sm" onClick={handleLoadDemo}>
             Load Demo
           </Button>

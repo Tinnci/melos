@@ -145,6 +145,20 @@
   .status-dot-error {
     @apply bg-red-500;
   }
+
+  /* SVG Note Selection Styles */
+  :global(.note-group:hover) {
+    filter: brightness(1.2);
+  }
+
+  :global(.note-group.selected) {
+    filter: brightness(1.4);
+  }
+
+  :global(.note-group.selected) * {
+    fill: #6366f1 !important;
+    stroke: #6366f1 !important;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

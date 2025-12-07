@@ -3,15 +3,12 @@
  * Editable score properties with TailwindCSS + shadcn/ui
  */
 
-import { useState } from 'react'
 import { useScoreStore, useTransportStore } from '@/store'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Music2, Link2, ExternalLink, Settings2, Download, FileText, Music, Clock } from 'lucide-react'
-import { exportToPdf, exportToMidi } from '@/lib/exporter'
+import { Music2, Settings2, Clock } from 'lucide-react'
 
 // Time signature options
 const timeSignatureOptions = [
@@ -156,10 +153,7 @@ export function PropertiesPanel() {
                 </CardContent>
             </Card>
 
-            {/* Export Options */}
-            {score && (
-                <ExportCard score={score} />
-            )}
+
 
             {/* Parts */}
             <Card>
@@ -217,114 +211,7 @@ export function PropertiesPanel() {
                 </CardContent>
             </Card>
 
-            {/* Resources */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>
-                        <Link2 className="w-4 h-4 text-indigo-400" />
-                        Resources
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    <ResourceLink
-                        href="https://w3c.github.io/mnx/docs/"
-                        icon="📖"
-                        label="MNX Documentation"
-                    />
-                    <ResourceLink
-                        href="https://w3c.github.io/mnx/docs/mnx-reference/objects/"
-                        icon="📋"
-                        label="MNX Object Reference"
-                    />
-                    <ResourceLink
-                        href="https://w3c.github.io/mnx/docs/comparisons/musicxml/"
-                        icon="🔄"
-                        label="MusicXML Comparison"
-                    />
-                    <ResourceLink
-                        href="https://github.com/w3c/mnx"
-                        icon="🐙"
-                        label="W3C MNX Repository"
-                    />
-                </CardContent>
-            </Card>
         </>
     )
 }
 
-function ResourceLink({ href, icon, label }: { href: string; icon: string; label: string }) {
-    return (
-        <Button
-            variant="ghost"
-            size="sm"
-            asChild
-            className="w-full justify-start gap-2 text-slate-400 hover:text-white"
-        >
-            <a href={href} target="_blank" rel="noreferrer">
-                <span>{icon}</span>
-                {label}
-                <ExternalLink className="w-3 h-3 ml-auto opacity-50" />
-            </a>
-        </Button>
-    )
-}
-
-function ExportCard({ score }: { score: import('@melos/core').Score }) {
-    const [isExportingPdf, setIsExportingPdf] = useState(false)
-    const [isExportingMidi, setIsExportingMidi] = useState(false)
-
-    const handleExportPdf = async () => {
-        setIsExportingPdf(true)
-        try {
-            await exportToPdf(score, 'melos-score')
-        } catch (err) {
-            console.error('PDF export failed:', err)
-        } finally {
-            setIsExportingPdf(false)
-        }
-    }
-
-    const handleExportMidi = () => {
-        setIsExportingMidi(true)
-        try {
-            exportToMidi(score, 'melos-score')
-        } catch (err) {
-            console.error('MIDI export failed:', err)
-        } finally {
-            setIsExportingMidi(false)
-        }
-    }
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>
-                    <Download className="w-4 h-4 text-indigo-400" />
-                    Export
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-full justify-start gap-2"
-                    onClick={handleExportPdf}
-                    disabled={isExportingPdf}
-                >
-                    <FileText className="w-4 h-4" />
-                    {isExportingPdf ? 'Exporting...' : 'Export as PDF'}
-                </Button>
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-full justify-start gap-2"
-                    onClick={handleExportMidi}
-                    disabled={isExportingMidi}
-                >
-                    <Music className="w-4 h-4" />
-                    {isExportingMidi ? 'Exporting...' : 'Export as MIDI'}
-                </Button>
-            </CardContent>
-        </Card>
-    )
-}
