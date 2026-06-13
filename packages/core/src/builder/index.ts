@@ -1,7 +1,6 @@
-import {
+import type {
     Score, GlobalMeasure, Part, PartMeasure, Sequence,
-    Note, NoteValue, Pitch, Tie, Slur, DynamicEvent, Articulation,
-    Event, NoteValueBaseSchema
+    Note, NoteValue, Event
 } from "../schema";
 
 // Helper types
@@ -228,10 +227,3 @@ export class SequenceBuilder {
     }
 }
 
-// Internal Note parser helper (optional for future expansion)
-function parsePitch(input: string): Pitch {
-    // e.g., "C#4", "Bb3"
-    // Regex parsing implementation
-    // For now the builder requires explicit arguments to avoid ambiguity
-    return { step: "C", octave: 4 };
-}

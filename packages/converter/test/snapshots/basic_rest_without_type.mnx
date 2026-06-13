@@ -100,7 +100,7 @@
             {
               "clef": {
                 "sign": "G",
-                "line": 2
+                "staffPosition": -2
               },
               "staff": 1
             }
@@ -113,7 +113,7 @@
                 {
                   "id": "ev5",
                   "duration": {
-                    "base": "quarter",
+                    "base": "whole",
                     "dots": 0
                   },
                   "rest": {}

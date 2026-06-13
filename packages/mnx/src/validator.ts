@@ -97,17 +97,30 @@ export class MnxValidator {
     private static getNoteValueDuration(nv: NoteValue): number {
         let base = 0;
         switch (nv.base) {
-            case "long": base = 4; break;
+            case "duplexMaxima": base = 16; break;
+            case "maxima": base = 8; break;
+            case "longa": base = 4; break;
             case "breve": base = 2; break;
             case "whole": base = 1; break;
             case "half": base = 1 / 2; break;
             case "quarter": base = 1 / 4; break;
-            case "/8": base = 1 / 8; break;
-            case "/16": base = 1 / 16; break;
-            case "/32": base = 1 / 32; break;
-            case "/64": base = 1 / 64; break;
-            case "/128": base = 1 / 128; break;
-            case "/256": base = 1 / 256; break;
+            case "eighth": base = 1 / 8; break;
+            case "16th": base = 1 / 16; break;
+            case "32nd": base = 1 / 32; break;
+            case "64th": base = 1 / 64; break;
+            case "128th": base = 1 / 128; break;
+            case "256th": base = 1 / 256; break;
+            case "512th": base = 1 / 512; break;
+            case "1024th": base = 1 / 1024; break;
+            case "2048th": base = 1 / 2048; break;
+            case "4096th": base = 1 / 4096; break;
+            case "long" as any: base = 4; break;
+            case "/8" as any: base = 1 / 8; break;
+            case "/16" as any: base = 1 / 16; break;
+            case "/32" as any: base = 1 / 32; break;
+            case "/64" as any: base = 1 / 64; break;
+            case "/128" as any: base = 1 / 128; break;
+            case "/256" as any: base = 1 / 256; break;
             default: base = 0;
         }
 

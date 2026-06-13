@@ -29,6 +29,20 @@
               "content": [
                 {
                   "type": "tuplet",
+                  "inner": {
+                    "duration": {
+                      "base": "eighth",
+                      "dots": 0
+                    },
+                    "multiple": 3
+                  },
+                  "outer": {
+                    "duration": {
+                      "base": "eighth",
+                      "dots": 0
+                    },
+                    "multiple": 2
+                  },
                   "content": [
                     {
                       "id": "ev1",
@@ -95,7 +109,7 @@
             {
               "clef": {
                 "sign": "G",
-                "line": 2
+                "staffPosition": -2
               },
               "staff": 1
             }

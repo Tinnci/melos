@@ -1,5 +1,5 @@
-import { Score, Pitch, Note } from "@melos/core";
-import { pitchToMidi, midiToFreq, getDurationInBeats } from "./utils";
+import type { Score, Pitch, Note } from "@melos/core";
+import { pitchToMidi, midiToFreq, getDurationInBeats, getTupletScale } from "./utils";
 
 export class AudioPlayer {
     private ctx: AudioContext | null = null;
@@ -71,35 +71,7 @@ export class AudioPlayer {
                 let maxMeasureDuration = 0;
 
                 measure.sequences.forEach(seq => {
-                    let seqTime = currentTime;
-
-                    seq.content.forEach(event => {
-                        // Type guard or cast
-                        // Check if it is a complex event type (tuplet, grace, dynamic)
-                        if ('type' in event && (event.type === 'dynamic' || event.type === 'tuplet' || event.type === 'grace')) {
-                            // TODO: Handle these events
-                            return;
-                        }
-
-                        // Treat as BaseEvent
-                        const baseEvent = event as any;
-
-                        const beats = getDurationInBeats(baseEvent.duration);
-                        const durationSecs = beats * (60 / this.tempo);
-
-                        if (baseEvent.notes) {
-                            baseEvent.notes.forEach((note: Note) => {
-                                if (note.pitch) {
-                                    this.scheduleNote(note.pitch, seqTime, durationSecs);
-                                }
-                            });
-                        }
-
-                        seqTime += durationSecs;
-                    });
-
-                    // Update max duration found in this measure
-                    const seqDuration = seqTime - currentTime;
+                    const seqDuration = this.scheduleContent(seq.content, currentTime);
                     if (seqDuration > maxMeasureDuration) {
                         maxMeasureDuration = seqDuration;
                     }
@@ -114,6 +86,42 @@ export class AudioPlayer {
                 currentTime += maxMeasureDuration;
             });
         });
+    }
+
+    private scheduleContent(content: unknown[], startTime: number, scale = 1): number {
+        let seqTime = startTime;
+
+        content.forEach(event => {
+            if (!event || typeof event !== "object") return;
+
+            if ("type" in event) {
+                if (event.type === "tuplet" && "content" in event && Array.isArray(event.content)) {
+                    const duration = this.scheduleContent(event.content, seqTime, scale * getTupletScale(event));
+                    seqTime += duration;
+                    return;
+                }
+
+                if (event.type === "dynamic" || event.type === "grace") {
+                    return;
+                }
+            }
+
+            const baseEvent = event as any;
+            const beats = getDurationInBeats(baseEvent.duration) * scale;
+            const durationSecs = beats * (60 / this.tempo);
+
+            if (baseEvent.notes) {
+                baseEvent.notes.forEach((note: Note) => {
+                    if (note.pitch) {
+                        this.scheduleNote(note.pitch, seqTime, durationSecs);
+                    }
+                });
+            }
+
+            seqTime += durationSecs;
+        });
+
+        return seqTime - startTime;
     }
 
     private scheduleNote(pitch: Pitch, startTime: number, duration: number) {

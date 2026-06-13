@@ -1,7 +1,8 @@
-import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Tie, Slur, Lyric, DynamicEvent, Wedge, Ottava, Pedal, MultimeasureRest } from "@melos/core";
-import { generateEventId, generateNoteId } from "./Utils";
+import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Lyric, DynamicEvent, Wedge, Ottava, Pedal, MultimeasureRest } from "@melos/core";
+import { generateEventId, generateNoteId, musicXmlClefLineToStaffPosition, musicXmlNoteValue, parseInteger } from "./Utils";
 import { TimeTracker } from "./TimeTracker";
-import { XmlEventStream, type XmlToken } from "./XmlEventStream";
+import { XmlEventStream } from "./XmlEventStream";
+import type { OrderedXmlNode } from "./OrderedXml";
 
 export interface Container {
     content: any[];
@@ -37,15 +38,25 @@ export class MeasureParser {
     private activeBeams: Record<number, { eventIds: string[] }> = {};
     private voiceContexts: Map<string, VoiceContext> = new Map();
     private voiceOrder: string[] = [];
+    private xmlMeasure: any;
+    private orderedMeasure?: OrderedXmlNode[];
+    private context: PartParsingContext;
+    private measureIndex: number;
+    private clefs: NonNullable<PartMeasure["clefs"]> = [];
 
     private timeTracker: TimeTracker;
 
     constructor(
-        private xmlMeasure: any,
-        private context: PartParsingContext,
+        xmlMeasure: any,
+        context: PartParsingContext,
         globalDivisions: number = 1,
-        private measureIndex: number = 1
+        measureIndex: number = 1,
+        orderedMeasure?: OrderedXmlNode[]
     ) {
+        this.xmlMeasure = xmlMeasure;
+        this.orderedMeasure = orderedMeasure;
+        this.context = context;
+        this.measureIndex = measureIndex;
         this.timeTracker = new TimeTracker(globalDivisions);
     }
 
@@ -66,14 +77,41 @@ export class MeasureParser {
 
     parse(): PartMeasure {
         // Use the extracted logic stream
-        const xmlEvents = XmlEventStream.extract(this.xmlMeasure);
+        const xmlEvents = XmlEventStream.extract(this.xmlMeasure, this.orderedMeasure);
         const wedges: Wedge[] = [];
         const ottavas: Ottava[] = []; // [NEW] Ottava collection
         const pedals: Pedal[] = []; // [NEW] Pedal collection
 
         for (const token of xmlEvents) {
-            const voiceId = token.voice ? String(token.voice) : "1";
-            const ctx = this.getVoiceContext(voiceId);
+            if (token._tag === "attributes") {
+                this.handleAttributes(token);
+                continue;
+            }
+
+            if (token._tag === "backup") {
+                const duration = parseInteger(token.duration);
+                if (duration !== undefined) {
+                    this.timeTracker.backup(duration);
+                }
+                continue;
+            }
+
+            if (token._tag === "forward") {
+                const duration = parseInteger(token.duration);
+                if (duration !== undefined) {
+                    const voiceId = token.voice ? String(token.voice) : undefined;
+                    if (voiceId) {
+                        this.handleForwardRest(duration, this.getVoiceContext(voiceId), parseInteger(token.staff));
+                    }
+                    this.timeTracker.forward(duration, voiceId);
+                }
+                continue;
+            }
+
+            const voiceId = token.voice ? String(token.voice) : undefined;
+            const sequenceVoiceId = voiceId || "1";
+            const staff = parseInteger(token.staff);
+            const ctx = this.getVoiceContext(sequenceVoiceId);
 
             if (token._tag === "note") {
                 this.handleNote(token, ctx);
@@ -81,7 +119,7 @@ export class MeasureParser {
                 // Advance time tracking
                 // Only non-chord notes AND non-grace notes advance time
                 if (!token.chord && !token.grace && token.duration) {
-                    this.timeTracker.advance(voiceId, parseInt(token.duration));
+                    this.timeTracker.advance(sequenceVoiceId, parseInt(token.duration));
                 }
 
             } else if (token._tag === "direction") {
@@ -89,41 +127,24 @@ export class MeasureParser {
 
                 dTypes.forEach((dt: any) => {
                     if (dt.dynamics) {
-                        this.handleDynamics(dt, ctx);
+                        this.handleDynamics(dt, ctx, staff);
                     }
                     if (dt.wedge) {
-                        this.handleWedge(dt.wedge, wedges, voiceId);
+                        this.handleWedge(dt.wedge, wedges, voiceId, staff);
                     }
                     if (dt["octave-shift"]) {
-                        this.handleOttava(dt["octave-shift"], ottavas, voiceId);
+                        this.handleOttava(dt["octave-shift"], ottavas, voiceId, staff);
                     }
                     if (dt.pedal) {
-                        this.handlePedal(dt.pedal, pedals, voiceId);
+                        this.handlePedal(dt.pedal, pedals, voiceId, staff);
                     }
                 });
             }
         }
 
-        // --- Assemble Result ---
         const sequences: Sequence[] = this.voiceOrder.map(vId => {
             return { content: this.voiceContexts.get(vId)!.root };
         });
-
-        // Clefs
-        let clefs = undefined;
-        if (this.xmlMeasure.attributes && this.xmlMeasure.attributes.clef) {
-            const clefArr = Array.isArray(this.xmlMeasure.attributes.clef)
-                ? this.xmlMeasure.attributes.clef
-                : [this.xmlMeasure.attributes.clef];
-
-            clefs = clefArr.map((c: any, idx: number) => ({
-                clef: {
-                    sign: c.sign,
-                    line: c.line ? parseInt(c.line) : undefined
-                },
-                staff: parseInt(c["@_number"] || (idx + 1).toString())
-            }));
-        }
 
         if (sequences.length === 0) {
             sequences.push({ content: [] });
@@ -143,7 +164,7 @@ export class MeasureParser {
 
         return {
             sequences: sequences,
-            clefs: clefs,
+            clefs: this.clefs.length > 0 ? this.clefs : undefined,
             beams: this.beams.length > 0 ? this.beams : undefined,
             wedges: wedges.length > 0 ? wedges : undefined,
             ottavas: ottavas.length > 0 ? ottavas : undefined,
@@ -152,7 +173,47 @@ export class MeasureParser {
         };
     }
 
-    private handleWedge(wedgeXml: any, wedgesList: Wedge[], voiceId: string) {
+    private handleAttributes(attributesXml: any) {
+        if (!attributesXml.clef) return;
+
+        const clefArr = Array.isArray(attributesXml.clef)
+            ? attributesXml.clef
+            : [attributesXml.clef];
+
+        const position = this.timeTracker.getCurrentPosition();
+        const isMeasureStart = position.fraction[0] === 0;
+
+        clefArr.forEach((c: any, idx: number) => {
+            const clefEntry: NonNullable<PartMeasure["clefs"]>[number] = {
+                clef: {
+                    sign: c.sign,
+                    staffPosition: musicXmlClefLineToStaffPosition(c.line)
+                },
+                staff: parseInteger(c["@_number"]) || idx + 1
+            };
+
+            if (!isMeasureStart) {
+                clefEntry.position = position;
+            }
+
+            this.clefs.push(clefEntry);
+        });
+    }
+
+    private handleForwardRest(durationTicks: number, ctx: VoiceContext, staff?: number) {
+        const currentContainer = ctx.stack[ctx.stack.length - 1];
+        const restEvent: Event = {
+            id: generateEventId(),
+            duration: musicXmlNoteValue(undefined, durationTicks, this.timeTracker.getDivisions(), 0),
+            rest: { hidden: true },
+            staff
+        };
+
+        currentContainer.content.push(restEvent);
+        ctx.currentEvent = null;
+    }
+
+    private handleWedge(wedgeXml: any, wedgesList: Wedge[], voiceId?: string, staff?: number) {
         const type = wedgeXml["@_type"]; // crescendo | diminuendo | stop | continue
         const number = parseInt(wedgeXml["@_number"] || "1");
 
@@ -160,6 +221,7 @@ export class MeasureParser {
             const wedgeObj: Wedge = {
                 type: type,
                 position: this.timeTracker.getCurrentPosition(voiceId),
+                staff,
                 voice: voiceId
             };
 
@@ -187,7 +249,7 @@ export class MeasureParser {
      * MusicXML: <octave-shift type="up|down|stop" size="8|15|22" number="n"/>
      * MNX: { value: 1|-1|2|-2, position, end }
      */
-    private handleOttava(octaveShiftXml: any, ottavasList: Ottava[], voiceId: string) {
+    private handleOttava(octaveShiftXml: any, ottavasList: Ottava[], voiceId?: string, staff?: number) {
         const type = octaveShiftXml["@_type"]; // up | down | stop | continue
         const size = parseInt(octaveShiftXml["@_size"] || "8"); // 8, 15, or 22
         const number = parseInt(octaveShiftXml["@_number"] || "1");
@@ -205,6 +267,7 @@ export class MeasureParser {
                 value: value,
                 position: this.timeTracker.getCurrentPosition(voiceId),
                 end: { measure: this.measureIndex, position: this.timeTracker.getCurrentPosition(voiceId) }, // Placeholder, will be updated on stop
+                staff,
                 voice: voiceId
             };
 
@@ -227,7 +290,7 @@ export class MeasureParser {
         }
     }
 
-    private handlePedal(pedalXml: any, pedalsList: Pedal[], voiceId: string) {
+    private handlePedal(pedalXml: any, pedalsList: Pedal[], voiceId?: string, staff?: number) {
         const type = pedalXml["@_type"]; // start | stop | change | continue
         const line = pedalXml["@_line"] === "yes";
         const sign = pedalXml["@_sign"] === "yes" || !line;
@@ -238,6 +301,7 @@ export class MeasureParser {
                 position: this.timeTracker.getCurrentPosition(voiceId),
                 line: line,
                 sign: sign,
+                staff,
                 voice: voiceId
             };
             pedalsList.push(pedalObj);
@@ -257,6 +321,7 @@ export class MeasureParser {
                     const pedalStop: Pedal = {
                         type: "stop",
                         position: this.timeTracker.getCurrentPosition(voiceId),
+                        staff,
                         voice: voiceId
                     };
                     pedalsList.push(pedalStop);
@@ -267,6 +332,7 @@ export class MeasureParser {
                 pedalsList.push({
                     type: "stop",
                     position: this.timeTracker.getCurrentPosition(voiceId),
+                    staff,
                     voice: voiceId
                 });
             }
@@ -278,7 +344,7 @@ export class MeasureParser {
             if (active && active.pedalObj.line) {
                 active.pedalObj.end = { measure: this.measureIndex, position: pos };
             } else {
-                pedalsList.push({ type: "stop", position: pos, voice: voiceId });
+                pedalsList.push({ type: "stop", position: pos, staff, voice: voiceId });
             }
 
             const newPedal: Pedal = {
@@ -286,6 +352,7 @@ export class MeasureParser {
                 position: pos,
                 line: line,
                 sign: sign,
+                staff,
                 voice: voiceId
             };
             pedalsList.push(newPedal);
@@ -293,7 +360,7 @@ export class MeasureParser {
         }
     }
 
-    private handleDynamics(directionType: any, ctx: VoiceContext) {
+    private handleDynamics(directionType: any, ctx: VoiceContext, staff?: number) {
         const dynObj = directionType.dynamics;
         if (!dynObj) return;
 
@@ -302,7 +369,8 @@ export class MeasureParser {
             const value = keys[0];
             const dynamicEvent: DynamicEvent = {
                 type: "dynamic",
-                value: value as any
+                value: value as any,
+                staff
             };
             const currentContainer = ctx.stack[ctx.stack.length - 1];
             currentContainer.content.push(dynamicEvent);
@@ -315,18 +383,15 @@ export class MeasureParser {
 
         if (xNote.notations) {
             const notations = Array.isArray(xNote.notations) ? xNote.notations : [xNote.notations];
-            const tupletStartNode = notations.find((n: any) => n?.tuplet?.["@_type"] === "start");
+            const tupletStartNode = this.findTupletNotation(notations, "start");
 
             if (tupletStartNode) {
-                const newTuplet: Tuplet = {
-                    type: "tuplet",
-                    content: []
-                };
+                const newTuplet = this.createTuplet(xNote, tupletStartNode);
                 currentContainer.content.push(newTuplet);
 
                 const newContainer: Container = {
                     content: newTuplet.content,
-                    endCondition: { type: 'tuplet' }
+                    endCondition: { type: "tuplet", number: parseInteger(tupletStartNode["@_number"]) }
                 };
                 ctx.stack.push(newContainer);
                 currentContainer = newContainer;
@@ -353,12 +418,13 @@ export class MeasureParser {
         // --- 1. Event / Note Logic ---
         const isRest = xNote.rest !== undefined;
         const isChord = xNote.chord !== undefined;
-        const durBase: any = xNote.type || "quarter";
+        const staff = parseInteger(xNote.staff);
 
         let dots = 0;
         if (xNote.dot !== undefined) {
             dots = Array.isArray(xNote.dot) ? xNote.dot.length : 1;
         }
+        const duration = musicXmlNoteValue(xNote.type, xNote.duration, this.timeTracker.getDivisions(), dots);
         // Pitch Logic
         let noteObj: Note | null = null;
         let pitchKey = "";
@@ -371,7 +437,8 @@ export class MeasureParser {
                         step: xNote.pitch.step,
                         octave: parseInt(xNote.pitch.octave),
                         alter: xNote.pitch.alter ? parseInt(xNote.pitch.alter) : undefined
-                    }
+                    },
+                    staff
                 };
                 if (xNote.accidental) {
                     const accObj = typeof xNote.accidental === 'object' ? xNote.accidental : { "#text": xNote.accidental };
@@ -389,7 +456,8 @@ export class MeasureParser {
                     unpitched: {
                         step: xNote.unpitched["display-step"] || "C",
                         octave: parseInt(xNote.unpitched["display-octave"] || "4")
-                    }
+                    },
+                    staff
                 };
                 pitchKey = "unpitched";
             }
@@ -412,12 +480,16 @@ export class MeasureParser {
             if (noteObj && ctx.currentEvent.notes) {
                 ctx.currentEvent.notes.push(noteObj);
             }
+            if (staff !== undefined && ctx.currentEvent.staff === undefined) {
+                ctx.currentEvent.staff = staff;
+            }
             eventId = ctx.currentEvent.id!;
         } else {
             eventId = generateEventId();
             const evt: Event = {
                 id: eventId,
-                duration: { base: durBase, dots: dots }
+                duration,
+                staff
             };
 
             if (isRest) {
@@ -598,7 +670,7 @@ export class MeasureParser {
         // --- 2. Tuplet STOP Logic ---
         if (xNote.notations) {
             const notations = Array.isArray(xNote.notations) ? xNote.notations : [xNote.notations];
-            const tupletStopNode = notations.find((n: any) => n?.tuplet?.["@_type"] === "stop");
+            const tupletStopNode = this.findTupletNotation(notations, "stop");
 
             if (tupletStopNode) {
                 if (ctx.stack.length > 1 && currentContainer.endCondition?.type === 'tuplet') {
@@ -606,5 +678,36 @@ export class MeasureParser {
                 }
             }
         }
+    }
+
+    private createTuplet(xNote: any, _tupletXml: any): Tuplet {
+        const timeModification = xNote["time-modification"];
+        const actualNotes = parseInteger(timeModification?.["actual-notes"]) || 3;
+        const normalNotes = parseInteger(timeModification?.["normal-notes"]) || 2;
+        const quantityType = timeModification?.["normal-type"] || xNote.type;
+        const quantityDuration = musicXmlNoteValue(quantityType, undefined, this.timeTracker.getDivisions(), 0);
+
+        return {
+            type: "tuplet",
+            inner: {
+                duration: quantityDuration,
+                multiple: actualNotes
+            },
+            outer: {
+                duration: quantityDuration,
+                multiple: normalNotes
+            },
+            content: []
+        };
+    }
+
+    private findTupletNotation(notations: any[], type: "start" | "stop"): any | undefined {
+        for (const notation of notations) {
+            const tuplets = Array.isArray(notation?.tuplet) ? notation.tuplet : [notation?.tuplet];
+            const match = tuplets.find((tuplet: any) => tuplet?.["@_type"] === type);
+            if (match) return match;
+        }
+
+        return undefined;
     }
 }

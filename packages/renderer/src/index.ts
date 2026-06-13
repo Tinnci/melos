@@ -35,7 +35,7 @@ export class Renderer {
         const curveRequests: Array<{ type: 'tie' | 'slur' | 'tremolo', sourceId: string, targetId: string, side?: string, marks?: number }> = [];
         const pendingTremolos: Map<string, { sourceId: string, marks: number }> = new Map();
 
-        score.parts.forEach((part, pIndex) => {
+        score.parts.forEach((part) => {
             // Track current position
             let currentX = this.config.paddingX;
             let systemStartY = currentY;
@@ -233,7 +233,9 @@ export class Renderer {
 
                             } else if (item.rest) {
                                 const duration = item.duration?.base || "quarter";
-                                svgContent += this.renderRest(noteX, currentY, duration);
+                                if (!item.rest.hidden) {
+                                    svgContent += this.renderRest(noteX, currentY, duration);
+                                }
                                 noteX += this.getNoteWidth(duration);
 
                             } else if (item.type === 'tuplet' || item.type === 'grace') {
@@ -824,10 +826,6 @@ export class Renderer {
         // Beam thickness
         const beamHeight = 5;
 
-        // Calculate slope
-        const dx = last.x - first.x;
-        const dy = last.y - first.y;
-
         // For a simple implementation, we'll use a polygon for the beam
         // The beam is a parallelogram following the slope
         let svg = "";
@@ -1043,27 +1041,6 @@ export class Renderer {
     }
 
     /**
-     * Legacy single-note render (kept for compatibility, now delegates to renderChord).
-     */
-    private renderNote(cx: number, cy: number, duration: string, note: Note, staffTopY: number, scale: number = 1): string {
-        return this.renderChord(cx, [note], duration, staffTopY, scale);
-    }
-
-    /**
-     * Render note stem.
-     */
-    private renderStem(cx: number, cy: number, r: number, stemUp: boolean, scale: number): string {
-        const stemLen = this.config.stemLength * scale;
-        if (stemUp) {
-            const x = cx + r;
-            return `<line x1="${x}" y1="${cy}" x2="${x}" y2="${cy - stemLen}" stroke="black" stroke-width="1" />\n`;
-        } else {
-            const x = cx - r;
-            return `<line x1="${x}" y1="${cy}" x2="${x}" y2="${cy + stemLen}" stroke="black" stroke-width="1" />\n`;
-        }
-    }
-
-    /**
      * Render flag for eighth notes and shorter.
      */
     private renderFlag(cx: number, cy: number, r: number, stemUp: boolean, duration: string, scale: number): string {
@@ -1119,8 +1096,6 @@ export class Renderer {
      * Render rest symbols.
      */
     private renderRest(x: number, staffTopY: number, duration: string): string {
-        const centerY = staffTopY + 2 * this.config.lineSpacing;
-
         if (duration === "whole") {
             // Thick bar hanging from line 2
             return `<rect x="${x}" y="${staffTopY + this.config.lineSpacing}" width="12" height="5" fill="black" />\n`;

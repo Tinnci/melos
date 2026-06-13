@@ -29,6 +29,20 @@
               "content": [
                 {
                   "type": "tuplet",
+                  "inner": {
+                    "duration": {
+                      "base": "16th",
+                      "dots": 0
+                    },
+                    "multiple": 3
+                  },
+                  "outer": {
+                    "duration": {
+                      "base": "16th",
+                      "dots": 0
+                    },
+                    "multiple": 2
+                  },
                   "content": [
                     {
                       "id": "ev1",
@@ -82,6 +96,20 @@
                 },
                 {
                   "type": "tuplet",
+                  "inner": {
+                    "duration": {
+                      "base": "16th",
+                      "dots": 0
+                    },
+                    "multiple": 3
+                  },
+                  "outer": {
+                    "duration": {
+                      "base": "16th",
+                      "dots": 0
+                    },
+                    "multiple": 2
+                  },
                   "content": [
                     {
                       "id": "ev4",
@@ -156,7 +184,7 @@
             {
               "clef": {
                 "sign": "G",
-                "line": 2
+                "staffPosition": -2
               },
               "staff": 1
             }

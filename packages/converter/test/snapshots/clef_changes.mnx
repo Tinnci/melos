@@ -4,7 +4,15 @@
   },
   "global": {
     "measures": [
-      {}
+      {
+        "time": {
+          "count": 4,
+          "unit": 4
+        },
+        "key": {
+          "fifths": 0
+        }
+      }
     ]
   },
   "parts": [
@@ -81,6 +89,28 @@
                   ]
                 }
               ]
+            }
+          ],
+          "clefs": [
+            {
+              "clef": {
+                "sign": "G",
+                "staffPosition": -2
+              },
+              "staff": 1
+            },
+            {
+              "clef": {
+                "sign": "F",
+                "staffPosition": 2
+              },
+              "staff": 1,
+              "position": {
+                "fraction": [
+                  8,
+                  16
+                ]
+              }
             }
           ]
         }

@@ -28,6 +28,20 @@
               "content": [
                 {
                   "type": "tuplet",
+                  "inner": {
+                    "duration": {
+                      "base": "eighth",
+                      "dots": 0
+                    },
+                    "multiple": 3
+                  },
+                  "outer": {
+                    "duration": {
+                      "base": "eighth",
+                      "dots": 0
+                    },
+                    "multiple": 2
+                  },
                   "content": [
                     {
                       "id": "ev1",
@@ -65,6 +79,20 @@
                 },
                 {
                   "type": "tuplet",
+                  "inner": {
+                    "duration": {
+                      "base": "eighth",
+                      "dots": 0
+                    },
+                    "multiple": 3
+                  },
+                  "outer": {
+                    "duration": {
+                      "base": "eighth",
+                      "dots": 0
+                    },
+                    "multiple": 2
+                  },
                   "content": [
                     {
                       "id": "ev3",
@@ -155,7 +183,7 @@
             {
               "clef": {
                 "sign": "G",
-                "line": 2
+                "staffPosition": -2
               },
               "staff": 1
             }
@@ -176,6 +204,20 @@
               "content": [
                 {
                   "type": "tuplet",
+                  "inner": {
+                    "duration": {
+                      "base": "quarter",
+                      "dots": 0
+                    },
+                    "multiple": 6
+                  },
+                  "outer": {
+                    "duration": {
+                      "base": "quarter",
+                      "dots": 0
+                    },
+                    "multiple": 4
+                  },
                   "content": [
                     {
                       "id": "ev8",

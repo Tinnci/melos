@@ -97,7 +97,7 @@
             {
               "clef": {
                 "sign": "G",
-                "line": 2
+                "staffPosition": -2
               },
               "staff": 1
             }
@@ -264,7 +264,7 @@
             {
               "clef": {
                 "sign": "G",
-                "line": 2
+                "staffPosition": -2
               },
               "staff": 1
             }

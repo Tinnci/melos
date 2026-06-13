@@ -5,8 +5,9 @@ import { z } from "zod";
 export const VersionNumberSchema = z.number().int().min(1);
 
 export const NoteValueBaseSchema = z.enum([
-    "duplex-maxima", "maxima", "long", "breve", "whole", "half", "quarter",
-    "/8", "/16", "/32", "/64", "/128", "/256", "/512", "/1024"
+    "duplexMaxima", "maxima", "longa", "breve", "whole", "half", "quarter",
+    "eighth", "16th", "32nd", "64th", "128th", "256th", "512th", "1024th",
+    "2048th", "4096th"
 ]);
 
 export const NoteValueQuantitySchema = z.number().int().min(1);
@@ -71,7 +72,8 @@ export const DynamicValueSchema = z.enum([
 
 export const DynamicEventSchema = z.object({
     type: z.literal("dynamic"),
-    value: DynamicValueSchema
+    value: DynamicValueSchema,
+    staff: z.number().int().optional()
 });
 
 // [NEW] Articulation Enum
@@ -88,7 +90,10 @@ export const BaseEventSchema = z.object({
     id: z.string().optional(),
     duration: NoteValueSchema.optional(),
     notes: z.array(NoteSchema).optional(),
-    rest: z.object({}).optional(),
+    rest: z.object({
+        hidden: z.boolean().optional()
+    }).optional(),
+    staff: z.number().int().optional(),
     slurs: z.array(SlurSchema).optional(),
     lyrics: z.array(LyricSchema).optional(),
     articulations: z.array(ArticulationSchema).optional(),
@@ -112,11 +117,11 @@ export const TupletSchema = z.object({
     outer: z.object({
         duration: NoteValueSchema,
         multiple: z.number().int().optional()
-    }).optional(),
+    }),
     inner: z.object({
         duration: NoteValueSchema,
         multiple: z.number().int().optional()
-    }).optional(),
+    }),
     content: z.array(z.any())
 });
 
@@ -258,7 +263,8 @@ export const GlobalSchema = z.object({
 
 export const PositionedClefSchema = z.object({
     clef: ClefSchema,
-    staff: z.number().int().optional()
+    staff: z.number().int().optional(),
+    position: RhythmicPositionSchema.optional()
 });
 
 export const PartMeasureSchema = z.object({

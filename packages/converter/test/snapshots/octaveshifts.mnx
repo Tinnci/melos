@@ -80,9 +80,29 @@
             {
               "clef": {
                 "sign": "G",
-                "line": 2
+                "staffPosition": -2
               },
               "staff": 1
+            }
+          ],
+          "ottavas": [
+            {
+              "value": -1,
+              "position": {
+                "fraction": [
+                  512,
+                  1024
+                ]
+              },
+              "end": {
+                "measure": 2,
+                "position": {
+                  "fraction": [
+                    768,
+                    1024
+                  ]
+                }
+              }
             }
           ]
         },

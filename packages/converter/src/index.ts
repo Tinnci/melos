@@ -1,15 +1,19 @@
 import { XMLParser } from "fast-xml-parser";
 import type { Score, GlobalMeasure, Part, PartMeasure, LyricLine, Jump } from "@melos/core";
 import { MeasureParser, type PartParsingContext } from "./parsers/MeasureParser";
-import { resetIdCounters } from "./parsers/Utils";
+import { parseInteger, resetIdCounters } from "./parsers/Utils";
+import { findOrderedRoot, getOrderedChildren, getOrderedContent, type OrderedXmlNode } from "./parsers/OrderedXml";
 
 export class MusicXMLToMNX {
     private xmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_" });
+    private orderedXmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", preserveOrder: true });
 
     convert(xmlContent: string): Score {
         resetIdCounters();
         const xmlObj = this.xmlParser.parse(xmlContent);
+        const orderedXmlObj = this.orderedXmlParser.parse(xmlContent) as OrderedXmlNode[];
         const root = xmlObj["score-partwise"];
+        const orderedRoot = findOrderedRoot(orderedXmlObj, "score-partwise");
 
         if (!root) {
             throw new Error("Invalid MusicXML: Missing score-partwise");
@@ -20,29 +24,33 @@ export class MusicXMLToMNX {
         const firstPartMeasures = Array.isArray(partsArray[0]?.measure) ? partsArray[0].measure : [partsArray[0]?.measure];
 
         const globalMeasures: GlobalMeasure[] = [];
-        let globalDivisions = 1;
+        let initialDivisions = 1;
 
-        firstPartMeasures.forEach((m: any, index: number) => {
+        firstPartMeasures.forEach((m: any, measureIndex: number) => {
             const gm: GlobalMeasure = {};
+            const attributes = asArray(m?.attributes);
 
             // Capture divisions from the first relevant measure (usually measure 1)
-            if (m.attributes && m.attributes.divisions) {
-                globalDivisions = parseInt(m.attributes.divisions);
+            const measureDivisions = findAttributeValue(attributes, "divisions");
+            if (measureDivisions !== undefined && measureIndex === 0) {
+                initialDivisions = measureDivisions;
             }
 
-            if (m.attributes && m.attributes.time) {
+            const timeAttributes = attributes.find((a: any) => a?.time);
+            if (timeAttributes?.time) {
                 gm.time = {
-                    count: parseInt(m.attributes.time.beats),
-                    unit: parseInt(m.attributes.time["beat-type"])
+                    count: parseInt(timeAttributes.time.beats),
+                    unit: parseInt(timeAttributes.time["beat-type"])
                 };
             }
 
-            if (m.attributes && m.attributes.key) {
+            const keyAttributes = attributes.find((a: any) => a?.key);
+            if (keyAttributes?.key) {
                 gm.key = {
-                    fifths: parseInt(m.attributes.key.fifths)
+                    fifths: parseInt(keyAttributes.key.fifths)
                 };
-                if (m.attributes.key.mode) {
-                    gm.key.mode = m.attributes.key.mode;
+                if (keyAttributes.key.mode) {
+                    gm.key.mode = keyAttributes.key.mode;
                 }
             }
 
@@ -52,8 +60,6 @@ export class MusicXMLToMNX {
 
                 barlines.forEach((bl: any) => {
                     const style = bl["bar-style"];
-                    const location = bl["@_location"] || "right";
-
                     // Bar style
                     if (style === "light-heavy") {
                         gm.barline = { type: "final" };
@@ -151,6 +157,7 @@ export class MusicXMLToMNX {
 
         // Shared lyric lines collection across all parts
         const sharedLyricLines = new Map<string, { id: string, name: string }>();
+        const orderedPartNodes = getOrderedChildren(orderedRoot, "part");
 
         // 1.5 Parse Part Metadata (Sound definitions)
         const partMetaMap = new Map<string, any>();
@@ -182,6 +189,8 @@ export class MusicXMLToMNX {
         // 2. Build Parts
         const mnxParts: Part[] = partsArray.map((p: any, pIndex: number) => {
             const partMeasuresRaw = Array.isArray(p.measure) ? p.measure : [p.measure];
+            const orderedMeasureNodes = getOrderedChildren(orderedPartNodes[pIndex], "measure");
+            let partDivisions = initialDivisions;
 
             // Initialize Context for this Part (persists across measures)
             const context: PartParsingContext = {
@@ -194,8 +203,19 @@ export class MusicXMLToMNX {
             };
 
             const mnxMeasures: PartMeasure[] = partMeasuresRaw.map((m: any, mIndex: number) => {
+                const measureDivisions = findAttributeValue(asArray(m?.attributes), "divisions");
+                if (measureDivisions !== undefined) {
+                    partDivisions = measureDivisions;
+                }
+
                 // Pass context, divisions, and measure index
-                const parser = new MeasureParser(m, context, globalDivisions, mIndex + 1);
+                const parser = new MeasureParser(
+                    m,
+                    context,
+                    partDivisions,
+                    mIndex + 1,
+                    getOrderedContent(orderedMeasureNodes[mIndex])
+                );
                 return parser.parse();
             });
 
@@ -222,4 +242,18 @@ export class MusicXMLToMNX {
             parts: mnxParts
         };
     }
+}
+
+function asArray<T>(value: T | T[] | undefined | null): T[] {
+    if (value === undefined || value === null) return [];
+    return Array.isArray(value) ? value : [value];
+}
+
+function findAttributeValue(attributes: any[], key: string): number | undefined {
+    for (const attribute of attributes) {
+        const value = parseInteger(attribute?.[key]);
+        if (value !== undefined) return value;
+    }
+
+    return undefined;
 }
