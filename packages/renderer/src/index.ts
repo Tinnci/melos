@@ -11,10 +11,12 @@ import {
     SMUFL_FONT_STACK
 } from "./smufl";
 import { createRenderPlan, type RenderPlan, type RenderPlanOptions } from "./plan";
+import { solveMeasureSpacing, type MeasureSpacing } from "./spacing";
 
 export * from "./smufl";
 export * from "./layout";
 export * from "./plan";
+export * from "./spacing";
 
 type ChordLayout = {
     x: number;
@@ -140,6 +142,7 @@ export class Renderer {
                     const measureWidth = measurePlan.width;
                     const measureEndX = measureX + measureWidth;
                     const globalMeasure = score.global.measures[measurePlan.measureIndex];
+                    const spacing = solveMeasureSpacing(score, measurePlan);
 
                     svgContent += this.renderBarline(measureX, systemY, "start", globalMeasure);
                     svgContent += this.renderMeasureHitbox(
@@ -186,7 +189,9 @@ export class Renderer {
                                 eventPositions,
                                 globalPositions,
                                 curveRequests,
-                                pendingTremolos
+                                pendingTremolos,
+                                spacing,
+                                `parts[${partPlan.partIndex}].measures[${measurePlan.measureIndex}].sequences[${sequenceIndex}].content`
                             );
                         });
 
@@ -405,20 +410,24 @@ export class Renderer {
         eventPositions: Map<string, ChordLayout>,
         globalPositions: Map<string, GlobalPosition>,
         curveRequests: CurveRequest[],
-        pendingTremolos: Map<string, { sourceId: string, marks: number }>
+        pendingTremolos: Map<string, { sourceId: string, marks: number }>,
+        spacing?: MeasureSpacing,
+        pathPrefix = "content"
     ): string {
         let svg = "";
         let noteX = startX;
 
-        content.forEach((item) => {
+        content.forEach((item, itemIndex) => {
+            const itemPath = `${pathPrefix}[${itemIndex}]`;
             if (item.notes && item.notes.length > 0) {
                 const duration = item.duration?.base || "quarter";
                 const dots = item.duration?.dots || 0;
                 const eventId = item.id || `event-${noteX}`;
+                const eventX = this.resolveSpacingX(item, itemPath, noteX, spacing);
                 const isBeamed = beamedEventIds.has(eventId);
 
                 const chordResult = this.renderChordWithLayout(
-                    noteX,
+                    eventX,
                     item.notes,
                     duration,
                     staffTopY,
@@ -438,7 +447,7 @@ export class Renderer {
                 if (chordResult.layout) {
                     const noteHeadY = (chordResult.layout.minY + chordResult.layout.maxY) / 2;
                     globalPositions.set(eventId, {
-                        x: noteX,
+                        x: eventX,
                         y: noteHeadY,
                         stemUp: chordResult.layout.stemUp,
                         stemTipY: chordResult.layout.stemTipY
@@ -446,7 +455,7 @@ export class Renderer {
                 }
 
                 if (item.articulations && chordResult.layout) {
-                    svg += this.renderArticulations(noteX, item.articulations, chordResult.layout);
+                    svg += this.renderArticulations(eventX, item.articulations, chordResult.layout);
                 }
 
                 if (item.slurs && Array.isArray(item.slurs)) {
@@ -478,7 +487,7 @@ export class Renderer {
                 }
 
                 if (item.tremolo) {
-                    svg += this.renderTremoloEvent(noteX, item, eventId, chordResult.layout, curveRequests, pendingTremolos);
+                    svg += this.renderTremoloEvent(eventX, item, eventId, chordResult.layout, curveRequests, pendingTremolos);
                 }
 
                 noteX += this.getNoteWidth(duration, dots);
@@ -486,19 +495,23 @@ export class Renderer {
                 const duration = item.duration?.base || "quarter";
                 const dots = item.duration?.dots || 0;
                 const eventId = item.id || `event-${noteX}`;
+                const eventX = this.resolveSpacingX(item, itemPath, noteX, spacing);
                 if (!item.rest.hidden) {
-                    svg += this.renderRest(noteX, staffTopY, duration, dots, eventId, partId);
+                    svg += this.renderRest(eventX, staffTopY, duration, dots, eventId, partId);
                 }
                 noteX += this.getNoteWidth(duration, dots);
             } else if (item.type === 'dynamic' && item.value) {
                 const eventId = item.id || `event-${noteX}`;
-                svg += this.renderDynamic(noteX, staffTopY, item.value, item.glyph, eventId, partId);
+                const eventX = this.resolveSpacingX(item, itemPath, noteX, spacing);
+                svg += this.renderDynamic(eventX, staffTopY, item.value, item.glyph, eventId, partId);
             } else if (item.type === 'tuplet' || item.type === 'grace') {
-                item.content?.forEach((subItem) => {
+                item.content?.forEach((subItem, subItemIndex) => {
+                    const subItemPath = `${itemPath}.content[${subItemIndex}]`;
+                    const eventX = this.resolveSpacingX(subItem, subItemPath, noteX, spacing);
                     if (subItem.notes && subItem.notes.length > 0) {
                         const duration = subItem.duration?.base || "eighth";
                         svg += this.renderChord(
-                            noteX,
+                            eventX,
                             subItem.notes,
                             duration,
                             staffTopY,
@@ -515,6 +528,23 @@ export class Renderer {
         });
 
         return svg;
+    }
+
+    private resolveSpacingX(
+        item: RenderItem,
+        path: string,
+        fallbackX: number,
+        spacing?: MeasureSpacing
+    ): number {
+        const byPath = spacing?.eventsByPath.get(path);
+        if (byPath) return byPath.x;
+
+        if (item.id) {
+            const byId = spacing?.eventsById.get(item.id)?.[0];
+            if (byId) return byId.x;
+        }
+
+        return fallbackX;
     }
 
     private renderTremoloEvent(

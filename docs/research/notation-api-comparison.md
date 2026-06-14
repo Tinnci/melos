@@ -56,6 +56,7 @@ consumers:
 - Timeline builders create normalized timing data.
 - Timeline indexes provide lookup by measure, sequence, id, and path.
 - Render plans expose systems and measure geometry before SVG serialization.
+- Measure spacing exposes timeline-aligned event columns before glyph drawing.
 - Renderers, players, and editor selection use indexes instead of inventing
   local traversal rules.
 - Duplicate event ids are represented as multiple matches rather than silently

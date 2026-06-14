@@ -14,6 +14,8 @@ Implemented:
 - `Renderer.createPlan(score)` exposes system and measure geometry before SVG
   serialization.
 - `renderer/src/plan.ts` wraps measures into systems from layout analysis.
+- `renderer/src/spacing.ts` maps core timeline events to measure columns and x
+  positions.
 - `renderer/src/smufl.ts` resolves common SMuFL glyph names.
 - `renderer/src/layout.ts` analyzes hard, soft, and overlay spacing
   contributions from `@melos/core` timeline data.
@@ -45,7 +47,7 @@ Score
 | Core timeline | Timed event refs, inherited meter, tuplets, grace timing, rhythm diagnostics | Started in `@melos/core` |
 | Measure layout analysis | Hard/soft/overlay spacing contributions | Started in `@melos/renderer` |
 | Render plan | Systems, measure x/y/width, content ranges, layout diagnostics | Started in `@melos/renderer` |
-| Spacing solver | Horizontal positions, stretch/compression, wrapping | Missing |
+| Spacing solver | Event columns and x positions from timeline beats | Started in `@melos/renderer` |
 | Glyph planner | SMuFL glyphs, text items, stems, beams, curves, hitboxes | Partly inside `Renderer` |
 | Collision resolver | Accidentals, dots, lyrics, articulations, dynamics, spans | Missing |
 | Render backend | SVG/canvas/PDF/test serialization | SVG inline in `Renderer` |
@@ -57,6 +59,7 @@ Renderer input:
 ```ts
 Renderer.render(score: Score): string
 Renderer.createPlan(score: Score): RenderPlan
+solveMeasureSpacing(score: Score, measure: RenderPlanMeasure): MeasureSpacing
 ```
 
 Intermediate outputs:
@@ -64,6 +67,8 @@ Intermediate outputs:
 - `MeasureLayoutAnalysis`: per-measure spacing contributions and diagnostics.
 - `RenderPlan`: part systems, measure geometry, content x-ranges, and collected
   layout diagnostics.
+- `MeasureSpacing`: timeline-aligned event columns, event x positions, and
+  path/id indexes for renderer lookup.
 
 Renderer output:
 
@@ -102,6 +107,23 @@ interface RenderPlanMeasure {
 ```
 
 SVG rendering now consumes this plan for system wrapping and measure geometry.
+
+## Spacing Solver Contract
+
+`MeasureSpacing` maps timeline events to columns before glyph drawing:
+
+```ts
+interface SpacingEventPosition {
+  event: TimedEventRef;
+  x: number;
+  columnIndex: number;
+  visualWidth: number;
+}
+```
+
+The current solver is beat-proportional within the measure content range. It
+aligns simultaneous events across voices and lets SVG rendering fall back to
+legacy sequential positions only when a source item has no timeline event.
 
 ## Glyph Plan Contract Sketch
 
@@ -149,7 +171,9 @@ should stay in renderer layers.
 2. Expand `analyzeMeasureLayout()` until it explains current measure widths.
 3. Move private width helpers from `Renderer` into layout helpers. Done for
    system wrapping and measure geometry through `RenderPlan`.
-4. Add `SpacingSolver` for column positions and stretch/compression.
+4. Add `SpacingSolver` for column positions and stretch/compression. Started
+   for timeline-aligned event columns; stretch/compression still needs a fuller
+   solver.
 5. Add `GlyphPlanner` and make SVG output a backend.
 6. Add collision passes for accidentals, dots, lyrics, articulations, dynamics,
    pedals, and ottavas.

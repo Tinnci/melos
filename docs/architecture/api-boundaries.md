@@ -117,6 +117,7 @@ Renderer planning and output:
 Renderer.createPlan(score)
 Renderer.render(score)
 createRenderPlan(score, options?)
+solveMeasureSpacing(score, measure, options?)
 ```
 
 ## Remaining Risks

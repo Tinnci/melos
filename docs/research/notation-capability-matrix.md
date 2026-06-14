@@ -43,7 +43,7 @@ Status key:
 | Microtonal accidentals | Missing | SMuFL research note | Glyph resolver and schema coverage |
 | Percussion/unpitched | Partial | core schema, converter support | Staff mapping and playback |
 | Polymeter | Missing | LilyPond research note | Core timeline and layout diagnostics |
-| Horizontal spacing | Planned | `renderer/src/layout.ts` | Real solver not implemented |
+| Horizontal spacing | Partial | `renderer/src/layout.ts`, `renderer/src/plan.ts`, `renderer/src/spacing.ts` | Stretch/compression solver not implemented |
 | Collision avoidance | Missing | renderer architecture doc | Needs `CollisionResolver` |
 | SMuFL glyph mapping | Partial | `renderer/src/smufl.ts` | More glyphs and metrics metadata |
 | SVG preview | Supported | `Renderer.render()` | Backend still coupled to planning |

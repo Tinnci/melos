@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { ScoreSchema } from "@melos/core";
-import { Renderer } from "../src/index";
+import { Renderer, solveMeasureSpacing } from "../src/index";
 
 describe("multi-sequence rendering", () => {
     it("renders every sequence in a measure instead of only the first voice", () => {
@@ -85,9 +85,14 @@ describe("multi-sequence rendering", () => {
             }]
         });
 
-        const svg = new Renderer().render(score);
+        const renderer = new Renderer();
+        const plan = renderer.createPlan(score);
+        const spacing = solveMeasureSpacing(score, plan.systems[0].measures[0]);
+        const entryX = spacing.eventsById.get("entry")?.[0]?.x ?? 0;
+        const svg = renderer.render(score);
 
         expect(svg).toContain('data-event-id="entry"');
         expect(svg).not.toContain('data-event-id="skip"');
+        expect(svg).toContain(`class="event-hitbox" x="${entryX - 24}"`);
     });
 });
