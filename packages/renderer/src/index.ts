@@ -1,22 +1,23 @@
 import type { Score, Note, GlobalMeasure, Jump, Clef } from "@melos/core";
+import { SMUFL_FONT_STACK } from "./smufl";
 import {
-    getSmuflChar,
-    resolveAccidentalGlyph,
-    resolveArticulationGlyph,
-    resolveClefGlyph,
-    resolveDynamicGlyphs,
-    resolveNoteheadGlyph,
-    resolvePedalGlyph,
-    resolveRestGlyph,
-    SMUFL_FONT_STACK,
-} from "./smufl";
-import { createRenderPlan, type RenderPlan, type RenderPlanOptions } from "./plan";
+    createRenderPlan,
+    type RenderPlan,
+    type RenderPlanMeasure,
+    type RenderPlanOptions,
+    type RenderPlanPart,
+    type RenderPlanSystem,
+} from "./plan";
 import { solveMeasureSpacing, type MeasureSpacing } from "./spacing";
+import { GlyphPlanner } from "./glyphPlanner";
+import { SvgRenderBackend } from "./svgBackend";
 
 export * from "./smufl";
 export * from "./layout";
 export * from "./plan";
 export * from "./spacing";
+export * from "./glyphPlanner";
+export * from "./svgBackend";
 
 type ChordLayout = {
     x: number;
@@ -25,6 +26,23 @@ type ChordLayout = {
     stemUp: boolean;
     minY: number;
     maxY: number;
+};
+type PositionedChordNote = {
+    note: Note;
+    y: number;
+    offsetX: number;
+};
+type PlannedChord = {
+    cx: number;
+    notes: PositionedChordNote[];
+    duration: string;
+    staffTopY: number;
+    scale: number;
+    dots: number;
+    r: number;
+    minY: number;
+    maxY: number;
+    stemUp: boolean;
 };
 
 type StemDirection = "up" | "down";
@@ -63,6 +81,75 @@ type RenderMeasure = {
         end?: { measure?: number; position?: { fraction?: [number, number] } };
     }>;
 };
+type RenderPartContext = {
+    score: Score;
+    part: RenderPart;
+    partPlan: RenderPlanPart;
+    renderedPartId: string;
+    state: DeferredRenderState;
+};
+type RenderSystemContext = RenderPartContext & {
+    system: RenderPlanSystem;
+};
+type RenderMeasureContext = RenderPartContext & {
+    measurePlan: RenderPlanMeasure;
+};
+type RenderMeasureContentContext = {
+    score: Score;
+    partPlan: RenderPlanPart;
+    measurePlan: RenderPlanMeasure;
+    renderedPartId: string;
+    renderMeasure: RenderMeasure;
+    state: DeferredRenderState;
+};
+type RenderSequenceContext = {
+    startX: number;
+    staffTopY: number;
+    partId: string | undefined;
+    stemDirection: StemDirection | undefined;
+    beamedEventIds: Set<string>;
+    eventPositions: Map<string, ChordLayout>;
+    globalPositions: Map<string, GlobalPosition>;
+    curveRequests: CurveRequest[];
+    pendingTremolos: Map<string, { sourceId: string; marks: number }>;
+    spacing: MeasureSpacing | undefined;
+    pathPrefix: string;
+};
+type RenderedSequenceItem = {
+    svg: string;
+    nextX: number;
+};
+type DeferredRenderState = {
+    globalPositions: Map<string, GlobalPosition>;
+    curveRequests: CurveRequest[];
+    pendingTremolos: Map<string, { sourceId: string; marks: number }>;
+};
+type RenderPart = Score["parts"][number];
+type KeySignatureInput = { fifths?: number };
+type TimeSignatureInput = { count?: number; unit?: number; beats?: number; "beat-type"?: number };
+type EndingMark = NonNullable<GlobalMeasure["ending"]>;
+type ChordRenderRequest = {
+    cx: number;
+    notes: Note[];
+    duration: string;
+    staffTopY: number;
+    scale?: number;
+    dots?: number;
+    stemDirection?: StemDirection;
+};
+type ChordLayoutRenderRequest = ChordRenderRequest & {
+    isBeamed?: boolean;
+    eventId?: string;
+    partId?: string;
+};
+type TremoloEventRenderRequest = {
+    noteX: number;
+    item: RenderItem;
+    eventId: string;
+    layout: ChordLayout | undefined;
+    curveRequests: CurveRequest[];
+    pendingTremolos: Map<string, { sourceId: string; marks: number }>;
+};
 
 // SMuFL G-Clef path extracted from Bravura font (uniE050)
 // Original glyph designed at 1000 units per em, roughly 4 spaces high.
@@ -70,6 +157,9 @@ const GCLEF_PATH =
     "M376 415l25 -145c3 -18 3 -18 29 -18c147 0 241 -113 241 -241c0 -113 -67 -198 -168 -238c-14 -6 -15 -5 -13 -17c11 -62 29 -157 29 -214c0 -170 -130 -200 -197 -200c-151 0 -190 98 -190 163c0 62 40 115 107 115c61 0 96 -47 96 -102c0 -58 -36 -85 -67 -94c-23 -7 -32 -10 -32 -17c0 -13 26 -29 80 -29c59 0 159 18 159 166c0 47 -15 134 -27 201c-2 12 -4 11 -15 9c-20 -4 -46 -6 -69 -6c-245 0 -364 165 -364 339c0 202 153 345 297 464c12 10 11 12 9 24c-7 41 -14 106 -14 164c0 104 24 229 98 311c20 22 51 48 65 48c11 0 37 -28 52 -50c41 -60 65 -146 65 -233c0 -153 -82 -280 -190 -381c-6 -6 -8 -7 -6 -19zM470 943c-61 0 -133 -96 -133 -252c0 -32 2 -66 6 -92c2 -13 6 -14 13 -8c79 69 174 159 174 270c0 55 -27 82 -60 82zM361 262l-21 128c-2 11 -4 12 -14 4c-47 -38 -93 -75 -153 -142c-83 -94 -93 -173 -93 -232c0 -139 113 -236 288 -236c20 0 40 2 56 5c15 3 16 3 14 14l-50 298c-2 11 -4 12 -20 8c-61 -17 -100 -60 -100 -117c0 -46 30 -89 72 -107c7 -3 15 -6 15 -13c0 -6 -4 -11 -12 -11c-7 0 -19 3 -27 6c-68 23 -115 87 -115 177c0 85 57 164 145 194c18 6 18 5 15 24zM430 103l49 -285c2 -12 4 -12 16 -6c56 28 94 79 94 142c0 88 -67 156 -148 163c-12 1 -13 -2 -11 -14z";
 
 export class Renderer {
+    private glyphPlanner = new GlyphPlanner();
+    private backend = new SvgRenderBackend();
+
     private config = {
         pageWidth: 800, // Maximum width before wrapping
         minPageWidth: 420, // Avoid shrinking short examples into unreadable fragments
@@ -96,215 +186,16 @@ export class Renderer {
      */
     render(score: Score): string {
         const plan = this.createPlan(score);
-        let svgContent = "";
+        const state: DeferredRenderState = {
+            globalPositions: new Map(),
+            curveRequests: [],
+            pendingTremolos: new Map(),
+        };
+        let svgContent = plan.parts
+            .map((partPlan) => this.renderPart(score, partPlan, state))
+            .join("");
 
-        // Global position registry for deferred Tie/Slur/Tremolo rendering
-        const globalPositions: Map<string, GlobalPosition> = new Map();
-        const curveRequests: CurveRequest[] = [];
-        const pendingTremolos: Map<string, { sourceId: string; marks: number }> = new Map();
-
-        plan.parts.forEach((partPlan) => {
-            const part = score.parts[partPlan.partIndex];
-            if (!part) return;
-
-            const renderedPartId = part.id || `part-${partPlan.partIndex + 1}`;
-
-            partPlan.systems.forEach((system) => {
-                const systemY = system.y;
-
-                // Render part name only on the first system for that part.
-                if (system.systemIndex === 0) {
-                    svgContent += `<text x="${this.config.paddingX}" y="${systemY - 15}" font-family="Arial" font-size="14">${part.name || part.id}</text>\n`;
-                }
-
-                let headerX = system.x;
-                let clef: Clef = { sign: "G" };
-                const firstMeasure = part.measures[0];
-                if (firstMeasure?.clefs && firstMeasure.clefs.length > 0) {
-                    clef = firstMeasure.clefs[0].clef;
-                }
-
-                svgContent += this.renderClef(headerX + 10, systemY + 40, clef);
-                headerX += this.config.clefWidth;
-
-                const initialGlobalMeasure = score.global.measures[0];
-                const initialKey = initialGlobalMeasure?.key;
-                if (initialKey) {
-                    const keyWidth = this.renderKeySignature(headerX, systemY, initialKey);
-                    svgContent += keyWidth.svg;
-                    headerX += keyWidth.width;
-                }
-
-                const initialTime = initialGlobalMeasure?.time;
-                if (initialTime) {
-                    const timeWidth = this.renderTimeSignature(headerX, systemY, initialTime);
-                    svgContent += timeWidth.svg;
-                }
-
-                system.measures.forEach((measurePlan) => {
-                    const measure = part.measures[measurePlan.measureIndex];
-                    if (!measure) return;
-
-                    const measureX = measurePlan.x;
-                    const measureWidth = measurePlan.width;
-                    const measureEndX = measureX + measureWidth;
-                    const globalMeasure = score.global.measures[measurePlan.measureIndex];
-                    const spacing = solveMeasureSpacing(score, measurePlan);
-
-                    svgContent += this.renderBarline(measureX, systemY, "start", globalMeasure);
-                    svgContent += this.renderMeasureHitbox(
-                        measureX,
-                        systemY,
-                        measureWidth,
-                        measurePlan.measureNumber,
-                        renderedPartId,
-                    );
-
-                    if (globalMeasure?.jumps) {
-                        svgContent += this.renderJumps(
-                            measureX,
-                            systemY,
-                            globalMeasure.jumps,
-                            "start",
-                        );
-                    }
-
-                    const renderMeasure = measure as RenderMeasure;
-                    const eventPositions: Map<string, ChordLayout> = new Map();
-                    const beamedEventIds: Set<string> = new Set();
-                    if (measure.beams) {
-                        for (const beam of measure.beams) {
-                            for (const eventId of beam.events) {
-                                beamedEventIds.add(eventId);
-                            }
-                        }
-                    }
-
-                    if (renderMeasure.multimeasureRest) {
-                        svgContent += this.renderMultimeasureRest(
-                            measurePlan.contentX,
-                            measureEndX - this.config.measurePadding,
-                            systemY,
-                            renderMeasure.multimeasureRest.duration,
-                        );
-                    } else {
-                        const sequences = renderMeasure.sequences || [];
-                        const stemDirections = this.sequenceStemDirections(sequences, systemY);
-                        sequences.forEach((sequence, sequenceIndex) => {
-                            svgContent += this.renderSequenceContent(
-                                sequence.content || [],
-                                measurePlan.contentX,
-                                systemY,
-                                renderedPartId,
-                                stemDirections[sequenceIndex],
-                                beamedEventIds,
-                                eventPositions,
-                                globalPositions,
-                                curveRequests,
-                                pendingTremolos,
-                                spacing,
-                                `parts[${partPlan.partIndex}].measures[${measurePlan.measureIndex}].sequences[${sequenceIndex}].content`,
-                            );
-                        });
-
-                        if (measure.beams && eventPositions.size > 0) {
-                            for (const beam of measure.beams) {
-                                svgContent += this.renderBeam(beam.events, eventPositions);
-                            }
-                        }
-
-                        if (renderMeasure.ottavas) {
-                            for (const ottava of renderMeasure.ottavas) {
-                                svgContent += this.renderOttava(
-                                    measurePlan.contentX,
-                                    measureEndX - this.config.measurePadding,
-                                    systemY,
-                                    ottava.value,
-                                );
-                            }
-                        }
-
-                        if (renderMeasure.pedals) {
-                            renderMeasure.pedals.forEach((p) => {
-                                const pX = this.rhythmicPositionToX(
-                                    measurePlan.contentX,
-                                    measurePlan.contentWidth,
-                                    p.position,
-                                );
-
-                                if (p.type === "start") {
-                                    if (p.sign) {
-                                        svgContent += this.renderPedalSign(pX, systemY, "start");
-                                    }
-                                    if (p.line) {
-                                        const pedalMeasureEndX =
-                                            measureEndX - this.config.measurePadding;
-                                        const endX =
-                                            p.end?.measure === measurePlan.measureNumber
-                                                ? this.rhythmicPositionToX(
-                                                      measurePlan.contentX,
-                                                      measurePlan.contentWidth,
-                                                      p.end.position,
-                                                  )
-                                                : pedalMeasureEndX;
-                                        const lineStartX = pX + (p.sign ? 32 : 0);
-                                        const lineEndX = Math.max(
-                                            lineStartX + 16,
-                                            Math.min(endX, pedalMeasureEndX),
-                                        );
-                                        svgContent += this.renderPedalLine(
-                                            lineStartX,
-                                            lineEndX,
-                                            systemY,
-                                        );
-                                    } else if (!p.sign) {
-                                        svgContent += this.renderPedalSign(pX, systemY, "start");
-                                    }
-                                } else if (p.type === "stop" && !p.line) {
-                                    svgContent += this.renderPedalSign(pX, systemY, "stop");
-                                }
-                            });
-                        }
-                    }
-
-                    svgContent += this.renderBarline(measureEndX, systemY, "end", globalMeasure);
-
-                    if (globalMeasure?.ending) {
-                        svgContent += this.renderEnding(
-                            measureEndX,
-                            measureWidth,
-                            systemY,
-                            globalMeasure.ending,
-                        );
-                    }
-
-                    if (globalMeasure?.jumps) {
-                        svgContent += this.renderJumps(
-                            measureEndX,
-                            systemY,
-                            globalMeasure.jumps,
-                            "end",
-                        );
-                    }
-                });
-
-                svgContent += this.renderStaveLines(system.x, system.y, system.width);
-            });
-        });
-
-        // --- 8. Render Ties and Slurs (Deferred) ---
-        for (const req of curveRequests) {
-            const sourcePos = globalPositions.get(req.sourceId);
-            const targetPos = globalPositions.get(req.targetId);
-
-            if (sourcePos && targetPos) {
-                if (req.type === "tie" || req.type === "slur") {
-                    svgContent += this.renderCurve(sourcePos, targetPos, req.type, req.side);
-                } else if (req.type === "tremolo" && req.marks) {
-                    svgContent += this.renderMultiNoteTremolo(sourcePos, targetPos, req.marks);
-                }
-            }
-        }
+        svgContent += this.renderDeferredCurves(state);
 
         return `<svg xmlns="http://www.w3.org/2000/svg" width="${plan.width}" height="${plan.height}">
             <style>
@@ -312,6 +203,276 @@ export class Renderer {
             </style>
             ${svgContent}
         </svg>`;
+    }
+
+    private renderPart(score: Score, partPlan: RenderPlanPart, state: DeferredRenderState): string {
+        const part = score.parts[partPlan.partIndex];
+        if (!part) return "";
+
+        const renderedPartId = part.id || `part-${partPlan.partIndex + 1}`;
+        const context: RenderPartContext = {
+            score,
+            part,
+            partPlan,
+            renderedPartId,
+            state,
+        };
+
+        return partPlan.systems.map((system) => this.renderSystem({ ...context, system })).join("");
+    }
+
+    private renderSystem(context: RenderSystemContext): string {
+        const { score, part, system } = context;
+        let svg = this.renderSystemHeader(score, part, system);
+
+        system.measures.forEach((measurePlan) => {
+            svg += this.renderMeasure({ ...context, measurePlan });
+        });
+
+        svg += this.renderStaveLines(system.x, system.y, system.width);
+        return svg;
+    }
+
+    private renderSystemHeader(score: Score, part: RenderPart, system: RenderPlanSystem): string {
+        const systemY = system.y;
+        let svg = "";
+
+        if (system.systemIndex === 0) {
+            svg += `<text x="${this.config.paddingX}" y="${systemY - 15}" font-family="Arial" font-size="14">${part.name || part.id}</text>\n`;
+        }
+
+        let headerX = system.x;
+        let clef: Clef = { sign: "G" };
+        const firstMeasure = part.measures[0];
+        if (firstMeasure?.clefs && firstMeasure.clefs.length > 0) {
+            clef = firstMeasure.clefs[0].clef;
+        }
+
+        svg += this.renderClef(headerX + 10, systemY + 40, clef);
+        headerX += this.config.clefWidth;
+
+        const initialGlobalMeasure = score.global.measures[0];
+        const initialKey = initialGlobalMeasure?.key;
+        if (initialKey) {
+            const keyWidth = this.renderKeySignature(headerX, systemY, initialKey);
+            svg += keyWidth.svg;
+            headerX += keyWidth.width;
+        }
+
+        const initialTime = initialGlobalMeasure?.time;
+        if (initialTime) {
+            svg += this.renderTimeSignature(headerX, systemY, initialTime).svg;
+        }
+
+        return svg;
+    }
+
+    private renderMeasure(context: RenderMeasureContext): string {
+        const { score, part, partPlan, measurePlan, renderedPartId, state } = context;
+        const measure = part.measures[measurePlan.measureIndex];
+        if (!measure) return "";
+
+        const systemY = measurePlan.y;
+        const measureX = measurePlan.x;
+        const measureWidth = measurePlan.width;
+        const measureEndX = measureX + measureWidth;
+        const globalMeasure = score.global.measures[measurePlan.measureIndex];
+        const renderMeasure = measure as RenderMeasure;
+        let svg = this.renderMeasureStart(measurePlan, renderedPartId, globalMeasure);
+
+        if (renderMeasure.multimeasureRest) {
+            svg += this.renderMultimeasureRest(
+                measurePlan.contentX,
+                measureEndX - this.config.measurePadding,
+                systemY,
+                renderMeasure.multimeasureRest.duration,
+            );
+        } else {
+            svg += this.renderMeasureContent({
+                score,
+                partPlan,
+                measurePlan,
+                renderedPartId,
+                renderMeasure,
+                state,
+            });
+        }
+
+        svg += this.renderMeasureEnd(measureEndX, measureWidth, systemY, globalMeasure);
+        return svg;
+    }
+
+    private renderMeasureStart(
+        measurePlan: RenderPlanMeasure,
+        renderedPartId: string,
+        globalMeasure?: GlobalMeasure,
+    ): string {
+        let svg = this.renderBarline(measurePlan.x, measurePlan.y, "start", globalMeasure);
+        svg += this.renderMeasureHitbox(
+            measurePlan.x,
+            measurePlan.y,
+            measurePlan.width,
+            measurePlan.measureNumber,
+            renderedPartId,
+        );
+
+        if (globalMeasure?.jumps) {
+            svg += this.renderJumps(measurePlan.x, measurePlan.y, globalMeasure.jumps, "start");
+        }
+
+        return svg;
+    }
+
+    private renderMeasureContent(context: RenderMeasureContentContext): string {
+        const { score, partPlan, measurePlan, renderedPartId, renderMeasure, state } = context;
+        const spacing = solveMeasureSpacing(score, measurePlan);
+        const eventPositions = new Map<string, ChordLayout>();
+        const beamedEventIds = collectBeamedEventIds(score, measurePlan);
+        let svg = "";
+
+        const sequences = renderMeasure.sequences || [];
+        const stemDirections = this.sequenceStemDirections(sequences, measurePlan.y);
+        sequences.forEach((sequence, sequenceIndex) => {
+            svg += this.renderSequenceContent(sequence.content || [], {
+                startX: measurePlan.contentX,
+                staffTopY: measurePlan.y,
+                partId: renderedPartId,
+                stemDirection: stemDirections[sequenceIndex],
+                beamedEventIds,
+                eventPositions,
+                globalPositions: state.globalPositions,
+                curveRequests: state.curveRequests,
+                pendingTremolos: state.pendingTremolos,
+                spacing,
+                pathPrefix: `parts[${partPlan.partIndex}].measures[${measurePlan.measureIndex}].sequences[${sequenceIndex}].content`,
+            });
+        });
+
+        svg += this.renderMeasureBeams(score, measurePlan, eventPositions);
+        svg += this.renderMeasureOttavas(renderMeasure, measurePlan);
+        svg += this.renderMeasurePedals(renderMeasure, measurePlan);
+        return svg;
+    }
+
+    private renderMeasureBeams(
+        score: Score,
+        measurePlan: RenderPlanMeasure,
+        eventPositions: Map<string, ChordLayout>,
+    ): string {
+        const beams = score.parts[measurePlan.partIndex]?.measures[measurePlan.measureIndex]?.beams;
+        if (!beams || eventPositions.size === 0) return "";
+
+        return beams.map((beam) => this.renderBeam(beam.events, eventPositions)).join("");
+    }
+
+    private renderMeasureOttavas(
+        renderMeasure: RenderMeasure,
+        measurePlan: RenderPlanMeasure,
+    ): string {
+        const measureEndX = measurePlan.x + measurePlan.width;
+        return (renderMeasure.ottavas || [])
+            .map((ottava) =>
+                this.renderOttava(
+                    measurePlan.contentX,
+                    measureEndX - this.config.measurePadding,
+                    measurePlan.y,
+                    ottava.value,
+                ),
+            )
+            .join("");
+    }
+
+    private renderMeasurePedals(
+        renderMeasure: RenderMeasure,
+        measurePlan: RenderPlanMeasure,
+    ): string {
+        const measureEndX = measurePlan.x + measurePlan.width;
+        return (renderMeasure.pedals || [])
+            .map((pedal) => this.renderPedal(pedal, measurePlan, measureEndX))
+            .join("");
+    }
+
+    private renderPedal(
+        pedal: NonNullable<RenderMeasure["pedals"]>[number],
+        measurePlan: RenderPlanMeasure,
+        measureEndX: number,
+    ): string {
+        const pX = this.rhythmicPositionToX(
+            measurePlan.contentX,
+            measurePlan.contentWidth,
+            pedal.position,
+        );
+
+        if (pedal.type === "start") {
+            return this.renderPedalStart(pedal, pX, measurePlan, measureEndX);
+        }
+        if (pedal.type === "stop" && !pedal.line) {
+            return this.renderPedalSign(pX, measurePlan.y, "stop");
+        }
+        return "";
+    }
+
+    private renderPedalStart(
+        pedal: NonNullable<RenderMeasure["pedals"]>[number],
+        pX: number,
+        measurePlan: RenderPlanMeasure,
+        measureEndX: number,
+    ): string {
+        let svg = pedal.sign ? this.renderPedalSign(pX, measurePlan.y, "start") : "";
+        if (pedal.line) {
+            const pedalMeasureEndX = measureEndX - this.config.measurePadding;
+            const endX =
+                pedal.end?.measure === measurePlan.measureNumber
+                    ? this.rhythmicPositionToX(
+                          measurePlan.contentX,
+                          measurePlan.contentWidth,
+                          pedal.end.position,
+                      )
+                    : pedalMeasureEndX;
+            const lineStartX = pX + (pedal.sign ? 32 : 0);
+            const lineEndX = Math.max(lineStartX + 16, Math.min(endX, pedalMeasureEndX));
+            svg += this.renderPedalLine(lineStartX, lineEndX, measurePlan.y);
+        } else if (!pedal.sign) {
+            svg += this.renderPedalSign(pX, measurePlan.y, "start");
+        }
+
+        return svg;
+    }
+
+    private renderMeasureEnd(
+        measureEndX: number,
+        measureWidth: number,
+        systemY: number,
+        globalMeasure?: GlobalMeasure,
+    ): string {
+        let svg = this.renderBarline(measureEndX, systemY, "end", globalMeasure);
+
+        if (globalMeasure?.ending) {
+            svg += this.renderEnding(measureEndX, measureWidth, systemY, globalMeasure.ending);
+        }
+
+        if (globalMeasure?.jumps) {
+            svg += this.renderJumps(measureEndX, systemY, globalMeasure.jumps, "end");
+        }
+
+        return svg;
+    }
+
+    private renderDeferredCurves(state: DeferredRenderState): string {
+        let svg = "";
+        for (const request of state.curveRequests) {
+            const sourcePos = state.globalPositions.get(request.sourceId);
+            const targetPos = state.globalPositions.get(request.targetId);
+            if (!sourcePos || !targetPos) continue;
+
+            if (request.type === "tie" || request.type === "slur") {
+                svg += this.renderCurve(sourcePos, targetPos, request.type, request.side);
+            } else if (request.type === "tremolo" && request.marks) {
+                svg += this.renderMultiNoteTremolo(sourcePos, targetPos, request.marks);
+            }
+        }
+
+        return svg;
     }
 
     private getRenderPlanOptions(score: Score): RenderPlanOptions {
@@ -343,7 +504,7 @@ export class Renderer {
         return width;
     }
 
-    private estimateKeySignatureWidth(key: { fifths?: number }): number {
+    private estimateKeySignatureWidth(key: KeySignatureInput): number {
         const fifths = key.fifths || 0;
         return fifths === 0 ? 10 : Math.abs(fifths) * 12 + 10;
     }
@@ -353,14 +514,16 @@ export class Renderer {
      */
     private renderClef(x: number, y: number, clef: Clef | string = "G"): string {
         const sign = typeof clef === "string" ? clef : (clef?.sign ?? "G");
-        const glyphName = resolveClefGlyph(
-            sign,
-            typeof clef === "string" ? undefined : clef?.glyph,
-        );
+        const glyph = this.glyphPlanner.planClef(clef);
 
-        if (glyphName) {
-            const yAdjust = sign === "G" ? 1 : sign === "F" ? -9 : sign === "C" ? -8 : -9;
-            return this.renderSmuflGlyph(glyphName, x, y + yAdjust, 52, `data-smufl-role="clef"`);
+        if (glyph) {
+            return this.renderSmuflGlyph(
+                glyph.glyphName,
+                x,
+                y + glyph.yAdjust,
+                52,
+                `data-smufl-role="${glyph.role}"`,
+            );
         }
 
         if (sign === "TAB") {
@@ -372,7 +535,11 @@ export class Renderer {
         </g>\n`;
     }
 
-    private renderKeySignature(x: number, y: number, key: any): { svg: string; width: number } {
+    private renderKeySignature(
+        x: number,
+        y: number,
+        key: KeySignatureInput,
+    ): { svg: string; width: number } {
         // key: { fifths: number }
         // fifths > 0: Sharps, fifths < 0: Flats
         let svg = "";
@@ -423,7 +590,11 @@ export class Renderer {
         return { svg, width };
     }
 
-    private renderTimeSignature(x: number, y: number, time: any): { svg: string; width: number } {
+    private renderTimeSignature(
+        x: number,
+        y: number,
+        time: TimeSignatureInput,
+    ): { svg: string; width: number } {
         const beats = time.count ?? time.beats;
         const type = time.unit ?? time["beat-type"];
 
@@ -444,148 +615,231 @@ export class Renderer {
         };
     }
 
-    private renderSequenceContent(
-        content: RenderItem[],
-        startX: number,
-        staffTopY: number,
-        partId: string | undefined,
-        stemDirection: StemDirection | undefined,
-        beamedEventIds: Set<string>,
-        eventPositions: Map<string, ChordLayout>,
-        globalPositions: Map<string, GlobalPosition>,
-        curveRequests: CurveRequest[],
-        pendingTremolos: Map<string, { sourceId: string; marks: number }>,
-        spacing?: MeasureSpacing,
-        pathPrefix = "content",
-    ): string {
+    private renderSequenceContent(content: RenderItem[], context: RenderSequenceContext): string {
         let svg = "";
-        let noteX = startX;
+        let noteX = context.startX;
 
         content.forEach((item, itemIndex) => {
-            const itemPath = `${pathPrefix}[${itemIndex}]`;
-            if (item.notes && item.notes.length > 0) {
-                const duration = item.duration?.base || "quarter";
-                const dots = item.duration?.dots || 0;
-                const eventId = item.id || `event-${noteX}`;
-                const eventX = this.resolveSpacingX(item, itemPath, noteX, spacing);
-                const isBeamed = beamedEventIds.has(eventId);
-
-                const chordResult = this.renderChordWithLayout(
-                    eventX,
-                    item.notes,
-                    duration,
-                    staffTopY,
-                    1,
-                    isBeamed,
-                    eventId,
-                    partId,
-                    dots,
-                    stemDirection,
-                );
-                svg += chordResult.svg;
-
-                if (isBeamed && chordResult.layout) {
-                    eventPositions.set(eventId, chordResult.layout);
-                }
-
-                if (chordResult.layout) {
-                    const noteHeadY = (chordResult.layout.minY + chordResult.layout.maxY) / 2;
-                    globalPositions.set(eventId, {
-                        x: eventX,
-                        y: noteHeadY,
-                        stemUp: chordResult.layout.stemUp,
-                        stemTipY: chordResult.layout.stemTipY,
-                    });
-                }
-
-                if (item.articulations && chordResult.layout) {
-                    svg += this.renderArticulations(eventX, item.articulations, chordResult.layout);
-                }
-
-                if (item.slurs && Array.isArray(item.slurs)) {
-                    for (const slur of item.slurs) {
-                        if (slur.target) {
-                            curveRequests.push({
-                                type: "slur",
-                                sourceId: eventId,
-                                targetId: slur.target,
-                                side: slur.side || "up",
-                            });
-                        }
-                    }
-                }
-
-                for (const note of item.notes) {
-                    if (note.ties && Array.isArray(note.ties)) {
-                        for (const tie of note.ties) {
-                            if (tie.target) {
-                                curveRequests.push({
-                                    type: "tie",
-                                    sourceId: note.id || eventId,
-                                    targetId: tie.target,
-                                    side: "auto",
-                                });
-                            }
-                        }
-                    }
-                }
-
-                if (item.tremolo) {
-                    svg += this.renderTremoloEvent(
-                        eventX,
-                        item,
-                        eventId,
-                        chordResult.layout,
-                        curveRequests,
-                        pendingTremolos,
-                    );
-                }
-
-                noteX += this.getNoteWidth(duration, dots);
-            } else if (item.rest) {
-                const duration = item.duration?.base || "quarter";
-                const dots = item.duration?.dots || 0;
-                const eventId = item.id || `event-${noteX}`;
-                const eventX = this.resolveSpacingX(item, itemPath, noteX, spacing);
-                if (!item.rest.hidden) {
-                    svg += this.renderRest(eventX, staffTopY, duration, dots, eventId, partId);
-                }
-                noteX += this.getNoteWidth(duration, dots);
-            } else if (item.type === "dynamic" && item.value) {
-                const eventId = item.id || `event-${noteX}`;
-                const eventX = this.resolveSpacingX(item, itemPath, noteX, spacing);
-                svg += this.renderDynamic(
-                    eventX,
-                    staffTopY,
-                    item.value,
-                    item.glyph,
-                    eventId,
-                    partId,
-                );
-            } else if (item.type === "tuplet" || item.type === "grace") {
-                item.content?.forEach((subItem, subItemIndex) => {
-                    const subItemPath = `${itemPath}.content[${subItemIndex}]`;
-                    const eventX = this.resolveSpacingX(subItem, subItemPath, noteX, spacing);
-                    if (subItem.notes && subItem.notes.length > 0) {
-                        const duration = subItem.duration?.base || "eighth";
-                        svg += this.renderChord(
-                            eventX,
-                            subItem.notes,
-                            duration,
-                            staffTopY,
-                            0.7,
-                            subItem.duration?.dots || 0,
-                            stemDirection,
-                        );
-                        noteX += 20;
-                    } else if (subItem.rest) {
-                        noteX += 20;
-                    }
-                });
-            }
+            const itemPath = `${context.pathPrefix}[${itemIndex}]`;
+            const renderedItem = this.renderSequenceItem(item, itemPath, noteX, context);
+            svg += renderedItem.svg;
+            noteX = renderedItem.nextX;
         });
 
         return svg;
+    }
+
+    private renderSequenceItem(
+        item: RenderItem,
+        itemPath: string,
+        noteX: number,
+        context: RenderSequenceContext,
+    ): RenderedSequenceItem {
+        if (item.notes && item.notes.length > 0) {
+            return this.renderNoteItem(item, itemPath, noteX, context);
+        }
+        if (item.rest) {
+            return this.renderRestItem(item, itemPath, noteX, context);
+        }
+        if (item.type === "dynamic" && item.value) {
+            return this.renderDynamicItem(item, itemPath, noteX, context);
+        }
+        if (item.type === "tuplet" || item.type === "grace") {
+            return this.renderNestedContent(item, itemPath, noteX, context);
+        }
+
+        return { svg: "", nextX: noteX };
+    }
+
+    private renderNoteItem(
+        item: RenderItem,
+        itemPath: string,
+        noteX: number,
+        context: RenderSequenceContext,
+    ): RenderedSequenceItem {
+        const notes = item.notes || [];
+        const duration = item.duration?.base || "quarter";
+        const dots = item.duration?.dots || 0;
+        const eventId = item.id || `event-${noteX}`;
+        const eventX = this.resolveSpacingX(item, itemPath, noteX, context.spacing);
+        const isBeamed = context.beamedEventIds.has(eventId);
+        const chordResult = this.renderChordWithLayout({
+            cx: eventX,
+            notes,
+            duration,
+            staffTopY: context.staffTopY,
+            isBeamed,
+            eventId,
+            partId: context.partId,
+            dots,
+            stemDirection: context.stemDirection,
+        });
+        let svg = chordResult.svg;
+
+        this.recordChordPosition(eventId, eventX, chordResult.layout, isBeamed, context);
+        svg += this.renderNoteDecorations(item, eventX, eventId, chordResult.layout, context);
+
+        return { svg, nextX: noteX + this.getNoteWidth(duration, dots) };
+    }
+
+    private recordChordPosition(
+        eventId: string,
+        eventX: number,
+        layout: ChordLayout | undefined,
+        isBeamed: boolean,
+        context: RenderSequenceContext,
+    ): void {
+        if (!layout) return;
+
+        if (isBeamed) {
+            context.eventPositions.set(eventId, layout);
+        }
+
+        const noteHeadY = (layout.minY + layout.maxY) / 2;
+        context.globalPositions.set(eventId, {
+            x: eventX,
+            y: noteHeadY,
+            stemUp: layout.stemUp,
+            stemTipY: layout.stemTipY,
+        });
+    }
+
+    private renderNoteDecorations(
+        item: RenderItem,
+        eventX: number,
+        eventId: string,
+        layout: ChordLayout | undefined,
+        context: RenderSequenceContext,
+    ): string {
+        let svg = "";
+
+        if (item.articulations && layout) {
+            svg += this.renderArticulations(eventX, item.articulations, layout);
+        }
+
+        this.queueSlurRequests(item, eventId, context.curveRequests);
+        this.queueTieRequests(item, eventId, context.curveRequests);
+
+        if (item.tremolo) {
+            svg += this.renderTremoloEvent({
+                noteX: eventX,
+                item,
+                eventId,
+                layout,
+                curveRequests: context.curveRequests,
+                pendingTremolos: context.pendingTremolos,
+            });
+        }
+
+        return svg;
+    }
+
+    private queueSlurRequests(
+        item: RenderItem,
+        eventId: string,
+        curveRequests: CurveRequest[],
+    ): void {
+        if (!item.slurs) return;
+
+        for (const slur of item.slurs) {
+            if (slur.target) {
+                curveRequests.push({
+                    type: "slur",
+                    sourceId: eventId,
+                    targetId: slur.target,
+                    side: slur.side || "up",
+                });
+            }
+        }
+    }
+
+    private queueTieRequests(
+        item: RenderItem,
+        eventId: string,
+        curveRequests: CurveRequest[],
+    ): void {
+        for (const note of item.notes || []) {
+            if (!note.ties) continue;
+
+            for (const tie of note.ties) {
+                if (tie.target) {
+                    curveRequests.push({
+                        type: "tie",
+                        sourceId: note.id || eventId,
+                        targetId: tie.target,
+                        side: "auto",
+                    });
+                }
+            }
+        }
+    }
+
+    private renderRestItem(
+        item: RenderItem,
+        itemPath: string,
+        noteX: number,
+        context: RenderSequenceContext,
+    ): RenderedSequenceItem {
+        const duration = item.duration?.base || "quarter";
+        const dots = item.duration?.dots || 0;
+        const eventId = item.id || `event-${noteX}`;
+        const eventX = this.resolveSpacingX(item, itemPath, noteX, context.spacing);
+        const svg = item.rest?.hidden
+            ? ""
+            : this.renderRest(eventX, context.staffTopY, duration, dots, eventId, context.partId);
+
+        return { svg, nextX: noteX + this.getNoteWidth(duration, dots) };
+    }
+
+    private renderDynamicItem(
+        item: RenderItem,
+        itemPath: string,
+        noteX: number,
+        context: RenderSequenceContext,
+    ): RenderedSequenceItem {
+        const eventId = item.id || `event-${noteX}`;
+        const eventX = this.resolveSpacingX(item, itemPath, noteX, context.spacing);
+        const svg = this.renderDynamic(
+            eventX,
+            context.staffTopY,
+            item.value || "",
+            item.glyph,
+            eventId,
+            context.partId,
+        );
+
+        return { svg, nextX: noteX };
+    }
+
+    private renderNestedContent(
+        item: RenderItem,
+        itemPath: string,
+        noteX: number,
+        context: RenderSequenceContext,
+    ): RenderedSequenceItem {
+        let svg = "";
+        let nestedX = noteX;
+
+        item.content?.forEach((subItem, subItemIndex) => {
+            const subItemPath = `${itemPath}.content[${subItemIndex}]`;
+            const eventX = this.resolveSpacingX(subItem, subItemPath, nestedX, context.spacing);
+            if (subItem.notes && subItem.notes.length > 0) {
+                svg += this.renderChord({
+                    cx: eventX,
+                    notes: subItem.notes,
+                    duration: subItem.duration?.base || "eighth",
+                    staffTopY: context.staffTopY,
+                    scale: 0.7,
+                    dots: subItem.duration?.dots || 0,
+                    stemDirection: context.stemDirection,
+                });
+                nestedX += 20;
+            } else if (subItem.rest) {
+                nestedX += 20;
+            }
+        });
+
+        return { svg, nextX: nestedX };
     }
 
     private resolveSpacingX(
@@ -605,14 +859,8 @@ export class Renderer {
         return fallbackX;
     }
 
-    private renderTremoloEvent(
-        noteX: number,
-        item: RenderItem,
-        eventId: string,
-        layout: ChordLayout | undefined,
-        curveRequests: CurveRequest[],
-        pendingTremolos: Map<string, { sourceId: string; marks: number }>,
-    ): string {
+    private renderTremoloEvent(request: TremoloEventRenderRequest): string {
+        const { noteX, item, eventId, layout, curveRequests, pendingTremolos } = request;
         if (typeof item.tremolo === "number") {
             return layout
                 ? this.renderTremolo(noteX, layout.stemTipY, layout.stemUp, item.tremolo)
@@ -771,7 +1019,7 @@ export class Renderer {
         return svg;
     }
 
-    private renderEnding(endX: number, width: number, y: number, ending: any): string {
+    private renderEnding(endX: number, width: number, y: number, ending: EndingMark): string {
         // ending: { numbers: number[], duration: number, open: boolean }
         // Draw bracket above staff
         const startX = endX - width;
@@ -858,218 +1106,61 @@ export class Renderer {
     }
 
     private renderSegno(x: number, y: number): string {
-        return this.renderSmuflGlyph("segno", x, y + 22, 28, `data-smufl-role="jump"`);
+        const glyph = this.glyphPlanner.planJump("segno");
+        return this.renderSmuflGlyph(
+            glyph.glyphName,
+            x,
+            y + 22,
+            28,
+            `data-smufl-role="${glyph.role}"`,
+        );
     }
 
     private renderCoda(x: number, y: number): string {
-        return this.renderSmuflGlyph("coda", x, y + 22, 28, `data-smufl-role="jump"`);
+        const glyph = this.glyphPlanner.planJump("coda");
+        return this.renderSmuflGlyph(
+            glyph.glyphName,
+            x,
+            y + 22,
+            28,
+            `data-smufl-role="${glyph.role}"`,
+        );
     }
 
     /**
      * Render a chord (one or more notes with a shared stem).
      * Handles second interval collisions by offsetting note heads.
      */
-    private renderChord(
-        cx: number,
-        notes: Note[],
-        duration: string,
-        staffTopY: number,
-        scale: number = 1,
-        dots: number = 0,
-        stemDirection?: StemDirection,
-    ): string {
-        let svg = "";
-        const r = this.config.noteRadius * scale;
-        const halfSpace = this.config.lineSpacing / 2; // Distance for a second interval
-
-        // Calculate Y positions for all notes and sort by pitch (highest first = lowest Y)
-        const noteData = notes.map((n, i) => ({
-            note: n,
-            y: this.calculateY(n, staffTopY),
-            originalIndex: i,
-            offsetX: 0, // Will be set if collision detected
-        }));
-
-        // Sort by Y position (ascending = top to bottom on staff)
-        noteData.sort((a, b) => a.y - b.y);
-
-        const minY = noteData[0].y;
-        const maxY = noteData[noteData.length - 1].y;
-
-        // Determine stem direction based on the note furthest from middle line
-        const middleLineY = staffTopY + 2 * this.config.lineSpacing;
-        const topDistance = Math.abs(minY - middleLineY);
-        const bottomDistance = Math.abs(maxY - middleLineY);
-        const stemUp = stemDirection ? stemDirection === "up" : bottomDistance >= topDistance;
-
-        // --- Second Interval Collision Detection ---
-        // When stem is UP: offset notes go to the LEFT of the stem (cx - offset)
-        // When stem is DOWN: offset notes go to the RIGHT of the stem (cx + offset)
-        // For seconds, we alternate which note gets offset.
-        // Standard rule: in a second, the HIGHER note (lower Y) goes on the stem side,
-        // the LOWER note (higher Y) goes on the opposite side.
-        // When stem up: stem is on right, so lower note of second goes LEFT.
-        // When stem down: stem is on left, so lower note of second goes RIGHT.
-
-        const noteHeadWidth = r * 2.2; // Approximate width for offset
-
-        for (let i = 1; i < noteData.length; i++) {
-            const prevY = noteData[i - 1].y;
-            const currY = noteData[i].y;
-            const interval = currY - prevY; // Positive means curr is lower on staff
-
-            // Check for second (interval ~= halfSpace, i.e., 5px with default config)
-            if (Math.abs(interval - halfSpace) < 2) {
-                // It's a second! Offset one of them.
-                if (stemUp) {
-                    // Stem on right. Lower note (curr) goes LEFT.
-                    noteData[i].offsetX = -noteHeadWidth;
-                } else {
-                    // Stem on left. Lower note (curr) goes RIGHT.
-                    noteData[i].offsetX = noteHeadWidth;
-                }
-            }
-        }
-
-        // Draw all note heads with potential offsets
-        // Draw all note heads with potential offsets
-        noteData.forEach((nd) => {
-            const noteX = cx + nd.offsetX;
-            svg += this.renderNoteHead(noteX, nd.y, duration, r, nd.note.notehead, nd.note.color);
-            svg += this.renderLedgerLines(noteX, nd.y, staffTopY);
-            svg += this.renderAugmentationDots(
-                noteX + 14 * scale,
-                this.dotYForStaffPosition(nd.y, staffTopY),
-                dots,
-                scale,
-            );
-        });
-
-        // Draw shared stem (if not a whole note)
-        if (duration !== "whole") {
-            svg += this.renderChordStem(cx, minY, maxY, r, stemUp, scale);
-
-            // Flags (only for single notes or chord extremity)
-            if (duration === "eighth" || duration === "16th" || duration === "32nd") {
-                const flagY = stemUp ? minY : maxY;
-                svg += this.renderFlag(cx, flagY, r, stemUp, duration, scale);
-            }
-        }
-
-        return svg;
+    private renderChord(request: ChordRenderRequest): string {
+        const plannedChord = this.planChord(request);
+        return (
+            this.renderPlannedChordNotes(plannedChord, { includeAccidentals: false }) +
+            this.renderChordStemAndFlags(plannedChord, false)
+        );
     }
 
     /**
      * Render a chord and return both SVG and layout info for beam calculations.
      * Similar to renderChord but also returns stem position data.
      */
-    private renderChordWithLayout(
-        cx: number,
-        notes: Note[],
-        duration: string,
-        staffTopY: number,
-        scale: number = 1,
-        isBeamed: boolean = false,
-        eventId?: string,
-        partId?: string,
-        dots: number = 0,
-        stemDirection?: StemDirection,
-    ): { svg: string; layout?: ChordLayout } {
-        let svg = "";
-        const r = this.config.noteRadius * scale;
-        const halfSpace = this.config.lineSpacing / 2;
-
-        // Calculate Y positions for all notes and sort by pitch
-        const noteData = notes.map((n, i) => ({
-            note: n,
-            y: this.calculateY(n, staffTopY),
-            originalIndex: i,
-            offsetX: 0,
-        }));
-        noteData.sort((a, b) => a.y - b.y);
-
-        const minY = noteData[0].y;
-        const maxY = noteData[noteData.length - 1].y;
-
-        // Determine stem direction
-        const middleLineY = staffTopY + 2 * this.config.lineSpacing;
-        const topDistance = Math.abs(minY - middleLineY);
-        const bottomDistance = Math.abs(maxY - middleLineY);
-        const stemUp = stemDirection ? stemDirection === "up" : bottomDistance >= topDistance;
-
-        // Second interval collision detection
-        const noteHeadWidth = r * 2.2;
-        for (let i = 1; i < noteData.length; i++) {
-            const interval = noteData[i].y - noteData[i - 1].y;
-            if (Math.abs(interval - halfSpace) < 2) {
-                noteData[i].offsetX = stemUp ? -noteHeadWidth : noteHeadWidth;
-            }
-        }
-
-        // Draw all note heads
-        noteData.forEach((nd) => {
-            const noteX = cx + nd.offsetX;
-            svg += this.renderNoteHead(noteX, nd.y, duration, r, nd.note.notehead, nd.note.color);
-            svg += this.renderLedgerLines(noteX, nd.y, staffTopY);
-            svg += this.renderAugmentationDots(
-                noteX + 14 * scale,
-                this.dotYForStaffPosition(nd.y, staffTopY),
-                dots,
-                scale,
-            );
-
-            // Draw Accidental
-            const acc = nd.note.accidentalDisplay;
-            if (acc?.show && nd.note.pitch && nd.note.pitch.alter !== undefined) {
-                const accX = noteX - 20 * scale;
-                svg += this.renderAccidental(
-                    accX,
-                    nd.y,
-                    nd.note.pitch.alter,
-                    !!acc.cautionary,
-                    scale,
-                );
-            }
-        });
-
-        let layout: ChordLayout = {
-            x: stemUp ? cx + r : cx - r,
-            noteX: cx,
-            stemTipY: stemUp ? minY : maxY,
-            stemUp,
-            minY,
-            maxY,
-        };
-
-        // Draw stem (if not a whole note)
-        if (duration !== "whole") {
-            const stemLen = this.config.stemLength * scale;
-            const stemX = stemUp ? cx + r : cx - r;
-            const stemTipY = stemUp ? minY - stemLen : maxY + stemLen;
-
-            svg += this.renderChordStem(cx, minY, maxY, r, stemUp, scale);
-
-            // Store layout for beam
-            layout = { x: stemX, noteX: cx, stemTipY, stemUp, minY, maxY };
-
-            // Flags (only if NOT beamed)
-            if (
-                !isBeamed &&
-                (duration === "eighth" || duration === "16th" || duration === "32nd")
-            ) {
-                const flagY = stemUp ? minY : maxY;
-                svg += this.renderFlag(cx, flagY, r, stemUp, duration, scale);
-            }
-        }
+    private renderChordWithLayout(request: ChordLayoutRenderRequest): {
+        svg: string;
+        layout?: ChordLayout;
+    } {
+        const plannedChord = this.planChord(request);
+        const layout = this.plannedChordLayout(plannedChord);
+        let svg =
+            this.renderPlannedChordNotes(plannedChord, { includeAccidentals: true }) +
+            this.renderChordStemAndFlags(plannedChord, request.isBeamed || false);
 
         // Wrap in a group with data attributes for interaction
-        if (eventId || partId) {
-            const hitboxTop = Math.min(minY, layout.stemTipY) - 14;
-            const hitboxBottom = Math.max(maxY, layout.stemTipY) + 20;
-            const hitbox = `<rect class="event-hitbox" x="${cx - 24}" y="${hitboxTop}" width="48" height="${hitboxBottom - hitboxTop}" fill="transparent" stroke="transparent" pointer-events="all" />\n`;
+        if (request.eventId || request.partId) {
+            const hitboxTop = Math.min(plannedChord.minY, layout.stemTipY) - 14;
+            const hitboxBottom = Math.max(plannedChord.maxY, layout.stemTipY) + 20;
+            const hitbox = `<rect class="event-hitbox" x="${plannedChord.cx - 24}" y="${hitboxTop}" width="48" height="${hitboxBottom - hitboxTop}" fill="transparent" stroke="transparent" pointer-events="all" />\n`;
             const attrs = [
-                eventId ? `data-event-id="${eventId}"` : "",
-                partId ? `data-part-id="${partId}"` : "",
+                request.eventId ? `data-event-id="${request.eventId}"` : "",
+                request.partId ? `data-part-id="${request.partId}"` : "",
                 'data-event-kind="note"',
                 'class="score-object note-group"',
                 'style="cursor: pointer;"',
@@ -1080,6 +1171,170 @@ export class Renderer {
         }
 
         return { svg, layout };
+    }
+
+    private planChord(request: ChordRenderRequest): PlannedChord {
+        const { cx, notes, duration, staffTopY, scale = 1, dots = 0, stemDirection } = request;
+        const r = this.config.noteRadius * scale;
+        const positionedNotes = notes
+            .map((note) => ({
+                note,
+                y: this.calculateY(note, staffTopY),
+                offsetX: 0,
+            }))
+            .sort((a, b) => a.y - b.y);
+        const minY = positionedNotes[0].y;
+        const maxY = positionedNotes[positionedNotes.length - 1].y;
+        const stemUp = this.resolveStemDirection(minY, maxY, staffTopY, stemDirection);
+
+        this.offsetSecondIntervals(positionedNotes, stemUp, r);
+
+        return {
+            cx,
+            notes: positionedNotes,
+            duration,
+            staffTopY,
+            scale,
+            dots,
+            r,
+            minY,
+            maxY,
+            stemUp,
+        };
+    }
+
+    private resolveStemDirection(
+        minY: number,
+        maxY: number,
+        staffTopY: number,
+        stemDirection?: StemDirection,
+    ): boolean {
+        if (stemDirection) return stemDirection === "up";
+
+        const middleLineY = staffTopY + 2 * this.config.lineSpacing;
+        const topDistance = Math.abs(minY - middleLineY);
+        const bottomDistance = Math.abs(maxY - middleLineY);
+        return bottomDistance >= topDistance;
+    }
+
+    private offsetSecondIntervals(
+        notes: PositionedChordNote[],
+        stemUp: boolean,
+        noteRadius: number,
+    ): void {
+        const halfSpace = this.config.lineSpacing / 2;
+        const noteHeadWidth = noteRadius * 2.2;
+
+        for (let i = 1; i < notes.length; i++) {
+            const interval = notes[i].y - notes[i - 1].y;
+            if (Math.abs(interval - halfSpace) < 2) {
+                notes[i].offsetX = stemUp ? -noteHeadWidth : noteHeadWidth;
+            }
+        }
+    }
+
+    private renderPlannedChordNotes(
+        chord: PlannedChord,
+        options: { includeAccidentals: boolean },
+    ): string {
+        let svg = "";
+
+        chord.notes.forEach((positionedNote) => {
+            const noteX = chord.cx + positionedNote.offsetX;
+            svg += this.renderNoteHead(
+                noteX,
+                positionedNote.y,
+                chord.duration,
+                chord.r,
+                positionedNote.note.notehead,
+                positionedNote.note.color,
+            );
+            svg += this.renderLedgerLines(noteX, positionedNote.y, chord.staffTopY);
+            svg += this.renderAugmentationDots(
+                noteX + 14 * chord.scale,
+                this.dotYForStaffPosition(positionedNote.y, chord.staffTopY),
+                chord.dots,
+                chord.scale,
+            );
+
+            if (options.includeAccidentals) {
+                svg += this.renderPlannedAccidental(positionedNote, noteX, chord.scale);
+            }
+        });
+
+        return svg;
+    }
+
+    private renderPlannedAccidental(
+        positionedNote: PositionedChordNote,
+        noteX: number,
+        scale: number,
+    ): string {
+        const accidental = positionedNote.note.accidentalDisplay;
+        const alter = positionedNote.note.pitch?.alter;
+        if (!accidental?.show || alter === undefined) return "";
+
+        return this.renderAccidental(
+            noteX - 20 * scale,
+            positionedNote.y,
+            alter,
+            !!accidental.cautionary,
+            scale,
+        );
+    }
+
+    private renderChordStemAndFlags(chord: PlannedChord, isBeamed: boolean): string {
+        if (chord.duration === "whole") return "";
+
+        let svg = this.renderChordStem(
+            chord.cx,
+            chord.minY,
+            chord.maxY,
+            chord.r,
+            chord.stemUp,
+            chord.scale,
+        );
+
+        if (!isBeamed && this.hasFlag(chord.duration)) {
+            const flagY = chord.stemUp ? chord.minY : chord.maxY;
+            svg += this.renderFlag(
+                chord.cx,
+                flagY,
+                chord.r,
+                chord.stemUp,
+                chord.duration,
+                chord.scale,
+            );
+        }
+
+        return svg;
+    }
+
+    private plannedChordLayout(chord: PlannedChord): ChordLayout {
+        if (chord.duration === "whole") {
+            return {
+                x: chord.stemUp ? chord.cx + chord.r : chord.cx - chord.r,
+                noteX: chord.cx,
+                stemTipY: chord.stemUp ? chord.minY : chord.maxY,
+                stemUp: chord.stemUp,
+                minY: chord.minY,
+                maxY: chord.maxY,
+            };
+        }
+
+        const stemLength = this.config.stemLength * chord.scale;
+        return {
+            x: chord.stemUp ? chord.cx + chord.r : chord.cx - chord.r,
+            noteX: chord.cx,
+            stemTipY: chord.stemUp ? chord.minY - stemLength : chord.maxY + stemLength,
+            stemUp: chord.stemUp,
+            minY: chord.minY,
+            maxY: chord.maxY,
+        };
+    }
+
+    private hasFlag(duration: string): boolean {
+        return duration === "eighth" || duration === "16th" || duration === "32nd";
     }
 
     /**
@@ -1258,15 +1513,15 @@ export class Renderer {
         cautionary: boolean,
         scale: number,
     ): string {
-        const glyphName = resolveAccidentalGlyph(alter);
-        if (!glyphName) return "";
+        const glyph = this.glyphPlanner.planAccidental(alter);
+        if (!glyph) return "";
 
         let svg = this.renderSmuflGlyph(
-            glyphName,
+            glyph.glyphName,
             x,
             y + 10 * scale,
             28 * scale,
-            `data-smufl-role="accidental"`,
+            `data-smufl-role="${glyph.role}"`,
         );
 
         if (cautionary) {
@@ -1297,18 +1552,18 @@ export class Renderer {
         eventId?: string,
         partId?: string,
     ): string {
-        const glyphs = resolveDynamicGlyphs(value, glyph);
+        const plannedDynamic = this.glyphPlanner.planDynamic(value, glyph);
         let svg = "";
 
-        if (glyphs.length === 0) {
+        if (plannedDynamic.glyphNames.length === 0) {
             svg = `<text x="${x}" y="${staffTopY + this.config.dynamicOffsetY}" font-family="Times New Roman" font-style="italic" font-weight="bold" font-size="16" data-smufl-role="dynamic-text">${this.escapeXml(value)}</text>\n`;
         } else {
             svg = this.renderSmuflGlyphs(
-                glyphs,
+                plannedDynamic.glyphNames,
                 x,
                 staffTopY + this.config.dynamicOffsetY,
                 24,
-                `data-smufl-role="dynamic"`,
+                `data-smufl-role="${plannedDynamic.role}"`,
             );
         }
 
@@ -1327,10 +1582,16 @@ export class Renderer {
         let svg = "";
 
         articulations.forEach((articulation, index) => {
-            const glyphName = resolveArticulationGlyph(articulation, placement);
-            if (!glyphName) return;
+            const glyph = this.glyphPlanner.planArticulation(articulation, placement);
+            if (!glyph) return;
             const y = baseY + index * 11 * direction;
-            svg += this.renderSmuflGlyph(glyphName, x - 4, y, 18, `data-smufl-role="articulation"`);
+            svg += this.renderSmuflGlyph(
+                glyph.glyphName,
+                x - 4,
+                y,
+                18,
+                `data-smufl-role="${glyph.role}"`,
+            );
         });
 
         return svg;
@@ -1348,14 +1609,14 @@ export class Renderer {
         color?: string,
     ): string {
         const baseColor = color || "black";
-        const glyphName = resolveNoteheadGlyph(duration, type);
-        if (glyphName) {
+        const glyph = this.glyphPlanner.planNotehead(duration, type);
+        if (glyph) {
             return this.renderSmuflGlyph(
-                glyphName,
+                glyph.glyphName,
                 cx - r * 1.25,
                 cy + r * 1.05,
                 r * 4.8,
-                `data-smufl-role="notehead" fill="${baseColor}"`,
+                `data-smufl-role="${glyph.role}" fill="${baseColor}"`,
             );
         }
 
@@ -1497,11 +1758,17 @@ export class Renderer {
         eventId?: string,
         partId?: string,
     ): string {
-        const glyphName = resolveRestGlyph(duration);
+        const glyph = this.glyphPlanner.planRest(duration);
         let svg = "";
 
-        if (glyphName && duration !== "whole" && duration !== "half") {
-            svg = this.renderSmuflGlyph(glyphName, x, staffTopY + 33, 32, `data-smufl-role="rest"`);
+        if (glyph && duration !== "whole" && duration !== "half") {
+            svg = this.renderSmuflGlyph(
+                glyph.glyphName,
+                x,
+                staffTopY + 33,
+                32,
+                `data-smufl-role="${glyph.role}"`,
+            );
             return this.wrapInteractiveEvent(
                 svg + this.renderAugmentationDots(x + 20, staffTopY + 25, dots),
                 "rest",
@@ -1578,9 +1845,7 @@ export class Renderer {
         fontSize: number,
         attrs = "",
     ): string {
-        const char = getSmuflChar(glyphName);
-        if (!char) return "";
-        return `<text x="${x}" y="${y}" class="smufl-glyph" font-family="${SMUFL_FONT_STACK}" font-size="${fontSize}" ${attrs} data-smufl-glyph="${glyphName}">${char}</text>\n`;
+        return this.backend.smuflGlyph(glyphName, x, y, fontSize, attrs);
     }
 
     private renderSmuflGlyphs(
@@ -1590,20 +1855,11 @@ export class Renderer {
         fontSize: number,
         attrs = "",
     ): string {
-        const chars = glyphNames
-            .map((glyphName) => getSmuflChar(glyphName))
-            .filter(Boolean)
-            .join("");
-        if (!chars) return "";
-        return `<text x="${x}" y="${y}" class="smufl-glyph" font-family="${SMUFL_FONT_STACK}" font-size="${fontSize}" ${attrs} data-smufl-glyph="${glyphNames.join(" ")}">${chars}</text>\n`;
+        return this.backend.smuflGlyphs(glyphNames, x, y, fontSize, attrs);
     }
 
     private escapeXml(value: string): string {
-        return value
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
+        return this.backend.escapeXml(value);
     }
 
     /**
@@ -1616,13 +1872,14 @@ export class Renderer {
         scale: number = 1,
     ): string {
         let svg = "";
+        const glyph = this.glyphPlanner.planAugmentationDot();
         for (let i = 0; i < count; i++) {
             svg += this.renderSmuflGlyph(
-                "augmentationDot",
+                glyph.glyphName,
                 x + i * 6 * scale,
                 y,
                 10 * scale,
-                `data-smufl-role="augmentation-dot"`,
+                `data-smufl-role="${glyph.role}"`,
             );
         }
         return svg;
@@ -1711,7 +1968,11 @@ export class Renderer {
         return svg;
     }
 
-    private renderMultiNoteTremolo(sourcePos: any, targetPos: any, marks: number): string {
+    private renderMultiNoteTremolo(
+        sourcePos: GlobalPosition,
+        targetPos: GlobalPosition,
+        marks: number,
+    ): string {
         const midX = (sourcePos.x + targetPos.x) / 2;
         const midY = (sourcePos.y + targetPos.y) / 2;
 
@@ -1733,12 +1994,13 @@ export class Renderer {
     }
     private renderPedalSign(x: number, systemY: number, type: "start" | "stop"): string {
         const y = systemY + this.config.pedalSignOffsetY;
+        const glyph = this.glyphPlanner.planPedal(type);
         return this.renderSmuflGlyph(
-            resolvePedalGlyph(type),
+            glyph.glyphName,
             x,
             y,
             type === "start" ? 24 : 18,
-            `data-smufl-role="pedal"`,
+            `data-smufl-role="${glyph.role}"`,
         );
     }
 
@@ -1747,4 +2009,18 @@ export class Renderer {
         const height = 10;
         return `<path d="M${startX} ${y - height} L${startX} ${y} L${endX} ${y} L${endX} ${y - height}" stroke="black" stroke-width="1.5" fill="none"/>\n`;
     }
+}
+
+function collectBeamedEventIds(score: Score, measurePlan: RenderPlanMeasure): Set<string> {
+    const beamedEventIds = new Set<string>();
+    const beams = score.parts[measurePlan.partIndex]?.measures[measurePlan.measureIndex]?.beams;
+    if (!beams) return beamedEventIds;
+
+    for (const beam of beams) {
+        for (const eventId of beam.events) {
+            beamedEventIds.add(eventId);
+        }
+    }
+
+    return beamedEventIds;
 }
