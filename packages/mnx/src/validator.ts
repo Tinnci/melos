@@ -22,7 +22,7 @@ export class MnxValidator {
                 issues.push({
                     type: "warning",
                     message: `Part '${part.name || part.id}' has ${part.measures.length} measures, expected ${globalMeasureCount}.`,
-                    path: `parts[${partIndex}]`
+                    path: `parts[${partIndex}]`,
                 });
             }
         });
@@ -30,14 +30,14 @@ export class MnxValidator {
         // 2. Rhythmic Integrity
         const timelineOptions: TimelineBuildOptions = {
             allowPickupMeasure: options.allowPickupMeasure ?? true,
-            includeRhythmDiagnostics: options.includeRhythmDiagnostics ?? true
+            includeRhythmDiagnostics: options.includeRhythmDiagnostics ?? true,
         };
         const timeline = buildScoreTimeline(score, timelineOptions);
         timeline.diagnostics.forEach((diagnostic) => {
             issues.push({
                 type: diagnostic.severity === "error" ? "error" : "warning",
                 message: diagnostic.message,
-                path: diagnostic.path
+                path: diagnostic.path,
             });
         });
 
@@ -48,7 +48,7 @@ export class MnxValidator {
                     collectPitchBoundIssues(
                         seq.content,
                         `parts[${partIndex}].measures[${measureIndex}].sequences[${seqIndex}].content`,
-                        issues
+                        issues,
                     );
                 });
             });
@@ -58,7 +58,11 @@ export class MnxValidator {
     }
 }
 
-function collectPitchBoundIssues(content: unknown[], path: string, issues: ValidationIssue[]): void {
+function collectPitchBoundIssues(
+    content: unknown[],
+    path: string,
+    issues: ValidationIssue[],
+): void {
     content.forEach((event, eventIndex) => {
         if (!isRecord(event)) return;
 
@@ -71,7 +75,7 @@ function collectPitchBoundIssues(content: unknown[], path: string, issues: Valid
                     issues.push({
                         type: "warning",
                         message: `Note pitch octave ${octave} is outside standard range (0-9).`,
-                        path: `${eventPath}.notes[${noteIndex}]`
+                        path: `${eventPath}.notes[${noteIndex}]`,
                     });
                 }
             });

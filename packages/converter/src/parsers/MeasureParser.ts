@@ -1,12 +1,31 @@
-import type { PartMeasure, Sequence, Event, Note, Beam, Tuplet, Lyric, DynamicEvent, Wedge, Ottava, Pedal, MultimeasureRest } from "@melos/core";
-import { generateEventId, generateNoteId, musicXmlClefLineToStaffPosition, musicXmlNoteValue, parseInteger } from "./Utils";
+import type {
+    PartMeasure,
+    Sequence,
+    Event,
+    Note,
+    Beam,
+    Tuplet,
+    Lyric,
+    DynamicEvent,
+    Wedge,
+    Ottava,
+    Pedal,
+    MultimeasureRest,
+} from "@melos/core";
+import {
+    generateEventId,
+    generateNoteId,
+    musicXmlClefLineToStaffPosition,
+    musicXmlNoteValue,
+    parseInteger,
+} from "./Utils";
 import { TimeTracker } from "./TimeTracker";
 import { XmlEventStream } from "./XmlEventStream";
 import type { OrderedXmlNode } from "./OrderedXml";
 
 export interface Container {
     content: any[];
-    endCondition?: { type: 'tuplet'; number?: number };
+    endCondition?: { type: "tuplet"; number?: number };
 }
 
 interface ActiveWedgeState {
@@ -24,7 +43,7 @@ export interface PartParsingContext {
     activeOttavas: Record<number, ActiveOttavaState>; // [NEW] Ottava tracking
     activeTremolos: Record<number, { id: string }>; // [NEW] Multi-note Tremolo tracking
     activePedals?: { pedalObj: Pedal }; // [NEW] Pedal tracking
-    lyricLines: Map<string, { id: string, name: string }>;
+    lyricLines: Map<string, { id: string; name: string }>;
 }
 
 interface VoiceContext {
@@ -51,7 +70,7 @@ export class MeasureParser {
         context: PartParsingContext,
         globalDivisions: number = 1,
         measureIndex: number = 1,
-        orderedMeasure?: OrderedXmlNode[]
+        orderedMeasure?: OrderedXmlNode[],
     ) {
         this.xmlMeasure = xmlMeasure;
         this.orderedMeasure = orderedMeasure;
@@ -67,7 +86,7 @@ export class MeasureParser {
             ctx = {
                 root: rootContent,
                 stack: [{ content: rootContent }],
-                currentEvent: null
+                currentEvent: null,
             };
             this.voiceContexts.set(voiceId, ctx);
             this.voiceOrder.push(voiceId);
@@ -101,7 +120,11 @@ export class MeasureParser {
                 if (duration !== undefined) {
                     const voiceId = token.voice ? String(token.voice) : undefined;
                     if (voiceId) {
-                        this.handleForwardRest(duration, this.getVoiceContext(voiceId), parseInteger(token.staff));
+                        this.handleForwardRest(
+                            duration,
+                            this.getVoiceContext(voiceId),
+                            parseInteger(token.staff),
+                        );
                     }
                     this.timeTracker.forward(duration, voiceId);
                 }
@@ -121,9 +144,10 @@ export class MeasureParser {
                 if (!token.chord && !token.grace && token.duration) {
                     this.timeTracker.advance(sequenceVoiceId, parseInt(token.duration));
                 }
-
             } else if (token._tag === "direction") {
-                const dTypes = Array.isArray(token["direction-type"]) ? token["direction-type"] : [token["direction-type"]];
+                const dTypes = Array.isArray(token["direction-type"])
+                    ? token["direction-type"]
+                    : [token["direction-type"]];
 
                 dTypes.forEach((dt: any) => {
                     if (dt.dynamics) {
@@ -142,7 +166,7 @@ export class MeasureParser {
             }
         }
 
-        const sequences: Sequence[] = this.voiceOrder.map(vId => {
+        const sequences: Sequence[] = this.voiceOrder.map((vId) => {
             return { content: this.voiceContexts.get(vId)!.root };
         });
 
@@ -157,7 +181,7 @@ export class MeasureParser {
             if (duration > 1) {
                 multimeasureRest = {
                     start: this.measureIndex,
-                    duration: duration
+                    duration: duration,
                 };
             }
         }
@@ -169,7 +193,7 @@ export class MeasureParser {
             wedges: wedges.length > 0 ? wedges : undefined,
             ottavas: ottavas.length > 0 ? ottavas : undefined,
             pedals: pedals.length > 0 ? pedals : undefined,
-            multimeasureRest: multimeasureRest
+            multimeasureRest: multimeasureRest,
         };
     }
 
@@ -187,9 +211,9 @@ export class MeasureParser {
             const clefEntry: NonNullable<PartMeasure["clefs"]>[number] = {
                 clef: {
                     sign: c.sign,
-                    staffPosition: musicXmlClefLineToStaffPosition(c.line)
+                    staffPosition: musicXmlClefLineToStaffPosition(c.line),
                 },
-                staff: parseInteger(c["@_number"]) || idx + 1
+                staff: parseInteger(c["@_number"]) || idx + 1,
             };
 
             if (!isMeasureStart) {
@@ -204,9 +228,14 @@ export class MeasureParser {
         const currentContainer = ctx.stack[ctx.stack.length - 1];
         const restEvent: Event = {
             id: generateEventId(),
-            duration: musicXmlNoteValue(undefined, durationTicks, this.timeTracker.getDivisions(), 0),
+            duration: musicXmlNoteValue(
+                undefined,
+                durationTicks,
+                this.timeTracker.getDivisions(),
+                0,
+            ),
             rest: { hidden: true },
-            staff
+            staff,
         };
 
         currentContainer.content.push(restEvent);
@@ -222,7 +251,7 @@ export class MeasureParser {
                 type: type,
                 position: this.timeTracker.getCurrentPosition(voiceId),
                 staff,
-                voice: voiceId
+                voice: voiceId,
             };
 
             // Add to current measure
@@ -230,14 +259,13 @@ export class MeasureParser {
 
             // Track active wedge
             this.context.activeWedges[number] = { wedgeObj };
-
         } else if (type === "stop") {
             const active = this.context.activeWedges[number];
             if (active) {
                 // Update the End Position of the ORIGINAL object
                 active.wedgeObj.end = {
                     measure: this.measureIndex,
-                    position: this.timeTracker.getCurrentPosition(voiceId)
+                    position: this.timeTracker.getCurrentPosition(voiceId),
                 };
                 delete this.context.activeWedges[number];
             }
@@ -249,7 +277,12 @@ export class MeasureParser {
      * MusicXML: <octave-shift type="up|down|stop" size="8|15|22" number="n"/>
      * MNX: { value: 1|-1|2|-2, position, end }
      */
-    private handleOttava(octaveShiftXml: any, ottavasList: Ottava[], voiceId?: string, staff?: number) {
+    private handleOttava(
+        octaveShiftXml: any,
+        ottavasList: Ottava[],
+        voiceId?: string,
+        staff?: number,
+    ) {
         const type = octaveShiftXml["@_type"]; // up | down | stop | continue
         const size = parseInt(octaveShiftXml["@_size"] || "8"); // 8, 15, or 22
         const number = parseInt(octaveShiftXml["@_number"] || "1");
@@ -266,9 +299,12 @@ export class MeasureParser {
             const ottavaObj: Ottava = {
                 value: value,
                 position: this.timeTracker.getCurrentPosition(voiceId),
-                end: { measure: this.measureIndex, position: this.timeTracker.getCurrentPosition(voiceId) }, // Placeholder, will be updated on stop
+                end: {
+                    measure: this.measureIndex,
+                    position: this.timeTracker.getCurrentPosition(voiceId),
+                }, // Placeholder, will be updated on stop
                 staff,
-                voice: voiceId
+                voice: voiceId,
             };
 
             // Add to current measure
@@ -276,14 +312,13 @@ export class MeasureParser {
 
             // Track active ottava
             this.context.activeOttavas[number] = { ottavaObj };
-
         } else if (type === "stop") {
             const active = this.context.activeOttavas[number];
             if (active) {
                 // Update the End Position of the ORIGINAL object
                 active.ottavaObj.end = {
                     measure: this.measureIndex,
-                    position: this.timeTracker.getCurrentPosition(voiceId)
+                    position: this.timeTracker.getCurrentPosition(voiceId),
                 };
                 delete this.context.activeOttavas[number];
             }
@@ -302,18 +337,17 @@ export class MeasureParser {
                 line: line,
                 sign: sign,
                 staff,
-                voice: voiceId
+                voice: voiceId,
             };
             pedalsList.push(pedalObj);
             this.context.activePedals = { pedalObj };
-
         } else if (type === "stop") {
             const active = this.context.activePedals;
             if (active) {
                 if (active.pedalObj.line) {
                     active.pedalObj.end = {
                         measure: this.measureIndex,
-                        position: this.timeTracker.getCurrentPosition(voiceId)
+                        position: this.timeTracker.getCurrentPosition(voiceId),
                     };
                     delete this.context.activePedals; // Clear active
                 } else {
@@ -322,7 +356,7 @@ export class MeasureParser {
                         type: "stop",
                         position: this.timeTracker.getCurrentPosition(voiceId),
                         staff,
-                        voice: voiceId
+                        voice: voiceId,
                     };
                     pedalsList.push(pedalStop);
                     delete this.context.activePedals;
@@ -333,10 +367,9 @@ export class MeasureParser {
                     type: "stop",
                     position: this.timeTracker.getCurrentPosition(voiceId),
                     staff,
-                    voice: voiceId
+                    voice: voiceId,
                 });
             }
-
         } else if (type === "change") {
             const active = this.context.activePedals;
             const pos = this.timeTracker.getCurrentPosition(voiceId);
@@ -353,7 +386,7 @@ export class MeasureParser {
                 line: line,
                 sign: sign,
                 staff,
-                voice: voiceId
+                voice: voiceId,
             };
             pedalsList.push(newPedal);
             this.context.activePedals = { pedalObj: newPedal };
@@ -364,16 +397,14 @@ export class MeasureParser {
         const dynObj = directionType.dynamics;
         if (!dynObj) return;
 
-        const keys = Object.keys(dynObj).filter(key => !key.startsWith("@_"));
+        const keys = Object.keys(dynObj).filter((key) => !key.startsWith("@_"));
         if (keys.length > 0) {
             const key = keys[0];
-            const value = key === "other-dynamics"
-                ? this.textValue(dynObj[key]) || key
-                : key;
+            const value = key === "other-dynamics" ? this.textValue(dynObj[key]) || key : key;
             const dynamicEvent: DynamicEvent = {
                 type: "dynamic",
                 value,
-                staff
+                staff,
             };
             const currentContainer = ctx.stack[ctx.stack.length - 1];
             currentContainer.content.push(dynamicEvent);
@@ -401,7 +432,10 @@ export class MeasureParser {
 
                 const newContainer: Container = {
                     content: newTuplet.content,
-                    endCondition: { type: "tuplet", number: parseInteger(tupletStartNode["@_number"]) }
+                    endCondition: {
+                        type: "tuplet",
+                        number: parseInteger(tupletStartNode["@_number"]),
+                    },
                 };
                 ctx.stack.push(newContainer);
                 currentContainer = newContainer;
@@ -414,12 +448,12 @@ export class MeasureParser {
 
         if (isGrace) {
             const lastItem = currentContainer.content[currentContainer.content.length - 1];
-            if (lastItem && lastItem.type === 'grace') {
+            if (lastItem && lastItem.type === "grace") {
                 graceContainer = lastItem;
             } else {
                 graceContainer = {
                     type: "grace",
-                    content: []
+                    content: [],
                 };
                 currentContainer.content.push(graceContainer);
             }
@@ -434,7 +468,12 @@ export class MeasureParser {
         if (xNote.dot !== undefined) {
             dots = Array.isArray(xNote.dot) ? xNote.dot.length : 1;
         }
-        const duration = musicXmlNoteValue(xNote.type, xNote.duration, this.timeTracker.getDivisions(), dots);
+        const duration = musicXmlNoteValue(
+            xNote.type,
+            xNote.duration,
+            this.timeTracker.getDivisions(),
+            dots,
+        );
         // Pitch Logic
         let noteObj: Note | null = null;
         let pitchKey = "";
@@ -446,28 +485,31 @@ export class MeasureParser {
                     pitch: {
                         step: xNote.pitch.step,
                         octave: parseInt(xNote.pitch.octave),
-                        alter: xNote.pitch.alter ? parseInt(xNote.pitch.alter) : undefined
+                        alter: xNote.pitch.alter ? parseInt(xNote.pitch.alter) : undefined,
                     },
-                    staff
+                    staff,
                 };
                 if (xNote.accidental) {
-                    const accObj = typeof xNote.accidental === 'object' ? xNote.accidental : { "#text": xNote.accidental };
+                    const accObj =
+                        typeof xNote.accidental === "object"
+                            ? xNote.accidental
+                            : { "#text": xNote.accidental };
                     noteObj.accidentalDisplay = {
                         show: true,
-                        cautionary: accObj["@_parentheses"] === "yes" || accObj["@_cautionary"] === "yes",
-                        editorial: accObj["@_editorial"] === "yes"
+                        cautionary:
+                            accObj["@_parentheses"] === "yes" || accObj["@_cautionary"] === "yes",
+                        editorial: accObj["@_editorial"] === "yes",
                     };
                 }
                 pitchKey = `${noteObj.pitch!.step}${noteObj.pitch!.octave}`;
-
             } else if (xNote.unpitched) {
                 noteObj = {
                     id: generateNoteId(),
                     unpitched: {
                         step: xNote.unpitched["display-step"] || "C",
-                        octave: parseInt(xNote.unpitched["display-octave"] || "4")
+                        octave: parseInt(xNote.unpitched["display-octave"] || "4"),
                     },
-                    staff
+                    staff,
                 };
                 pitchKey = "unpitched";
             }
@@ -502,7 +544,7 @@ export class MeasureParser {
             const evt: Event = {
                 id: eventId,
                 duration,
-                staff
+                staff,
             };
 
             if (isRest) {
@@ -528,7 +570,7 @@ export class MeasureParser {
                     eventLyrics.push({
                         text: l.text,
                         syllabic: l.syllabic,
-                        line: lineId
+                        line: lineId,
                     });
                 });
 
@@ -561,12 +603,14 @@ export class MeasureParser {
                     const arts = n.articulations;
                     const keys = Object.keys(arts);
 
-                    keys.forEach(key => {
+                    keys.forEach((key) => {
                         if (key === "staccato") collectedArticulations.push("staccato");
                         else if (key === "accent") collectedArticulations.push("accent");
                         else if (key === "tenuto") collectedArticulations.push("tenuto");
-                        else if (key === "strong-accent") collectedArticulations.push("strong-accent");
-                        else if (key === "staccatissimo") collectedArticulations.push("staccatissimo");
+                        else if (key === "strong-accent")
+                            collectedArticulations.push("strong-accent");
+                        else if (key === "staccatissimo")
+                            collectedArticulations.push("staccatissimo");
                     });
                 }
             });
@@ -625,7 +669,7 @@ export class MeasureParser {
                                 if (!source.slurs) source.slurs = [];
                                 source.slurs.push({
                                     target: ctx.currentEvent!.id!,
-                                    side: s["@_placement"] === "below" ? "down" : "up"
+                                    side: s["@_placement"] === "below" ? "down" : "up",
                                 });
                                 delete this.context.activeSlurs[number];
                             }
@@ -672,7 +716,7 @@ export class MeasureParser {
                     if (this.activeBeams[number]) {
                         this.activeBeams[number].eventIds.push(eventId);
                         this.beams.push({
-                            events: this.activeBeams[number].eventIds
+                            events: this.activeBeams[number].eventIds,
                         });
                         delete this.activeBeams[number];
                     }
@@ -686,7 +730,7 @@ export class MeasureParser {
             const tupletStopNode = this.findTupletNotation(notations, "stop");
 
             if (tupletStopNode) {
-                if (ctx.stack.length > 1 && currentContainer.endCondition?.type === 'tuplet') {
+                if (ctx.stack.length > 1 && currentContainer.endCondition?.type === "tuplet") {
                     ctx.stack.pop();
                 }
             }
@@ -697,16 +741,16 @@ export class MeasureParser {
         if (!value) return undefined;
         const normalized = value.trim().toLowerCase();
         const aliases: Record<string, Note["notehead"]> = {
-            "normal": "normal",
-            "x": "x",
-            "cross": "x",
-            "diamond": "diamond",
-            "triangle": "triangle",
+            normal: "normal",
+            x: "x",
+            cross: "x",
+            diamond: "diamond",
+            triangle: "triangle",
             "inverted triangle": "triangle",
-            "slash": "slash",
-            "square": "square",
+            slash: "slash",
+            square: "square",
             "circle-x": "circle-x",
-            "circle x": "circle-x"
+            "circle x": "circle-x",
         };
         return aliases[normalized];
     }
@@ -716,19 +760,24 @@ export class MeasureParser {
         const actualNotes = parseInteger(timeModification?.["actual-notes"]) || 3;
         const normalNotes = parseInteger(timeModification?.["normal-notes"]) || 2;
         const quantityType = timeModification?.["normal-type"] || xNote.type;
-        const quantityDuration = musicXmlNoteValue(quantityType, undefined, this.timeTracker.getDivisions(), 0);
+        const quantityDuration = musicXmlNoteValue(
+            quantityType,
+            undefined,
+            this.timeTracker.getDivisions(),
+            0,
+        );
 
         return {
             type: "tuplet",
             inner: {
                 duration: quantityDuration,
-                multiple: actualNotes
+                multiple: actualNotes,
             },
             outer: {
                 duration: quantityDuration,
-                multiple: normalNotes
+                multiple: normalNotes,
             },
-            content: []
+            content: [],
         };
     }
 

@@ -1,9 +1,5 @@
 import type { Score } from "@melos/core";
-import {
-    analyzeMeasureLayout,
-    type LayoutDiagnostic,
-    type MeasureLayoutAnalysis
-} from "./layout";
+import { analyzeMeasureLayout, type LayoutDiagnostic, type MeasureLayoutAnalysis } from "./layout";
 
 export interface RenderPlanOptions {
     pageWidth?: number;
@@ -68,7 +64,7 @@ const DEFAULT_PLAN_OPTIONS: Required<RenderPlanOptions> = {
     systemSpacing: 145,
     measurePadding: 15,
     minMeasureWidth: 60,
-    systemHeaderWidth: 0
+    systemHeaderWidth: 0,
 };
 
 export function createRenderPlan(score: Score, options: RenderPlanOptions = {}): RenderPlan {
@@ -86,20 +82,21 @@ export function createRenderPlan(score: Score, options: RenderPlanOptions = {}):
             part.id,
             partSystems.length,
             currentY,
-            resolvedOptions
+            resolvedOptions,
         );
 
         part.measures.forEach((measure, measureIndex) => {
             const layout = analyzeMeasureLayout(score, partIndex, measureIndex, {
                 measurePadding: resolvedOptions.measurePadding,
-                minMeasureWidth: resolvedOptions.minMeasureWidth
+                minMeasureWidth: resolvedOptions.minMeasureWidth,
             });
             diagnostics.push(...layout.diagnostics);
 
             const measureWidth = Math.max(resolvedOptions.minMeasureWidth, layout.estimatedWidth);
             if (
-                currentSystem.measures.length > 0
-                && currentSystem.endX + measureWidth > resolvedOptions.pageWidth + resolvedOptions.paddingX
+                currentSystem.measures.length > 0 &&
+                currentSystem.endX + measureWidth >
+                    resolvedOptions.pageWidth + resolvedOptions.paddingX
             ) {
                 finalizeSystem(currentSystem, partSystems, systems);
                 maxX = Math.max(maxX, currentSystem.endX);
@@ -109,7 +106,7 @@ export function createRenderPlan(score: Score, options: RenderPlanOptions = {}):
                     part.id,
                     partSystems.length,
                     currentY,
-                    resolvedOptions
+                    resolvedOptions,
                 );
             }
 
@@ -122,9 +119,9 @@ export function createRenderPlan(score: Score, options: RenderPlanOptions = {}):
                 y: currentSystem.y,
                 width: measureWidth,
                 contentX: currentSystem.endX + resolvedOptions.measurePadding,
-                contentWidth: Math.max(0, measureWidth - (resolvedOptions.measurePadding * 2)),
+                contentWidth: Math.max(0, measureWidth - resolvedOptions.measurePadding * 2),
                 layout,
-                diagnostics: layout.diagnostics
+                diagnostics: layout.diagnostics,
             };
 
             currentSystem.measures.push(measurePlan);
@@ -138,7 +135,7 @@ export function createRenderPlan(score: Score, options: RenderPlanOptions = {}):
             partIndex,
             partId: part.id,
             name: part.name,
-            systems: partSystems
+            systems: partSystems,
         });
         currentY += resolvedOptions.systemSpacing;
     });
@@ -148,7 +145,7 @@ export function createRenderPlan(score: Score, options: RenderPlanOptions = {}):
         height: currentY + resolvedOptions.bottomPadding,
         parts,
         systems,
-        diagnostics
+        diagnostics,
     };
 }
 
@@ -157,7 +154,7 @@ function createSystemPlan(
     partId: string | undefined,
     systemIndex: number,
     y: number,
-    options: Required<RenderPlanOptions>
+    options: Required<RenderPlanOptions>,
 ): RenderPlanSystem {
     const contentStartX = options.paddingX + options.systemHeaderWidth;
     return {
@@ -170,14 +167,14 @@ function createSystemPlan(
         endX: contentStartX,
         width: options.systemHeaderWidth,
         headerWidth: options.systemHeaderWidth,
-        measures: []
+        measures: [],
     };
 }
 
 function finalizeSystem(
     system: RenderPlanSystem,
     partSystems: RenderPlanSystem[],
-    systems: RenderPlanSystem[]
+    systems: RenderPlanSystem[],
 ): void {
     if (system.measures.length === 0) return;
     system.width = system.endX - system.x;

@@ -7,7 +7,7 @@ import {
     resolveArticulationGlyph,
     resolveDynamicGlyphs,
     resolveNoteheadGlyph,
-    resolvePedalGlyph
+    resolvePedalGlyph,
 } from "../src/smufl";
 
 describe("SMuFL rendering support", () => {
@@ -15,28 +15,42 @@ describe("SMuFL rendering support", () => {
         const score = ScoreSchema.parse({
             mnx: { version: 1 },
             global: { measures: [{}] },
-            parts: [{
-                id: "P1",
-                name: "Piano",
-                smuflFont: "Bravura",
-                measures: [{
-                    clefs: [{
-                        clef: { sign: "G", staffPosition: -2, glyph: "fClef" }
-                    }],
-                    sequences: [{
-                        content: [
-                            { type: "dynamic", value: "sfz", glyph: "dynamicSforzando" },
-                            {
-                                duration: { base: "quarter" },
-                                notes: [{
-                                    pitch: { step: "C", octave: 4, alter: 2 },
-                                    accidentalDisplay: { show: true }
-                                }]
-                            }
-                        ]
-                    }]
-                }]
-            }]
+            parts: [
+                {
+                    id: "P1",
+                    name: "Piano",
+                    smuflFont: "Bravura",
+                    measures: [
+                        {
+                            clefs: [
+                                {
+                                    clef: { sign: "G", staffPosition: -2, glyph: "fClef" },
+                                },
+                            ],
+                            sequences: [
+                                {
+                                    content: [
+                                        {
+                                            type: "dynamic",
+                                            value: "sfz",
+                                            glyph: "dynamicSforzando",
+                                        },
+                                        {
+                                            duration: { base: "quarter" },
+                                            notes: [
+                                                {
+                                                    pitch: { step: "C", octave: 4, alter: 2 },
+                                                    accidentalDisplay: { show: true },
+                                                },
+                                            ],
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
         });
 
         expect(score.parts[0].smuflFont).toBe("Bravura");
@@ -46,13 +60,17 @@ describe("SMuFL rendering support", () => {
     it("resolves common accidentals and dynamics to SMuFL glyph names", () => {
         expect(resolveAccidentalGlyph(2)).toBe("accidentalDoubleSharp");
         expect(resolveAccidentalGlyph(-2)).toBe("accidentalDoubleFlat");
-        expect(resolveDynamicGlyphs("sfz")).toEqual(["dynamicSforzando", "dynamicForte", "dynamicZ"]);
+        expect(resolveDynamicGlyphs("sfz")).toEqual([
+            "dynamicSforzando",
+            "dynamicForte",
+            "dynamicZ",
+        ]);
         expect(resolveDynamicGlyphs("ppppp")).toEqual([
             "dynamicPiano",
             "dynamicPiano",
             "dynamicPiano",
             "dynamicPiano",
-            "dynamicPiano"
+            "dynamicPiano",
         ]);
         expect(resolveNoteheadGlyph("quarter", "diamond")).toBe("noteheadDiamondBlack");
         expect(resolveArticulationGlyph("staccato", "below")).toBe("articStaccatoBelow");
@@ -65,26 +83,36 @@ describe("SMuFL rendering support", () => {
         const score = ScoreSchema.parse({
             mnx: { version: 1 },
             global: { measures: [{}] },
-            parts: [{
-                id: "P1",
-                measures: [{
-                    clefs: [{
-                        clef: { sign: "G", staffPosition: -2, glyph: "fClef" }
-                    }],
-                    sequences: [{
-                        content: [
-                            { type: "dynamic", value: "sfz" },
-                            {
-                                duration: { base: "quarter" },
-                                notes: [{
-                                    pitch: { step: "C", octave: 4, alter: 2 },
-                                    accidentalDisplay: { show: true }
-                                }]
-                            }
-                        ]
-                    }]
-                }]
-            }]
+            parts: [
+                {
+                    id: "P1",
+                    measures: [
+                        {
+                            clefs: [
+                                {
+                                    clef: { sign: "G", staffPosition: -2, glyph: "fClef" },
+                                },
+                            ],
+                            sequences: [
+                                {
+                                    content: [
+                                        { type: "dynamic", value: "sfz" },
+                                        {
+                                            duration: { base: "quarter" },
+                                            notes: [
+                                                {
+                                                    pitch: { step: "C", octave: 4, alter: 2 },
+                                                    accidentalDisplay: { show: true },
+                                                },
+                                            ],
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
         });
 
         const svg = new Renderer().render(score);
@@ -98,28 +126,40 @@ describe("SMuFL rendering support", () => {
         const score = ScoreSchema.parse({
             mnx: { version: 1 },
             global: { measures: [{}] },
-            parts: [{
-                id: "P1",
-                measures: [{
-                    pedals: [{
-                        type: "start",
-                        position: { fraction: [0, 1] },
-                        sign: true,
-                        line: true
-                    }],
-                    sequences: [{
-                        content: [{
-                            id: "ev1",
-                            duration: { base: "quarter" },
-                            articulations: ["staccato", "fermata"],
-                            notes: [{
-                                pitch: { step: "C", octave: 4 },
-                                notehead: "diamond"
-                            }]
-                        }]
-                    }]
-                }]
-            }]
+            parts: [
+                {
+                    id: "P1",
+                    measures: [
+                        {
+                            pedals: [
+                                {
+                                    type: "start",
+                                    position: { fraction: [0, 1] },
+                                    sign: true,
+                                    line: true,
+                                },
+                            ],
+                            sequences: [
+                                {
+                                    content: [
+                                        {
+                                            id: "ev1",
+                                            duration: { base: "quarter" },
+                                            articulations: ["staccato", "fermata"],
+                                            notes: [
+                                                {
+                                                    pitch: { step: "C", octave: 4 },
+                                                    notehead: "diamond",
+                                                },
+                                            ],
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
         });
 
         const svg = new Renderer().render(score);
@@ -133,56 +173,72 @@ describe("SMuFL rendering support", () => {
         const score = ScoreSchema.parse({
             mnx: { version: 1 },
             global: { measures: [{}] },
-            parts: [{
-                id: "P1",
-                measures: [{
-                    pedals: [{
-                        type: "start",
-                        position: { fraction: [0, 4] },
-                        end: { measure: 1, position: { fraction: [2, 4] } },
-                        sign: true,
-                        line: true
-                    }],
-                    sequences: [{
-                        content: Array.from({ length: 4 }, (_, index) => ({
-                            id: `ev${index + 1}`,
-                            duration: { base: "quarter" },
-                            notes: [{ pitch: { step: "C", octave: 4 } }]
-                        }))
-                    }]
-                }]
-            }]
+            parts: [
+                {
+                    id: "P1",
+                    measures: [
+                        {
+                            pedals: [
+                                {
+                                    type: "start",
+                                    position: { fraction: [0, 4] },
+                                    end: { measure: 1, position: { fraction: [2, 4] } },
+                                    sign: true,
+                                    line: true,
+                                },
+                            ],
+                            sequences: [
+                                {
+                                    content: Array.from({ length: 4 }, (_, index) => ({
+                                        id: `ev${index + 1}`,
+                                        duration: { base: "quarter" },
+                                        notes: [{ pitch: { step: "C", octave: 4 } }],
+                                    })),
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
         });
 
         const renderer = new Renderer();
         const plan = renderer.createPlan(score);
         const measure = plan.systems[0].measures[0];
         const lineStartX = measure.contentX + 32;
-        const lineEndX = measure.contentX + (measure.contentWidth / 2);
+        const lineEndX = measure.contentX + measure.contentWidth / 2;
         const svg = renderer.render(score);
 
         expect(svg).toContain('data-smufl-glyph="keyboardPedalPed"');
-        expect(svg).toContain(`<path d="M${lineStartX} 151 L${lineStartX} 161 L${lineEndX} 161 L${lineEndX} 151"`);
+        expect(svg).toContain(
+            `<path d="M${lineStartX} 151 L${lineStartX} 161 L${lineEndX} 161 L${lineEndX} 151"`,
+        );
     });
 
     it("escapes custom dynamic text before writing SVG", () => {
         const score = ScoreSchema.parse({
             mnx: { version: 1 },
             global: { measures: [{}] },
-            parts: [{
-                id: "P1",
-                measures: [{
-                    sequences: [{
-                        content: [
-                            { type: "dynamic", value: "<grow&fade>" },
-                            {
-                                duration: { base: "quarter" },
-                                notes: [{ pitch: { step: "C", octave: 4 } }]
-                            }
-                        ]
-                    }]
-                }]
-            }]
+            parts: [
+                {
+                    id: "P1",
+                    measures: [
+                        {
+                            sequences: [
+                                {
+                                    content: [
+                                        { type: "dynamic", value: "<grow&fade>" },
+                                        {
+                                            duration: { base: "quarter" },
+                                            notes: [{ pitch: { step: "C", octave: 4 } }],
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
         });
 
         const svg = new Renderer().render(score);
@@ -194,23 +250,29 @@ describe("SMuFL rendering support", () => {
         const score = ScoreSchema.parse({
             mnx: { version: 1 },
             global: { measures: [{}] },
-            parts: [{
-                id: "P1",
-                measures: [{
-                    sequences: [{
-                        content: [
-                            {
-                                duration: { base: "quarter", dots: 1 },
-                                notes: [{ pitch: { step: "C", octave: 4 } }]
-                            },
-                            {
-                                duration: { base: "quarter", dots: 1 },
-                                rest: {}
-                            }
-                        ]
-                    }]
-                }]
-            }]
+            parts: [
+                {
+                    id: "P1",
+                    measures: [
+                        {
+                            sequences: [
+                                {
+                                    content: [
+                                        {
+                                            duration: { base: "quarter", dots: 1 },
+                                            notes: [{ pitch: { step: "C", octave: 4 } }],
+                                        },
+                                        {
+                                            duration: { base: "quarter", dots: 1 },
+                                            rest: {},
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
         });
 
         const svg = new Renderer().render(score);

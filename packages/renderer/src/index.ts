@@ -8,7 +8,7 @@ import {
     resolveNoteheadGlyph,
     resolvePedalGlyph,
     resolveRestGlyph,
-    SMUFL_FONT_STACK
+    SMUFL_FONT_STACK,
 } from "./smufl";
 import { createRenderPlan, type RenderPlan, type RenderPlanOptions } from "./plan";
 import { solveMeasureSpacing, type MeasureSpacing } from "./spacing";
@@ -28,8 +28,14 @@ type ChordLayout = {
 };
 
 type StemDirection = "up" | "down";
-type GlobalPosition = { x: number, y: number, stemUp: boolean, stemTipY: number };
-type CurveRequest = { type: 'tie' | 'slur' | 'tremolo', sourceId: string, targetId: string, side?: string, marks?: number };
+type GlobalPosition = { x: number; y: number; stemUp: boolean; stemTipY: number };
+type CurveRequest = {
+    type: "tie" | "slur" | "tremolo";
+    sourceId: string;
+    targetId: string;
+    side?: string;
+    marks?: number;
+};
 type RenderTremolo = number | { type?: "single" | "start" | "stop"; marks: number; id?: string };
 type RenderItem = {
     id?: string;
@@ -60,24 +66,25 @@ type RenderMeasure = {
 
 // SMuFL G-Clef path extracted from Bravura font (uniE050)
 // Original glyph designed at 1000 units per em, roughly 4 spaces high.
-const GCLEF_PATH = "M376 415l25 -145c3 -18 3 -18 29 -18c147 0 241 -113 241 -241c0 -113 -67 -198 -168 -238c-14 -6 -15 -5 -13 -17c11 -62 29 -157 29 -214c0 -170 -130 -200 -197 -200c-151 0 -190 98 -190 163c0 62 40 115 107 115c61 0 96 -47 96 -102c0 -58 -36 -85 -67 -94c-23 -7 -32 -10 -32 -17c0 -13 26 -29 80 -29c59 0 159 18 159 166c0 47 -15 134 -27 201c-2 12 -4 11 -15 9c-20 -4 -46 -6 -69 -6c-245 0 -364 165 -364 339c0 202 153 345 297 464c12 10 11 12 9 24c-7 41 -14 106 -14 164c0 104 24 229 98 311c20 22 51 48 65 48c11 0 37 -28 52 -50c41 -60 65 -146 65 -233c0 -153 -82 -280 -190 -381c-6 -6 -8 -7 -6 -19zM470 943c-61 0 -133 -96 -133 -252c0 -32 2 -66 6 -92c2 -13 6 -14 13 -8c79 69 174 159 174 270c0 55 -27 82 -60 82zM361 262l-21 128c-2 11 -4 12 -14 4c-47 -38 -93 -75 -153 -142c-83 -94 -93 -173 -93 -232c0 -139 113 -236 288 -236c20 0 40 2 56 5c15 3 16 3 14 14l-50 298c-2 11 -4 12 -20 8c-61 -17 -100 -60 -100 -117c0 -46 30 -89 72 -107c7 -3 15 -6 15 -13c0 -6 -4 -11 -12 -11c-7 0 -19 3 -27 6c-68 23 -115 87 -115 177c0 85 57 164 145 194c18 6 18 5 15 24zM430 103l49 -285c2 -12 4 -12 16 -6c56 28 94 79 94 142c0 88 -67 156 -148 163c-12 1 -13 -2 -11 -14z";
+const GCLEF_PATH =
+    "M376 415l25 -145c3 -18 3 -18 29 -18c147 0 241 -113 241 -241c0 -113 -67 -198 -168 -238c-14 -6 -15 -5 -13 -17c11 -62 29 -157 29 -214c0 -170 -130 -200 -197 -200c-151 0 -190 98 -190 163c0 62 40 115 107 115c61 0 96 -47 96 -102c0 -58 -36 -85 -67 -94c-23 -7 -32 -10 -32 -17c0 -13 26 -29 80 -29c59 0 159 18 159 166c0 47 -15 134 -27 201c-2 12 -4 11 -15 9c-20 -4 -46 -6 -69 -6c-245 0 -364 165 -364 339c0 202 153 345 297 464c12 10 11 12 9 24c-7 41 -14 106 -14 164c0 104 24 229 98 311c20 22 51 48 65 48c11 0 37 -28 52 -50c41 -60 65 -146 65 -233c0 -153 -82 -280 -190 -381c-6 -6 -8 -7 -6 -19zM470 943c-61 0 -133 -96 -133 -252c0 -32 2 -66 6 -92c2 -13 6 -14 13 -8c79 69 174 159 174 270c0 55 -27 82 -60 82zM361 262l-21 128c-2 11 -4 12 -14 4c-47 -38 -93 -75 -153 -142c-83 -94 -93 -173 -93 -232c0 -139 113 -236 288 -236c20 0 40 2 56 5c15 3 16 3 14 14l-50 298c-2 11 -4 12 -20 8c-61 -17 -100 -60 -100 -117c0 -46 30 -89 72 -107c7 -3 15 -6 15 -13c0 -6 -4 -11 -12 -11c-7 0 -19 3 -27 6c-68 23 -115 87 -115 177c0 85 57 164 145 194c18 6 18 5 15 24zM430 103l49 -285c2 -12 4 -12 16 -6c56 28 94 79 94 142c0 88 -67 156 -148 163c-12 1 -13 -2 -11 -14z";
 
 export class Renderer {
     private config = {
-        pageWidth: 800,          // Maximum width before wrapping
-        minPageWidth: 420,       // Avoid shrinking short examples into unreadable fragments
-        lineSpacing: 10,         // Space between staff lines
-        systemSpacing: 145,      // Space between systems (rows), including below-staff lanes
-        paddingX: 40,            // Left/right padding
-        paddingY: 50,            // Top padding
+        pageWidth: 800, // Maximum width before wrapping
+        minPageWidth: 420, // Avoid shrinking short examples into unreadable fragments
+        lineSpacing: 10, // Space between staff lines
+        systemSpacing: 145, // Space between systems (rows), including below-staff lanes
+        paddingX: 40, // Left/right padding
+        paddingY: 50, // Top padding
         bottomPadding: 32,
-        measurePadding: 15,      // Padding inside each measure
-        clefWidth: 40,           // Width reserved for clef
+        measurePadding: 15, // Padding inside each measure
+        clefWidth: 40, // Width reserved for clef
         dynamicOffsetY: 78,
         pedalSignOffsetY: 108,
         pedalLineOffsetY: 111,
         noteRadius: 5,
-        stemLength: 35
+        stemLength: 35,
     };
 
     createPlan(score: Score): RenderPlan {
@@ -94,7 +101,7 @@ export class Renderer {
         // Global position registry for deferred Tie/Slur/Tremolo rendering
         const globalPositions: Map<string, GlobalPosition> = new Map();
         const curveRequests: CurveRequest[] = [];
-        const pendingTremolos: Map<string, { sourceId: string, marks: number }> = new Map();
+        const pendingTremolos: Map<string, { sourceId: string; marks: number }> = new Map();
 
         plan.parts.forEach((partPlan) => {
             const part = score.parts[partPlan.partIndex];
@@ -150,11 +157,16 @@ export class Renderer {
                         systemY,
                         measureWidth,
                         measurePlan.measureNumber,
-                        renderedPartId
+                        renderedPartId,
                     );
 
                     if (globalMeasure?.jumps) {
-                        svgContent += this.renderJumps(measureX, systemY, globalMeasure.jumps, "start");
+                        svgContent += this.renderJumps(
+                            measureX,
+                            systemY,
+                            globalMeasure.jumps,
+                            "start",
+                        );
                     }
 
                     const renderMeasure = measure as RenderMeasure;
@@ -173,7 +185,7 @@ export class Renderer {
                             measurePlan.contentX,
                             measureEndX - this.config.measurePadding,
                             systemY,
-                            renderMeasure.multimeasureRest.duration
+                            renderMeasure.multimeasureRest.duration,
                         );
                     } else {
                         const sequences = renderMeasure.sequences || [];
@@ -191,7 +203,7 @@ export class Renderer {
                                 curveRequests,
                                 pendingTremolos,
                                 spacing,
-                                `parts[${partPlan.partIndex}].measures[${measurePlan.measureIndex}].sequences[${sequenceIndex}].content`
+                                `parts[${partPlan.partIndex}].measures[${measurePlan.measureIndex}].sequences[${sequenceIndex}].content`,
                             );
                         });
 
@@ -207,7 +219,7 @@ export class Renderer {
                                     measurePlan.contentX,
                                     measureEndX - this.config.measurePadding,
                                     systemY,
-                                    ottava.value
+                                    ottava.value,
                                 );
                             }
                         }
@@ -217,26 +229,39 @@ export class Renderer {
                                 const pX = this.rhythmicPositionToX(
                                     measurePlan.contentX,
                                     measurePlan.contentWidth,
-                                    p.position
+                                    p.position,
                                 );
 
-                                if (p.type === 'start') {
+                                if (p.type === "start") {
                                     if (p.sign) {
-                                        svgContent += this.renderPedalSign(pX, systemY, 'start');
+                                        svgContent += this.renderPedalSign(pX, systemY, "start");
                                     }
                                     if (p.line) {
-                                        const pedalMeasureEndX = measureEndX - this.config.measurePadding;
-                                        const endX = p.end?.measure === measurePlan.measureNumber
-                                            ? this.rhythmicPositionToX(measurePlan.contentX, measurePlan.contentWidth, p.end.position)
-                                            : pedalMeasureEndX;
+                                        const pedalMeasureEndX =
+                                            measureEndX - this.config.measurePadding;
+                                        const endX =
+                                            p.end?.measure === measurePlan.measureNumber
+                                                ? this.rhythmicPositionToX(
+                                                      measurePlan.contentX,
+                                                      measurePlan.contentWidth,
+                                                      p.end.position,
+                                                  )
+                                                : pedalMeasureEndX;
                                         const lineStartX = pX + (p.sign ? 32 : 0);
-                                        const lineEndX = Math.max(lineStartX + 16, Math.min(endX, pedalMeasureEndX));
-                                        svgContent += this.renderPedalLine(lineStartX, lineEndX, systemY);
+                                        const lineEndX = Math.max(
+                                            lineStartX + 16,
+                                            Math.min(endX, pedalMeasureEndX),
+                                        );
+                                        svgContent += this.renderPedalLine(
+                                            lineStartX,
+                                            lineEndX,
+                                            systemY,
+                                        );
                                     } else if (!p.sign) {
-                                        svgContent += this.renderPedalSign(pX, systemY, 'start');
+                                        svgContent += this.renderPedalSign(pX, systemY, "start");
                                     }
-                                } else if (p.type === 'stop' && !p.line) {
-                                    svgContent += this.renderPedalSign(pX, systemY, 'stop');
+                                } else if (p.type === "stop" && !p.line) {
+                                    svgContent += this.renderPedalSign(pX, systemY, "stop");
                                 }
                             });
                         }
@@ -245,11 +270,21 @@ export class Renderer {
                     svgContent += this.renderBarline(measureEndX, systemY, "end", globalMeasure);
 
                     if (globalMeasure?.ending) {
-                        svgContent += this.renderEnding(measureEndX, measureWidth, systemY, globalMeasure.ending);
+                        svgContent += this.renderEnding(
+                            measureEndX,
+                            measureWidth,
+                            systemY,
+                            globalMeasure.ending,
+                        );
                     }
 
                     if (globalMeasure?.jumps) {
-                        svgContent += this.renderJumps(measureEndX, systemY, globalMeasure.jumps, "end");
+                        svgContent += this.renderJumps(
+                            measureEndX,
+                            systemY,
+                            globalMeasure.jumps,
+                            "end",
+                        );
                     }
                 });
 
@@ -263,9 +298,9 @@ export class Renderer {
             const targetPos = globalPositions.get(req.targetId);
 
             if (sourcePos && targetPos) {
-                if (req.type === 'tie' || req.type === 'slur') {
+                if (req.type === "tie" || req.type === "slur") {
                     svgContent += this.renderCurve(sourcePos, targetPos, req.type, req.side);
-                } else if (req.type === 'tremolo' && req.marks) {
+                } else if (req.type === "tremolo" && req.marks) {
                     svgContent += this.renderMultiNoteTremolo(sourcePos, targetPos, req.marks);
                 }
             }
@@ -289,7 +324,7 @@ export class Renderer {
             systemSpacing: this.config.systemSpacing,
             measurePadding: this.config.measurePadding,
             minMeasureWidth: 60,
-            systemHeaderWidth: this.estimateSystemHeaderWidth(score)
+            systemHeaderWidth: this.estimateSystemHeaderWidth(score),
         };
     }
 
@@ -310,15 +345,18 @@ export class Renderer {
 
     private estimateKeySignatureWidth(key: { fifths?: number }): number {
         const fifths = key.fifths || 0;
-        return fifths === 0 ? 10 : (Math.abs(fifths) * 12) + 10;
+        return fifths === 0 ? 10 : Math.abs(fifths) * 12 + 10;
     }
 
     /**
      * Render Clef at specific position.
      */
     private renderClef(x: number, y: number, clef: Clef | string = "G"): string {
-        const sign = typeof clef === "string" ? clef : clef?.sign ?? "G";
-        const glyphName = resolveClefGlyph(sign, typeof clef === "string" ? undefined : clef?.glyph);
+        const sign = typeof clef === "string" ? clef : (clef?.sign ?? "G");
+        const glyphName = resolveClefGlyph(
+            sign,
+            typeof clef === "string" ? undefined : clef?.glyph,
+        );
 
         if (glyphName) {
             const yAdjust = sign === "G" ? 1 : sign === "F" ? -9 : sign === "C" ? -8 : -9;
@@ -334,7 +372,7 @@ export class Renderer {
         </g>\n`;
     }
 
-    private renderKeySignature(x: number, y: number, key: any): { svg: string, width: number } {
+    private renderKeySignature(x: number, y: number, key: any): { svg: string; width: number } {
         // key: { fifths: number }
         // fifths > 0: Sharps, fifths < 0: Flats
         let svg = "";
@@ -372,14 +410,20 @@ export class Renderer {
 
         for (let i = 0; i < count; i++) {
             const symbolY = y + positions[i] + (fifths > 0 ? 5 : 5); // Adjustment for text centering
-            svg += this.renderSmuflGlyph(symbol, x + (i * spacing), symbolY + 8, 28, `data-smufl-role="key-signature"`);
+            svg += this.renderSmuflGlyph(
+                symbol,
+                x + i * spacing,
+                symbolY + 8,
+                28,
+                `data-smufl-role="key-signature"`,
+            );
         }
 
-        width = (count * spacing) + 10;
+        width = count * spacing + 10;
         return { svg, width };
     }
 
-    private renderTimeSignature(x: number, y: number, time: any): { svg: string, width: number } {
+    private renderTimeSignature(x: number, y: number, time: any): { svg: string; width: number } {
         const beats = time.count ?? time.beats;
         const type = time.unit ?? time["beat-type"];
 
@@ -396,7 +440,7 @@ export class Renderer {
             <text x="${charX}" y="${y + 18}" font-family="Times New Roman" font-weight="bold" font-size="${fontSize}" text-anchor="middle">${beats}</text>
             <text x="${charX}" y="${y + 38}" font-family="Times New Roman" font-weight="bold" font-size="${fontSize}" text-anchor="middle">${type}</text>
             `,
-            width: 30
+            width: 30,
         };
     }
 
@@ -410,9 +454,9 @@ export class Renderer {
         eventPositions: Map<string, ChordLayout>,
         globalPositions: Map<string, GlobalPosition>,
         curveRequests: CurveRequest[],
-        pendingTremolos: Map<string, { sourceId: string, marks: number }>,
+        pendingTremolos: Map<string, { sourceId: string; marks: number }>,
         spacing?: MeasureSpacing,
-        pathPrefix = "content"
+        pathPrefix = "content",
     ): string {
         let svg = "";
         let noteX = startX;
@@ -436,7 +480,7 @@ export class Renderer {
                     eventId,
                     partId,
                     dots,
-                    stemDirection
+                    stemDirection,
                 );
                 svg += chordResult.svg;
 
@@ -450,7 +494,7 @@ export class Renderer {
                         x: eventX,
                         y: noteHeadY,
                         stemUp: chordResult.layout.stemUp,
-                        stemTipY: chordResult.layout.stemTipY
+                        stemTipY: chordResult.layout.stemTipY,
                     });
                 }
 
@@ -462,10 +506,10 @@ export class Renderer {
                     for (const slur of item.slurs) {
                         if (slur.target) {
                             curveRequests.push({
-                                type: 'slur',
+                                type: "slur",
                                 sourceId: eventId,
                                 targetId: slur.target,
-                                side: slur.side || 'up'
+                                side: slur.side || "up",
                             });
                         }
                     }
@@ -476,10 +520,10 @@ export class Renderer {
                         for (const tie of note.ties) {
                             if (tie.target) {
                                 curveRequests.push({
-                                    type: 'tie',
+                                    type: "tie",
                                     sourceId: note.id || eventId,
                                     targetId: tie.target,
-                                    side: 'auto'
+                                    side: "auto",
                                 });
                             }
                         }
@@ -487,7 +531,14 @@ export class Renderer {
                 }
 
                 if (item.tremolo) {
-                    svg += this.renderTremoloEvent(eventX, item, eventId, chordResult.layout, curveRequests, pendingTremolos);
+                    svg += this.renderTremoloEvent(
+                        eventX,
+                        item,
+                        eventId,
+                        chordResult.layout,
+                        curveRequests,
+                        pendingTremolos,
+                    );
                 }
 
                 noteX += this.getNoteWidth(duration, dots);
@@ -500,11 +551,18 @@ export class Renderer {
                     svg += this.renderRest(eventX, staffTopY, duration, dots, eventId, partId);
                 }
                 noteX += this.getNoteWidth(duration, dots);
-            } else if (item.type === 'dynamic' && item.value) {
+            } else if (item.type === "dynamic" && item.value) {
                 const eventId = item.id || `event-${noteX}`;
                 const eventX = this.resolveSpacingX(item, itemPath, noteX, spacing);
-                svg += this.renderDynamic(eventX, staffTopY, item.value, item.glyph, eventId, partId);
-            } else if (item.type === 'tuplet' || item.type === 'grace') {
+                svg += this.renderDynamic(
+                    eventX,
+                    staffTopY,
+                    item.value,
+                    item.glyph,
+                    eventId,
+                    partId,
+                );
+            } else if (item.type === "tuplet" || item.type === "grace") {
                 item.content?.forEach((subItem, subItemIndex) => {
                     const subItemPath = `${itemPath}.content[${subItemIndex}]`;
                     const eventX = this.resolveSpacingX(subItem, subItemPath, noteX, spacing);
@@ -517,7 +575,7 @@ export class Renderer {
                             staffTopY,
                             0.7,
                             subItem.duration?.dots || 0,
-                            stemDirection
+                            stemDirection,
                         );
                         noteX += 20;
                     } else if (subItem.rest) {
@@ -534,7 +592,7 @@ export class Renderer {
         item: RenderItem,
         path: string,
         fallbackX: number,
-        spacing?: MeasureSpacing
+        spacing?: MeasureSpacing,
     ): number {
         const byPath = spacing?.eventsByPath.get(path);
         if (byPath) return byPath.x;
@@ -553,9 +611,9 @@ export class Renderer {
         eventId: string,
         layout: ChordLayout | undefined,
         curveRequests: CurveRequest[],
-        pendingTremolos: Map<string, { sourceId: string, marks: number }>
+        pendingTremolos: Map<string, { sourceId: string; marks: number }>,
     ): string {
-        if (typeof item.tremolo === 'number') {
+        if (typeof item.tremolo === "number") {
             return layout
                 ? this.renderTremolo(noteX, layout.stemTipY, layout.stemUp, item.tremolo)
                 : "";
@@ -563,19 +621,19 @@ export class Renderer {
 
         const tremolo = item.tremolo;
         if (!tremolo || typeof tremolo !== "object") return "";
-        if (tremolo.type === 'single' && layout) {
+        if (tremolo.type === "single" && layout) {
             return this.renderTremolo(noteX, layout.stemTipY, layout.stemUp, tremolo.marks);
         }
-        if (tremolo.type === 'start' && tremolo.id) {
+        if (tremolo.type === "start" && tremolo.id) {
             pendingTremolos.set(tremolo.id, { sourceId: eventId, marks: tremolo.marks });
-        } else if (tremolo.type === 'stop' && tremolo.id) {
+        } else if (tremolo.type === "stop" && tremolo.id) {
             const startData = pendingTremolos.get(tremolo.id);
             if (startData) {
                 curveRequests.push({
-                    type: 'tremolo',
+                    type: "tremolo",
                     sourceId: startData.sourceId,
                     targetId: eventId,
-                    marks: startData.marks
+                    marks: startData.marks,
                 });
                 pendingTremolos.delete(tremolo.id);
             }
@@ -584,15 +642,22 @@ export class Renderer {
         return "";
     }
 
-    private sequenceStemDirections(sequences: RenderSequence[], staffTopY: number): Array<StemDirection | undefined> {
+    private sequenceStemDirections(
+        sequences: RenderSequence[],
+        staffTopY: number,
+    ): Array<StemDirection | undefined> {
         if (sequences.length <= 1) return sequences.map(() => undefined);
 
         const averages = sequences
             .map((sequence, index) => {
-                const yPositions = this.collectSequenceYPositions(sequence.content || [], staffTopY);
-                const averageY = yPositions.length > 0
-                    ? yPositions.reduce((sum, y) => sum + y, 0) / yPositions.length
-                    : Number.POSITIVE_INFINITY;
+                const yPositions = this.collectSequenceYPositions(
+                    sequence.content || [],
+                    staffTopY,
+                );
+                const averageY =
+                    yPositions.length > 0
+                        ? yPositions.reduce((sum, y) => sum + y, 0) / yPositions.length
+                        : Number.POSITIVE_INFINITY;
                 return { index, averageY };
             })
             .filter((entry) => Number.isFinite(entry.averageY))
@@ -612,7 +677,10 @@ export class Renderer {
                 item.notes.forEach((note: Note) => {
                     positions.push(this.calculateY(note, staffTopY));
                 });
-            } else if ((item.type === "tuplet" || item.type === "grace") && Array.isArray(item.content)) {
+            } else if (
+                (item.type === "tuplet" || item.type === "grace") &&
+                Array.isArray(item.content)
+            ) {
                 positions.push(...this.collectSequenceYPositions(item.content, staffTopY));
             }
         });
@@ -625,7 +693,7 @@ export class Renderer {
     private renderStaveLines(startX: number, y: number, length: number): string {
         let svg = "";
         for (let i = 0; i < 5; i++) {
-            const lineY = y + (i * this.config.lineSpacing);
+            const lineY = y + i * this.config.lineSpacing;
             svg += `<line x1="${startX}" y1="${lineY}" x2="${startX + length}" y2="${lineY}" stroke="black" stroke-width="1" pointer-events="none" />\n`;
         }
         return svg;
@@ -637,7 +705,12 @@ export class Renderer {
     /**
      * Render a barline at specified position.
      */
-    private renderBarline(x: number, y: number, position: "start" | "end", globalMeasure?: GlobalMeasure): string {
+    private renderBarline(
+        x: number,
+        y: number,
+        position: "start" | "end",
+        globalMeasure?: GlobalMeasure,
+    ): string {
         const type = globalMeasure?.barline?.type;
         const spacing = this.config.lineSpacing;
         const topY = y;
@@ -687,7 +760,7 @@ export class Renderer {
             // Dashed
             svg += drawDashedLine(x, 1);
         } else if (type === "repeat-forward") {
-            // If we are at the end, but the measure implies a start repeat (left), 
+            // If we are at the end, but the measure implies a start repeat (left),
             // we still need to close the current measure with a regular barline?
             svg += drawLine(x, 1);
         } else {
@@ -727,25 +800,47 @@ export class Renderer {
         const topY = y - 10; // Base Y above staff
         let svg = "";
 
-        const relevantJumps = jumps.filter(j =>
+        const relevantJumps = jumps.filter((j) =>
             position === "end"
-                ? ["fine", "dc", "ds", "dc-al-fine", "ds-al-fine", "dc-al-coda", "ds-al-coda"].includes(j.type)
-                : ["segno", "coda"].includes(j.type)
+                ? [
+                      "fine",
+                      "dc",
+                      "ds",
+                      "dc-al-fine",
+                      "ds-al-fine",
+                      "dc-al-coda",
+                      "ds-al-coda",
+                  ].includes(j.type)
+                : ["segno", "coda"].includes(j.type),
         );
 
         relevantJumps.forEach((j, i) => {
-            const currentY = topY - (i * 15);
+            const currentY = topY - i * 15;
 
             // Text Instructions
             let text = "";
             switch (j.type) {
-                case "fine": text = "Fine"; break;
-                case "dc": text = "D.C."; break;
-                case "ds": text = "D.S."; break;
-                case "dc-al-fine": text = "D.C. al Fine"; break;
-                case "ds-al-fine": text = "D.S. al Fine"; break;
-                case "dc-al-coda": text = "D.C. al Coda"; break;
-                case "ds-al-coda": text = "D.S. al Coda"; break;
+                case "fine":
+                    text = "Fine";
+                    break;
+                case "dc":
+                    text = "D.C.";
+                    break;
+                case "ds":
+                    text = "D.S.";
+                    break;
+                case "dc-al-fine":
+                    text = "D.C. al Fine";
+                    break;
+                case "ds-al-fine":
+                    text = "D.S. al Fine";
+                    break;
+                case "dc-al-coda":
+                    text = "D.C. al Coda";
+                    break;
+                case "ds-al-coda":
+                    text = "D.S. al Coda";
+                    break;
             }
 
             if (text) {
@@ -781,7 +876,7 @@ export class Renderer {
         staffTopY: number,
         scale: number = 1,
         dots: number = 0,
-        stemDirection?: StemDirection
+        stemDirection?: StemDirection,
     ): string {
         let svg = "";
         const r = this.config.noteRadius * scale;
@@ -792,7 +887,7 @@ export class Renderer {
             note: n,
             y: this.calculateY(n, staffTopY),
             originalIndex: i,
-            offsetX: 0 // Will be set if collision detected
+            offsetX: 0, // Will be set if collision detected
         }));
 
         // Sort by Y position (ascending = top to bottom on staff)
@@ -842,7 +937,12 @@ export class Renderer {
             const noteX = cx + nd.offsetX;
             svg += this.renderNoteHead(noteX, nd.y, duration, r, nd.note.notehead, nd.note.color);
             svg += this.renderLedgerLines(noteX, nd.y, staffTopY);
-            svg += this.renderAugmentationDots(noteX + (14 * scale), this.dotYForStaffPosition(nd.y, staffTopY), dots, scale);
+            svg += this.renderAugmentationDots(
+                noteX + 14 * scale,
+                this.dotYForStaffPosition(nd.y, staffTopY),
+                dots,
+                scale,
+            );
         });
 
         // Draw shared stem (if not a whole note)
@@ -873,8 +973,8 @@ export class Renderer {
         eventId?: string,
         partId?: string,
         dots: number = 0,
-        stemDirection?: StemDirection
-    ): { svg: string, layout?: ChordLayout } {
+        stemDirection?: StemDirection,
+    ): { svg: string; layout?: ChordLayout } {
         let svg = "";
         const r = this.config.noteRadius * scale;
         const halfSpace = this.config.lineSpacing / 2;
@@ -884,7 +984,7 @@ export class Renderer {
             note: n,
             y: this.calculateY(n, staffTopY),
             originalIndex: i,
-            offsetX: 0
+            offsetX: 0,
         }));
         noteData.sort((a, b) => a.y - b.y);
 
@@ -911,13 +1011,24 @@ export class Renderer {
             const noteX = cx + nd.offsetX;
             svg += this.renderNoteHead(noteX, nd.y, duration, r, nd.note.notehead, nd.note.color);
             svg += this.renderLedgerLines(noteX, nd.y, staffTopY);
-            svg += this.renderAugmentationDots(noteX + (14 * scale), this.dotYForStaffPosition(nd.y, staffTopY), dots, scale);
+            svg += this.renderAugmentationDots(
+                noteX + 14 * scale,
+                this.dotYForStaffPosition(nd.y, staffTopY),
+                dots,
+                scale,
+            );
 
             // Draw Accidental
             const acc = nd.note.accidentalDisplay;
             if (acc?.show && nd.note.pitch && nd.note.pitch.alter !== undefined) {
-                const accX = noteX - (20 * scale);
-                svg += this.renderAccidental(accX, nd.y, nd.note.pitch.alter, !!acc.cautionary, scale);
+                const accX = noteX - 20 * scale;
+                svg += this.renderAccidental(
+                    accX,
+                    nd.y,
+                    nd.note.pitch.alter,
+                    !!acc.cautionary,
+                    scale,
+                );
             }
         });
 
@@ -927,14 +1038,14 @@ export class Renderer {
             stemTipY: stemUp ? minY : maxY,
             stemUp,
             minY,
-            maxY
+            maxY,
         };
 
         // Draw stem (if not a whole note)
         if (duration !== "whole") {
             const stemLen = this.config.stemLength * scale;
             const stemX = stemUp ? cx + r : cx - r;
-            const stemTipY = stemUp ? (minY - stemLen) : (maxY + stemLen);
+            const stemTipY = stemUp ? minY - stemLen : maxY + stemLen;
 
             svg += this.renderChordStem(cx, minY, maxY, r, stemUp, scale);
 
@@ -942,7 +1053,10 @@ export class Renderer {
             layout = { x: stemX, noteX: cx, stemTipY, stemUp, minY, maxY };
 
             // Flags (only if NOT beamed)
-            if (!isBeamed && (duration === "eighth" || duration === "16th" || duration === "32nd")) {
+            if (
+                !isBeamed &&
+                (duration === "eighth" || duration === "16th" || duration === "32nd")
+            ) {
                 const flagY = stemUp ? minY : maxY;
                 svg += this.renderFlag(cx, flagY, r, stemUp, duration, scale);
             }
@@ -954,12 +1068,14 @@ export class Renderer {
             const hitboxBottom = Math.max(maxY, layout.stemTipY) + 20;
             const hitbox = `<rect class="event-hitbox" x="${cx - 24}" y="${hitboxTop}" width="48" height="${hitboxBottom - hitboxTop}" fill="transparent" stroke="transparent" pointer-events="all" />\n`;
             const attrs = [
-                eventId ? `data-event-id="${eventId}"` : '',
-                partId ? `data-part-id="${partId}"` : '',
+                eventId ? `data-event-id="${eventId}"` : "",
+                partId ? `data-part-id="${partId}"` : "",
                 'data-event-kind="note"',
                 'class="score-object note-group"',
-                'style="cursor: pointer;"'
-            ].filter(Boolean).join(' ');
+                'style="cursor: pointer;"',
+            ]
+                .filter(Boolean)
+                .join(" ");
             svg = `<g ${attrs}>${hitbox}${svg}</g>\n`;
         }
 
@@ -970,14 +1086,11 @@ export class Renderer {
      * Render a beam connecting multiple events.
      * Uses a simple flat/sloped beam algorithm.
      */
-    private renderBeam(
-        eventIds: string[],
-        eventPositions: Map<string, ChordLayout>
-    ): string {
+    private renderBeam(eventIds: string[], eventPositions: Map<string, ChordLayout>): string {
         if (eventIds.length < 2) return "";
 
         // Gather positions for all events in this beam
-        const positions: Array<{ x: number, y: number }> = [];
+        const positions: Array<{ x: number; y: number }> = [];
         let stemUp = true; // Default
 
         for (const eventId of eventIds) {
@@ -1015,25 +1128,25 @@ export class Renderer {
      * Render a curved line (Tie or Slur) between two positions using a quadratic Bezier curve.
      */
     private renderCurve(
-        source: { x: number, y: number, stemUp: boolean },
-        target: { x: number, y: number, stemUp: boolean },
-        type: 'tie' | 'slur',
-        side?: string
+        source: { x: number; y: number; stemUp: boolean },
+        target: { x: number; y: number; stemUp: boolean },
+        type: "tie" | "slur",
+        side?: string,
     ): string {
         // Determine curve direction (up or down)
         // For ties: usually opposite to stem direction
         // For slurs: based on 'side' parameter or stem direction
         let curveUp = !source.stemUp; // Default: curve opposite to stem
 
-        if (side === 'up') curveUp = true;
-        else if (side === 'down') curveUp = false;
+        if (side === "up") curveUp = true;
+        else if (side === "down") curveUp = false;
 
         // Calculate control point for Bezier curve
         const midX = (source.x + target.x) / 2;
         const midY = (source.y + target.y) / 2;
 
         // Curve height (how much it arcs)
-        const curveHeight = type === 'tie' ? 12 : 18; // Slurs are typically more arched
+        const curveHeight = type === "tie" ? 12 : 18; // Slurs are typically more arched
         const controlY = curveUp ? midY - curveHeight : midY + curveHeight;
 
         // Offset source and target Y slightly based on curve direction
@@ -1043,7 +1156,7 @@ export class Renderer {
 
         // Draw as a quadratic Bezier curve (Q command)
         // For a thicker appearance, we draw two paths (outline effect)
-        const strokeWidth = type === 'tie' ? 2 : 2.5;
+        const strokeWidth = type === "tie" ? 2 : 2.5;
 
         return `<path d="M${source.x},${startY} Q${midX},${controlY} ${target.x},${endY}" 
                 fill="none" stroke="black" stroke-width="${strokeWidth}" stroke-linecap="round" />\n`;
@@ -1059,13 +1172,33 @@ export class Renderer {
         let above: boolean;
 
         switch (value) {
-            case 1: label = "8va"; above = true; break;
-            case -1: label = "8vb"; above = false; break;
-            case 2: label = "15ma"; above = true; break;
-            case -2: label = "15mb"; above = false; break;
-            case 3: label = "22ma"; above = true; break;
-            case -3: label = "22mb"; above = false; break;
-            default: label = "8va"; above = true;
+            case 1:
+                label = "8va";
+                above = true;
+                break;
+            case -1:
+                label = "8vb";
+                above = false;
+                break;
+            case 2:
+                label = "15ma";
+                above = true;
+                break;
+            case -2:
+                label = "15mb";
+                above = false;
+                break;
+            case 3:
+                label = "22ma";
+                above = true;
+                break;
+            case -3:
+                label = "22mb";
+                above = false;
+                break;
+            default:
+                label = "8va";
+                above = true;
         }
 
         // Calculate Y position (above or below staff)
@@ -1091,7 +1224,12 @@ export class Renderer {
      * Render a Multimeasure Rest (consolidated rest spanning multiple measures).
      * Displays as a thick horizontal line with two vertical brackets and a number above.
      */
-    private renderMultimeasureRest(startX: number, endX: number, staffTopY: number, duration: number): string {
+    private renderMultimeasureRest(
+        startX: number,
+        endX: number,
+        staffTopY: number,
+        duration: number,
+    ): string {
         // Position: centered vertically on staff (between lines 2 and 4)
         const centerY = staffTopY + 2 * this.config.lineSpacing;
         const restWidth = endX - startX;
@@ -1113,16 +1251,22 @@ export class Renderer {
         return svg;
     }
 
-    private renderAccidental(x: number, y: number, alter: number, cautionary: boolean, scale: number): string {
+    private renderAccidental(
+        x: number,
+        y: number,
+        alter: number,
+        cautionary: boolean,
+        scale: number,
+    ): string {
         const glyphName = resolveAccidentalGlyph(alter);
         if (!glyphName) return "";
 
         let svg = this.renderSmuflGlyph(
             glyphName,
             x,
-            y + (10 * scale),
+            y + 10 * scale,
             28 * scale,
-            `data-smufl-role="accidental"`
+            `data-smufl-role="accidental"`,
         );
 
         if (cautionary) {
@@ -1138,7 +1282,7 @@ export class Renderer {
         staffTopY: number,
         width: number,
         measureNumber: number,
-        partId: string
+        partId: string,
     ): string {
         const y = staffTopY - 14;
         const height = this.config.lineSpacing * 4 + 84;
@@ -1151,7 +1295,7 @@ export class Renderer {
         value: string,
         glyph?: string,
         eventId?: string,
-        partId?: string
+        partId?: string,
     ): string {
         const glyphs = resolveDynamicGlyphs(value, glyph);
         let svg = "";
@@ -1159,16 +1303,21 @@ export class Renderer {
         if (glyphs.length === 0) {
             svg = `<text x="${x}" y="${staffTopY + this.config.dynamicOffsetY}" font-family="Times New Roman" font-style="italic" font-weight="bold" font-size="16" data-smufl-role="dynamic-text">${this.escapeXml(value)}</text>\n`;
         } else {
-            svg = this.renderSmuflGlyphs(glyphs, x, staffTopY + this.config.dynamicOffsetY, 24, `data-smufl-role="dynamic"`);
+            svg = this.renderSmuflGlyphs(
+                glyphs,
+                x,
+                staffTopY + this.config.dynamicOffsetY,
+                24,
+                `data-smufl-role="dynamic"`,
+            );
         }
 
-        return this.wrapInteractiveEvent(
-            svg,
-            "dynamic",
-            eventId,
-            partId,
-            { x: x - 8, y: staffTopY + this.config.dynamicOffsetY - 28, width: 72, height: 38 }
-        );
+        return this.wrapInteractiveEvent(svg, "dynamic", eventId, partId, {
+            x: x - 8,
+            y: staffTopY + this.config.dynamicOffsetY - 28,
+            width: 72,
+            height: 38,
+        });
     }
 
     private renderArticulations(x: number, articulations: string[], layout: ChordLayout): string {
@@ -1180,14 +1329,8 @@ export class Renderer {
         articulations.forEach((articulation, index) => {
             const glyphName = resolveArticulationGlyph(articulation, placement);
             if (!glyphName) return;
-            const y = baseY + (index * 11 * direction);
-            svg += this.renderSmuflGlyph(
-                glyphName,
-                x - 4,
-                y,
-                18,
-                `data-smufl-role="articulation"`
-            );
+            const y = baseY + index * 11 * direction;
+            svg += this.renderSmuflGlyph(glyphName, x - 4, y, 18, `data-smufl-role="articulation"`);
         });
 
         return svg;
@@ -1196,20 +1339,27 @@ export class Renderer {
     /**
      * Render just the note head (shape depends on duration and type).
      */
-    private renderNoteHead(cx: number, cy: number, duration: string, r: number, type?: string, color?: string): string {
+    private renderNoteHead(
+        cx: number,
+        cy: number,
+        duration: string,
+        r: number,
+        type?: string,
+        color?: string,
+    ): string {
         const baseColor = color || "black";
         const glyphName = resolveNoteheadGlyph(duration, type);
         if (glyphName) {
             return this.renderSmuflGlyph(
                 glyphName,
-                cx - (r * 1.25),
-                cy + (r * 1.05),
+                cx - r * 1.25,
+                cy + r * 1.05,
                 r * 4.8,
-                `data-smufl-role="notehead" fill="${baseColor}"`
+                `data-smufl-role="notehead" fill="${baseColor}"`,
             );
         }
 
-        const fill = (duration === "whole" || duration === "half") ? "none" : baseColor;
+        const fill = duration === "whole" || duration === "half" ? "none" : baseColor;
         const stroke = baseColor;
 
         if (type === "circle-x") {
@@ -1249,7 +1399,14 @@ export class Renderer {
     /**
      * Render stem for a chord (spans from lowest to highest note).
      */
-    private renderChordStem(cx: number, minY: number, maxY: number, r: number, stemUp: boolean, scale: number): string {
+    private renderChordStem(
+        cx: number,
+        minY: number,
+        maxY: number,
+        r: number,
+        stemUp: boolean,
+        scale: number,
+    ): string {
         const stemLen = this.config.stemLength * scale;
         if (stemUp) {
             const x = cx + r;
@@ -1265,7 +1422,14 @@ export class Renderer {
     /**
      * Render flag for eighth notes and shorter.
      */
-    private renderFlag(cx: number, cy: number, r: number, stemUp: boolean, duration: string, scale: number): string {
+    private renderFlag(
+        cx: number,
+        cy: number,
+        r: number,
+        stemUp: boolean,
+        duration: string,
+        scale: number,
+    ): string {
         const stemLen = this.config.stemLength * scale;
         const numFlags = duration === "eighth" ? 1 : duration === "16th" ? 2 : 3;
         let svg = "";
@@ -1296,14 +1460,22 @@ export class Renderer {
 
         // Above staff
         if (cy < topLine) {
-            for (let y = topLine - this.config.lineSpacing; y >= cy - this.config.lineSpacing / 2; y -= this.config.lineSpacing) {
+            for (
+                let y = topLine - this.config.lineSpacing;
+                y >= cy - this.config.lineSpacing / 2;
+                y -= this.config.lineSpacing
+            ) {
                 svg += `<line x1="${cx - ledgerWidth}" y1="${y}" x2="${cx + ledgerWidth}" y2="${y}" stroke="black" stroke-width="1" />\n`;
             }
         }
 
         // Below staff
         if (cy > bottomLine) {
-            for (let y = bottomLine + this.config.lineSpacing; y <= cy + this.config.lineSpacing / 2; y += this.config.lineSpacing) {
+            for (
+                let y = bottomLine + this.config.lineSpacing;
+                y <= cy + this.config.lineSpacing / 2;
+                y += this.config.lineSpacing
+            ) {
                 svg += `<line x1="${cx - ledgerWidth}" y1="${y}" x2="${cx + ledgerWidth}" y2="${y}" stroke="black" stroke-width="1" />\n`;
             }
         }
@@ -1323,7 +1495,7 @@ export class Renderer {
         duration: string,
         dots: number = 0,
         eventId?: string,
-        partId?: string
+        partId?: string,
     ): string {
         const glyphName = resolveRestGlyph(duration);
         let svg = "";
@@ -1335,7 +1507,7 @@ export class Renderer {
                 "rest",
                 eventId,
                 partId,
-                { x: x - 8, y: staffTopY, width: 42, height: 56 }
+                { x: x - 8, y: staffTopY, width: 42, height: 56 },
             );
         }
 
@@ -1370,7 +1542,7 @@ export class Renderer {
             "rest",
             eventId,
             partId,
-            { x: x - 8, y: staffTopY, width: 42, height: 56 }
+            { x: x - 8, y: staffTopY, width: 42, height: 56 },
         );
     }
 
@@ -1379,7 +1551,7 @@ export class Renderer {
         kind: "note" | "rest" | "dynamic",
         eventId?: string,
         partId?: string,
-        hitbox?: { x: number; y: number; width: number; height: number }
+        hitbox?: { x: number; y: number; width: number; height: number },
     ): string {
         if (!eventId && !partId) return svg;
 
@@ -1391,20 +1563,37 @@ export class Renderer {
             partId ? `data-part-id="${partId}"` : "",
             `data-event-kind="${kind}"`,
             `class="score-object ${kind}-group"`,
-            `style="cursor: pointer;"`
-        ].filter(Boolean).join(" ");
+            `style="cursor: pointer;"`,
+        ]
+            .filter(Boolean)
+            .join(" ");
 
         return `<g ${attrs}>${hitboxSvg}${svg}</g>\n`;
     }
 
-    private renderSmuflGlyph(glyphName: string, x: number, y: number, fontSize: number, attrs = ""): string {
+    private renderSmuflGlyph(
+        glyphName: string,
+        x: number,
+        y: number,
+        fontSize: number,
+        attrs = "",
+    ): string {
         const char = getSmuflChar(glyphName);
         if (!char) return "";
         return `<text x="${x}" y="${y}" class="smufl-glyph" font-family="${SMUFL_FONT_STACK}" font-size="${fontSize}" ${attrs} data-smufl-glyph="${glyphName}">${char}</text>\n`;
     }
 
-    private renderSmuflGlyphs(glyphNames: string[], x: number, y: number, fontSize: number, attrs = ""): string {
-        const chars = glyphNames.map((glyphName) => getSmuflChar(glyphName)).filter(Boolean).join("");
+    private renderSmuflGlyphs(
+        glyphNames: string[],
+        x: number,
+        y: number,
+        fontSize: number,
+        attrs = "",
+    ): string {
+        const chars = glyphNames
+            .map((glyphName) => getSmuflChar(glyphName))
+            .filter(Boolean)
+            .join("");
         if (!chars) return "";
         return `<text x="${x}" y="${y}" class="smufl-glyph" font-family="${SMUFL_FONT_STACK}" font-size="${fontSize}" ${attrs} data-smufl-glyph="${glyphNames.join(" ")}">${chars}</text>\n`;
     }
@@ -1420,15 +1609,20 @@ export class Renderer {
     /**
      * Get horizontal spacing for a note based on duration.
      */
-    private renderAugmentationDots(x: number, y: number, count: number = 0, scale: number = 1): string {
+    private renderAugmentationDots(
+        x: number,
+        y: number,
+        count: number = 0,
+        scale: number = 1,
+    ): string {
         let svg = "";
         for (let i = 0; i < count; i++) {
             svg += this.renderSmuflGlyph(
                 "augmentationDot",
-                x + (i * 6 * scale),
+                x + i * 6 * scale,
                 y,
                 10 * scale,
-                `data-smufl-role="augmentation-dot"`
+                `data-smufl-role="augmentation-dot"`,
             );
         }
         return svg;
@@ -1438,34 +1632,47 @@ export class Renderer {
         const halfSpace = this.config.lineSpacing / 2;
         const staffSteps = Math.round((noteY - staffTopY) / halfSpace);
         const onLine = staffSteps % 2 === 0;
-        return onLine ? noteY - (halfSpace / 2) : noteY;
+        return onLine ? noteY - halfSpace / 2 : noteY;
     }
 
     private getNoteWidth(duration: string, dots: number = 0): number {
         let width: number;
         switch (duration) {
-            case "whole": width = 60; break;
-            case "half": width = 45; break;
-            case "quarter": width = 35; break;
-            case "eighth": width = 25; break;
-            default: width = 20;
+            case "whole":
+                width = 60;
+                break;
+            case "half":
+                width = 45;
+                break;
+            case "quarter":
+                width = 35;
+                break;
+            case "eighth":
+                width = 25;
+                break;
+            default:
+                width = 20;
         }
-        return width + (dots * 7);
+        return width + dots * 7;
     }
 
-    private rhythmicPositionToX(startX: number, width: number, position?: { fraction?: [number, number] }): number {
+    private rhythmicPositionToX(
+        startX: number,
+        width: number,
+        position?: { fraction?: [number, number] },
+    ): number {
         if (!position?.fraction) return startX;
         const [numerator, denominator] = position.fraction;
         if (!denominator) return startX;
         const ratio = Math.max(0, Math.min(1, numerator / denominator));
-        return startX + (width * ratio);
+        return startX + width * ratio;
     }
 
     /**
      * Calculate Y position for a note based on pitch or unpitched display.
      */
     private calculateY(note: Note, staffTopY: number): number {
-        const stepMap: Record<string, number> = { "C": 0, "D": 1, "E": 2, "F": 3, "G": 4, "A": 5, "B": 6 };
+        const stepMap: Record<string, number> = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
         let step = "B";
         let octave = 4;
 
@@ -1479,12 +1686,12 @@ export class Renderer {
             return staffTopY + 20; // Fallback
         }
 
-        const absoluteStep = (octave * 7) + stepMap[step];
-        const g4Step = (4 * 7) + 4; // G4 = 32
+        const absoluteStep = octave * 7 + stepMap[step];
+        const g4Step = 4 * 7 + 4; // G4 = 32
         const diff = absoluteStep - g4Step;
-        const g4Y = staffTopY + (3 * this.config.lineSpacing);
+        const g4Y = staffTopY + 3 * this.config.lineSpacing;
 
-        return g4Y - (diff * (this.config.lineSpacing / 2));
+        return g4Y - diff * (this.config.lineSpacing / 2);
     }
     private renderTremolo(x: number, stemTipY: number, stemUp: boolean, marks: number): string {
         const spacing = 4;
@@ -1498,7 +1705,7 @@ export class Renderer {
 
         let svg = "";
         for (let i = 0; i < marks; i++) {
-            const y = centerY + (i * spacing * (stemUp ? 1 : -1));
+            const y = centerY + i * spacing * (stemUp ? 1 : -1);
             svg += `<line x1="${startX}" y1="${y + slant}" x2="${startX + length}" y2="${y - slant}" stroke="black" stroke-width="2" />\n`;
         }
         return svg;
@@ -1524,9 +1731,15 @@ export class Renderer {
 
         return svg;
     }
-    private renderPedalSign(x: number, systemY: number, type: 'start' | 'stop'): string {
+    private renderPedalSign(x: number, systemY: number, type: "start" | "stop"): string {
         const y = systemY + this.config.pedalSignOffsetY;
-        return this.renderSmuflGlyph(resolvePedalGlyph(type), x, y, type === 'start' ? 24 : 18, `data-smufl-role="pedal"`);
+        return this.renderSmuflGlyph(
+            resolvePedalGlyph(type),
+            x,
+            y,
+            type === "start" ? 24 : 18,
+            `data-smufl-role="pedal"`,
+        );
     }
 
     private renderPedalLine(startX: number, endX: number, systemY: number): string {

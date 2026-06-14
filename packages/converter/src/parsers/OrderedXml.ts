@@ -4,10 +4,13 @@ const TEXT_KEY = "#text";
 export type OrderedXmlNode = Record<string, any>;
 
 export function getOrderedTag(node: OrderedXmlNode): string | undefined {
-    return Object.keys(node).find(key => key !== ATTRIBUTES_KEY);
+    return Object.keys(node).find((key) => key !== ATTRIBUTES_KEY);
 }
 
-export function getOrderedChildren(node: OrderedXmlNode | undefined, tagName: string): OrderedXmlNode[] {
+export function getOrderedChildren(
+    node: OrderedXmlNode | undefined,
+    tagName: string,
+): OrderedXmlNode[] {
     if (!node) return [];
 
     const tag = getOrderedTag(node);
@@ -19,8 +22,11 @@ export function getOrderedChildren(node: OrderedXmlNode | undefined, tagName: st
     return children.filter((child: OrderedXmlNode) => getOrderedTag(child) === tagName);
 }
 
-export function findOrderedRoot(nodes: OrderedXmlNode[], tagName: string): OrderedXmlNode | undefined {
-    return nodes.find(node => getOrderedTag(node) === tagName);
+export function findOrderedRoot(
+    nodes: OrderedXmlNode[],
+    tagName: string,
+): OrderedXmlNode | undefined {
+    return nodes.find((node) => getOrderedTag(node) === tagName);
 }
 
 export function getOrderedContent(node: OrderedXmlNode | undefined): OrderedXmlNode[] | undefined {

@@ -5,9 +5,23 @@ import { z } from "zod";
 export const VersionNumberSchema = z.number().int().min(1);
 
 export const NoteValueBaseSchema = z.enum([
-    "duplexMaxima", "maxima", "longa", "breve", "whole", "half", "quarter",
-    "eighth", "16th", "32nd", "64th", "128th", "256th", "512th", "1024th",
-    "2048th", "4096th"
+    "duplexMaxima",
+    "maxima",
+    "longa",
+    "breve",
+    "whole",
+    "half",
+    "quarter",
+    "eighth",
+    "16th",
+    "32nd",
+    "64th",
+    "128th",
+    "256th",
+    "512th",
+    "1024th",
+    "2048th",
+    "4096th",
 ]);
 
 export const NoteValueQuantitySchema = z.number().int().min(1);
@@ -20,7 +34,7 @@ export const NoteValueSchema = z.object({
 export const AccidentalDisplaySchema = z.object({
     show: z.boolean().optional(),
     cautionary: z.boolean().optional(),
-    editorial: z.boolean().optional()
+    editorial: z.boolean().optional(),
 });
 
 export const PitchSchema = z.object({
@@ -38,21 +52,26 @@ export const SmuflFontSchema = z.string().min(1);
 // --- Musical Events ---
 
 export const TieSchema = z.object({
-    target: z.string().optional() // ID of the next note in the tie chain
+    target: z.string().optional(), // ID of the next note in the tie chain
 });
 
 export const NoteSchema = z.object({
     id: z.string().optional(),
     pitch: PitchSchema.optional(),
-    unpitched: z.object({ // [NEW] For percussion
-        step: z.string().min(1).max(1),
-        octave: z.number().int()
-    }).optional(),
-    notehead: z.enum(["normal", "x", "diamond", "triangle", "slash", "square", "circle-x"]).optional(), // [NEW] Notehead shapes
+    unpitched: z
+        .object({
+            // [NEW] For percussion
+            step: z.string().min(1).max(1),
+            octave: z.number().int(),
+        })
+        .optional(),
+    notehead: z
+        .enum(["normal", "x", "diamond", "triangle", "slash", "square", "circle-x"])
+        .optional(), // [NEW] Notehead shapes
     staff: z.number().int().optional(),
     accidentalDisplay: AccidentalDisplaySchema.optional(),
     ties: z.array(TieSchema).optional(),
-    color: z.string().optional() // [NEW] Hex color code
+    color: z.string().optional(), // [NEW] Hex color code
 });
 
 export const SlurSchema = z.object({
@@ -63,7 +82,7 @@ export const SlurSchema = z.object({
 export const LyricSchema = z.object({
     text: z.string(),
     syllabic: z.enum(["begin", "start", "middle", "end", "stop", "single"]).optional(),
-    line: z.string().optional() // References a LyricLine ID
+    line: z.string().optional(), // References a LyricLine ID
 });
 
 export const DynamicValueSchema = z.string().min(1);
@@ -73,7 +92,7 @@ export const DynamicEventSchema = z.object({
     id: z.string().optional(),
     value: DynamicValueSchema,
     glyph: SmuflGlyphSchema.optional(),
-    staff: z.number().int().optional()
+    staff: z.number().int().optional(),
 });
 
 // [NEW] Articulation Enum
@@ -83,30 +102,34 @@ export const ArticulationSchema = z.enum([
     "accent",
     "strong-accent",
     "staccatissimo",
-    "fermata"
+    "fermata",
 ]);
 
 export const BaseEventSchema = z.object({
     id: z.string().optional(),
     duration: NoteValueSchema.optional(),
     notes: z.array(NoteSchema).optional(),
-    rest: z.object({
-        hidden: z.boolean().optional()
-    }).optional(),
+    rest: z
+        .object({
+            hidden: z.boolean().optional(),
+        })
+        .optional(),
     staff: z.number().int().optional(),
     slurs: z.array(SlurSchema).optional(),
     lyrics: z.array(LyricSchema).optional(),
     articulations: z.array(ArticulationSchema).optional(),
     // [UPDATED] Tremolo: number (single) or detailed object (multi-note)
-    tremolo: z.union([
-        z.number().int().min(1).max(5), // Simple single-note
-        z.object({
-            type: z.enum(["single", "start", "stop"]),
-            marks: z.number().int().min(1).max(5),
-            id: z.string().optional() // ID for linking start/stop
-        })
-    ]).optional(),
-    measure: z.boolean().optional()
+    tremolo: z
+        .union([
+            z.number().int().min(1).max(5), // Simple single-note
+            z.object({
+                type: z.enum(["single", "start", "stop"]),
+                marks: z.number().int().min(1).max(5),
+                id: z.string().optional(), // ID for linking start/stop
+            }),
+        ])
+        .optional(),
+    measure: z.boolean().optional(),
 });
 
 // For recursive structures like Tuplets and Grace, we need to be careful with Zod recursion.
@@ -116,41 +139,41 @@ export const TupletSchema = z.object({
     type: z.literal("tuplet"),
     outer: z.object({
         duration: NoteValueSchema,
-        multiple: z.number().int().optional()
+        multiple: z.number().int().optional(),
     }),
     inner: z.object({
         duration: NoteValueSchema,
-        multiple: z.number().int().optional()
+        multiple: z.number().int().optional(),
     }),
-    content: z.array(z.any())
+    content: z.array(z.any()),
 });
 
 export const GraceSchema = z.object({
     type: z.literal("grace"),
-    content: z.array(z.any())
+    content: z.array(z.any()),
 });
 
 export const SequenceContentSchema = z.union([
     TupletSchema,
     GraceSchema,
     DynamicEventSchema,
-    BaseEventSchema
+    BaseEventSchema,
 ]);
 
 export const SequenceSchema = z.object({
-    content: z.array(SequenceContentSchema)
+    content: z.array(SequenceContentSchema),
 });
 
 // --- Structure: Parts & Measures ---
 
 export const KeySignatureSchema = z.object({
     fifths: z.number().int(),
-    mode: z.enum(["major", "minor"]).optional()
+    mode: z.enum(["major", "minor"]).optional(),
 });
 
 export const TimeSignatureSchema = z.object({
     count: z.number().int(),
-    unit: z.number().int()
+    unit: z.number().int(),
 });
 
 export const ClefSchema = z.object({
@@ -158,24 +181,24 @@ export const ClefSchema = z.object({
     line: z.number().int().optional(),
     octave: z.number().int().optional(),
     staffPosition: z.number().int().optional(),
-    glyph: SmuflGlyphSchema.optional()
+    glyph: SmuflGlyphSchema.optional(),
 });
 
 export const BeamSchema = z.object({
     events: z.array(z.string()),
     direction: z.enum(["up", "down"]).optional(),
-    inner: z.array(z.any()).optional()
+    inner: z.array(z.any()).optional(),
 });
 
 // [NEW] Rhythmic Position (MNX: { fraction: [n, d] })
 export const RhythmicPositionSchema = z.object({
-    fraction: z.tuple([z.number(), z.number()])
+    fraction: z.tuple([z.number(), z.number()]),
 });
 
 // [NEW] Measure Rhythmic Position for cross-measure endpoints
 export const MeasureRhythmicPositionSchema = z.object({
     measure: z.number().int(), // Global measure index (1-based)
-    position: RhythmicPositionSchema
+    position: RhythmicPositionSchema,
 });
 
 // [NEW] Wedge (Hairpin)
@@ -184,17 +207,24 @@ export const WedgeSchema = z.object({
     position: RhythmicPositionSchema, // Start position in current measure
     end: MeasureRhythmicPositionSchema.optional(), // End position (can be cross-measure)
     staff: z.number().int().optional(),
-    voice: z.string().optional()
+    voice: z.string().optional(),
 });
 
 // [NEW] Ottava (8va, 8vb, 15ma, 15mb, etc.)
 // value: 1 = 8va (up one octave), -1 = 8vb (down), 2 = 15ma (two octaves up), etc.
 export const OttavaSchema = z.object({
-    value: z.union([z.literal(1), z.literal(-1), z.literal(2), z.literal(-2), z.literal(3), z.literal(-3)]),
+    value: z.union([
+        z.literal(1),
+        z.literal(-1),
+        z.literal(2),
+        z.literal(-2),
+        z.literal(3),
+        z.literal(-3),
+    ]),
     position: RhythmicPositionSchema, // Start position in current measure
     end: MeasureRhythmicPositionSchema, // End position (required)
     staff: z.number().int().optional(),
-    voice: z.string().optional()
+    voice: z.string().optional(),
 });
 
 // [NEW] Pedal (Sustain pedal)
@@ -205,67 +235,99 @@ export const PedalSchema = z.object({
     line: z.boolean().optional(), // If true, render as bracket/line
     sign: z.boolean().optional(), // If true, render 'Ped' symbol
     staff: z.number().int().optional(),
-    voice: z.string().optional()
+    voice: z.string().optional(),
 });
 
 // [NEW] Multimeasure Rest (consolidated rest spanning multiple measures)
 export const MultimeasureRestSchema = z.object({
     start: z.number().int(), // Starting measure number (1-indexed)
     duration: z.number().int().min(1), // Number of measures
-    label: z.string().optional() // Optional display label
+    label: z.string().optional(), // Optional display label
 });
 
 // [NEW] Repeat and Ending schemas
 export const RepeatStartSchema = z.object({});
 
 export const RepeatEndSchema = z.object({
-    times: z.number().int().min(1).optional() // How many times to repeat (default 2)
+    times: z.number().int().min(1).optional(), // How many times to repeat (default 2)
 });
 
 export const EndingSchema = z.object({
     numbers: z.array(z.number().int()).optional(), // Which endings (e.g., [1] or [1,2])
     duration: z.number().int().min(1), // How many measures this ending spans
-    open: z.boolean().optional() // Whether the ending bracket is open (no right side)
+    open: z.boolean().optional(), // Whether the ending bracket is open (no right side)
 });
 
 export const JumpSchema = z.object({
-    type: z.enum(["segno", "coda", "fine", "dc", "ds", "dc-al-fine", "ds-al-fine", "dc-al-coda", "ds-al-coda"])
+    type: z.enum([
+        "segno",
+        "coda",
+        "fine",
+        "dc",
+        "ds",
+        "dc-al-fine",
+        "ds-al-fine",
+        "dc-al-coda",
+        "ds-al-coda",
+    ]),
 });
 
 export const GlobalMeasureSchema = z.object({
     index: z.number().int().optional(),
     time: TimeSignatureSchema.optional(),
     key: KeySignatureSchema.optional(),
-    tempos: z.array(z.object({
-        bpm: z.number(),
-        location: z.number().optional()
-    })).optional(),
-    barline: z.object({
-        type: z.enum(["regular", "double", "final", "dashed", "dotted", "heavy", "light-heavy", "heavy-light", "heavy-heavy", "tick", "short", "none", "repeat-forward", "repeat-backward", "repeat-both"])
-    }).optional(),
+    tempos: z
+        .array(
+            z.object({
+                bpm: z.number(),
+                location: z.number().optional(),
+            }),
+        )
+        .optional(),
+    barline: z
+        .object({
+            type: z.enum([
+                "regular",
+                "double",
+                "final",
+                "dashed",
+                "dotted",
+                "heavy",
+                "light-heavy",
+                "heavy-light",
+                "heavy-heavy",
+                "tick",
+                "short",
+                "none",
+                "repeat-forward",
+                "repeat-backward",
+                "repeat-both",
+            ]),
+        })
+        .optional(),
     break: z.enum(["system", "page"]).optional(),
     // [NEW] Repeat navigation
     repeatStart: RepeatStartSchema.optional(),
     repeatEnd: RepeatEndSchema.optional(),
     ending: EndingSchema.optional(),
     // [NEW] Jumps and Markers
-    jumps: z.array(JumpSchema).optional()
+    jumps: z.array(JumpSchema).optional(),
 });
 
 export const LyricLineSchema = z.object({
     id: z.string(),
-    name: z.string().optional()
+    name: z.string().optional(),
 });
 
 export const GlobalSchema = z.object({
     measures: z.array(GlobalMeasureSchema),
-    lyrics: z.array(LyricLineSchema).optional()
+    lyrics: z.array(LyricLineSchema).optional(),
 });
 
 export const PositionedClefSchema = z.object({
     clef: ClefSchema,
     staff: z.number().int().optional(),
-    position: RhythmicPositionSchema.optional()
+    position: RhythmicPositionSchema.optional(),
 });
 
 export const PartMeasureSchema = z.object({
@@ -276,7 +338,7 @@ export const PartMeasureSchema = z.object({
     wedges: z.array(WedgeSchema).optional(),
     ottavas: z.array(OttavaSchema).optional(),
     pedals: z.array(PedalSchema).optional(), // [NEW] Pedal markings
-    multimeasureRest: MultimeasureRestSchema.optional() // [NEW] Consolidated multi-bar rest
+    multimeasureRest: MultimeasureRestSchema.optional(), // [NEW] Consolidated multi-bar rest
 });
 
 export const SoundDefinitionSchema = z.object({
@@ -284,7 +346,7 @@ export const SoundDefinitionSchema = z.object({
     name: z.string().optional(),
     "midi-program": z.number().int().optional(),
     "midi-channel": z.number().int().optional(),
-    "midi-bank": z.number().int().optional()
+    "midi-bank": z.number().int().optional(),
 });
 
 export const PartSchema = z.object({
@@ -294,19 +356,19 @@ export const PartSchema = z.object({
     smuflFont: SmuflFontSchema.optional(),
     sounds: z.array(SoundDefinitionSchema).optional(), // [NEW] Sound definitions
     measures: z.array(PartMeasureSchema),
-    dim: z.number().int().optional()
+    dim: z.number().int().optional(),
 });
 
 // --- Root ---
 
 export const MNXHeaderSchema = z.object({
-    version: VersionNumberSchema
+    version: VersionNumberSchema,
 });
 
 export const ScoreSchema = z.object({
     mnx: MNXHeaderSchema,
     global: GlobalSchema,
-    parts: z.array(PartSchema)
+    parts: z.array(PartSchema),
 });
 
 // --- Exports ---

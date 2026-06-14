@@ -16,13 +16,13 @@ describe("W3C MNX Snapshot Suite", () => {
     const converter = new MusicXMLToMNX();
 
     // Read all XML files from the data directory
-    const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith(".musicxml"));
+    const files = fs.readdirSync(DATA_DIR).filter((f) => f.endsWith(".musicxml"));
 
     if (files.length === 0) {
         console.warn("No MusicXML files found in test/data/musicxml. Skipping snapshot tests.");
     }
 
-    files.forEach(file => {
+    files.forEach((file) => {
         it(`should match snapshot for ${file}`, () => {
             const xmlPath = path.join(DATA_DIR, file);
             const xmlContent = fs.readFileSync(xmlPath, "utf-8");
@@ -56,7 +56,6 @@ describe("W3C MNX Snapshot Suite", () => {
                 const expectedObj = JSON.parse(expectedMnxJson);
 
                 expect(actualObj).toEqual(expectedObj);
-
             } catch (err) {
                 console.error(`Failed to convert or check ${file}:`, err);
                 throw err;

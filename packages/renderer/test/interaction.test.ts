@@ -7,30 +7,36 @@ describe("interactive score object metadata", () => {
         const score = ScoreSchema.parse({
             mnx: { version: 1 },
             global: { measures: [{}] },
-            parts: [{
-                id: "P1",
-                measures: [{
-                    sequences: [{
-                        content: [
-                            {
-                                id: "note-1",
-                                duration: { base: "quarter" },
-                                notes: [{ pitch: { step: "C", octave: 4 } }]
-                            },
-                            {
-                                id: "rest-1",
-                                duration: { base: "quarter" },
-                                rest: {}
-                            },
-                            {
-                                type: "dynamic",
-                                id: "dynamic-1",
-                                value: "mf"
-                            }
-                        ]
-                    }]
-                }]
-            }]
+            parts: [
+                {
+                    id: "P1",
+                    measures: [
+                        {
+                            sequences: [
+                                {
+                                    content: [
+                                        {
+                                            id: "note-1",
+                                            duration: { base: "quarter" },
+                                            notes: [{ pitch: { step: "C", octave: 4 } }],
+                                        },
+                                        {
+                                            id: "rest-1",
+                                            duration: { base: "quarter" },
+                                            rest: {},
+                                        },
+                                        {
+                                            type: "dynamic",
+                                            id: "dynamic-1",
+                                            value: "mf",
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
         });
 
         const svg = new Renderer().render(score);

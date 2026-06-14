@@ -11,7 +11,7 @@ export class XmlEventStream {
     /**
      * Extracts notes and directions from a MusicXML measure object,
      * flattens them into a unified list, and sorts them by visual layout (default-x).
-     * 
+     *
      * @param xmlMeasure The raw parsed MusicXML measure object.
      * @returns A sorted array of XmlToken objects.
      */
@@ -24,7 +24,9 @@ export class XmlEventStream {
         let order = 0;
 
         const attributes = xmlMeasure.attributes
-            ? (Array.isArray(xmlMeasure.attributes) ? xmlMeasure.attributes : [xmlMeasure.attributes])
+            ? Array.isArray(xmlMeasure.attributes)
+                ? xmlMeasure.attributes
+                : [xmlMeasure.attributes]
             : [];
 
         attributes.forEach((a: any) => {
@@ -33,14 +35,16 @@ export class XmlEventStream {
                     ...a,
                     _tag: "attributes",
                     _x: 0,
-                    _order: order++
+                    _order: order++,
                 });
             }
         });
 
         // 1. Extract Notes
         const notes = xmlMeasure.note
-            ? (Array.isArray(xmlMeasure.note) ? xmlMeasure.note : [xmlMeasure.note])
+            ? Array.isArray(xmlMeasure.note)
+                ? xmlMeasure.note
+                : [xmlMeasure.note]
             : [];
 
         notes.forEach((n: any) => {
@@ -48,13 +52,15 @@ export class XmlEventStream {
                 ...n,
                 _tag: "note",
                 _x: parseFloat(n["@_default-x"] || "0"),
-                _order: order++
+                _order: order++,
             });
         });
 
         // 2. Extract Directions (Dynamics, wedges, ottavas, pedals)
         const directions = xmlMeasure.direction
-            ? (Array.isArray(xmlMeasure.direction) ? xmlMeasure.direction : [xmlMeasure.direction])
+            ? Array.isArray(xmlMeasure.direction)
+                ? xmlMeasure.direction
+                : [xmlMeasure.direction]
             : [];
 
         directions.forEach((d: any) => {
@@ -63,15 +69,15 @@ export class XmlEventStream {
                     ...d,
                     _tag: "direction",
                     _x: parseFloat(d["@_default-x"] || "0"),
-                    _order: order++
+                    _order: order++,
                 });
             }
         });
 
         // 3. Sort by X position
-        // Strategy: 
+        // Strategy:
         // - Sort primarily by _x (visual order).
-        // - If _x is identical, put 'direction' before 'note'. 
+        // - If _x is identical, put 'direction' before 'note'.
         //   Dynamics/Wedges usually serve as preparation or attribute for the following note.
         return tokens.sort((a, b) => {
             const diff = a._x - b._x;
@@ -97,7 +103,7 @@ export class XmlEventStream {
                 ...value,
                 _tag: tag,
                 _x: parseFloat(value["@_default-x"] || "0"),
-                _order: order++
+                _order: order++,
             });
         });
 
@@ -105,7 +111,13 @@ export class XmlEventStream {
     }
 
     private static isSupportedTokenTag(tag: string | undefined): tag is XmlToken["_tag"] {
-        return tag === "attributes" || tag === "note" || tag === "direction" || tag === "backup" || tag === "forward";
+        return (
+            tag === "attributes" ||
+            tag === "note" ||
+            tag === "direction" ||
+            tag === "backup" ||
+            tag === "forward"
+        );
     }
 
     private static hasRelevantDirectionType(direction: any): boolean {
@@ -113,6 +125,8 @@ export class XmlEventStream {
             ? direction["direction-type"]
             : [direction["direction-type"]];
 
-        return dTypes.some((dt: any) => dt?.dynamics || dt?.wedge || dt?.["octave-shift"] || dt?.pedal);
+        return dTypes.some(
+            (dt: any) => dt?.dynamics || dt?.wedge || dt?.["octave-shift"] || dt?.pedal,
+        );
     }
 }

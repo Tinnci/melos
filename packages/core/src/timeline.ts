@@ -1,9 +1,5 @@
 import type { NoteValue, RhythmicPosition, Score } from "./schema";
-import {
-    getDurationInBeats,
-    getTimeSignatureBeats,
-    getTupletScale
-} from "./rhythm";
+import { getDurationInBeats, getTimeSignatureBeats, getTupletScale } from "./rhythm";
 
 export type TimelineEventKind = "note" | "rest" | "dynamic" | "tuplet" | "grace";
 export type TimelineDiagnosticSeverity = "info" | "warning" | "error";
@@ -86,17 +82,25 @@ const DEFAULT_TIMELINE_OPTIONS: Required<TimelineBuildOptions> = {
     includeRhythmDiagnostics: true,
     allowPickupMeasure: false,
     rhythmEpsilon: 0.000001,
-    fallbackBeats: 4
+    fallbackBeats: 4,
 };
 
-export function buildScoreTimeline(score: Score, options: TimelineBuildOptions = {}): ScoreTimeline {
+export function buildScoreTimeline(
+    score: Score,
+    options: TimelineBuildOptions = {},
+): ScoreTimeline {
     const resolvedOptions = resolveTimelineOptions(options);
     const measures: MeasureTimeline[] = [];
     const diagnostics: TimelineDiagnostic[] = [];
 
     score.parts.forEach((part, partIndex) => {
         part.measures.forEach((_measure, measureIndex) => {
-            const measureTimeline = buildMeasureTimeline(score, partIndex, measureIndex, resolvedOptions);
+            const measureTimeline = buildMeasureTimeline(
+                score,
+                partIndex,
+                measureIndex,
+                resolvedOptions,
+            );
             measures.push(measureTimeline);
             diagnostics.push(...measureTimeline.diagnostics);
         });
@@ -105,7 +109,10 @@ export function buildScoreTimeline(score: Score, options: TimelineBuildOptions =
     return { measures, diagnostics };
 }
 
-export function buildScoreTimelineIndex(score: Score, options: TimelineBuildOptions = {}): ScoreTimelineIndex {
+export function buildScoreTimelineIndex(
+    score: Score,
+    options: TimelineBuildOptions = {},
+): ScoreTimelineIndex {
     return indexScoreTimeline(buildScoreTimeline(score, options));
 }
 
@@ -125,7 +132,7 @@ export function indexScoreTimeline(timeline: ScoreTimeline): ScoreTimelineIndex 
             const sequenceKey = createTimelineSequenceKey({
                 partIndex: measure.partIndex,
                 measureIndex: measure.measureIndex,
-                sequenceIndex: sequence.sequenceIndex
+                sequenceIndex: sequence.sequenceIndex,
             });
 
             for (const event of sequence.events) {
@@ -149,41 +156,41 @@ export function indexScoreTimeline(timeline: ScoreTimeline): ScoreTimelineIndex 
         eventsByMeasure,
         eventsBySequence,
         eventsById,
-        eventsByPath
+        eventsByPath,
     };
 }
 
 export function getTimelineMeasure(
     index: ScoreTimelineIndex,
-    selector: TimelineMeasureSelector
+    selector: TimelineMeasureSelector,
 ): MeasureTimeline | undefined {
     return index.measuresByKey.get(createTimelineMeasureKey(selector));
 }
 
 export function getTimelineEventsForMeasure(
     index: ScoreTimelineIndex,
-    selector: TimelineMeasureSelector
+    selector: TimelineMeasureSelector,
 ): readonly TimedEventRef[] {
     return index.eventsByMeasure.get(createTimelineMeasureKey(selector)) ?? [];
 }
 
 export function getTimelineEventsForSequence(
     index: ScoreTimelineIndex,
-    selector: TimelineSequenceSelector
+    selector: TimelineSequenceSelector,
 ): readonly TimedEventRef[] {
     return index.eventsBySequence.get(createTimelineSequenceKey(selector)) ?? [];
 }
 
 export function getTimelineEventsById(
     index: ScoreTimelineIndex,
-    id: string
+    id: string,
 ): readonly TimedEventRef[] {
     return index.eventsById.get(id) ?? [];
 }
 
 export function getTimelineEventByPath(
     index: ScoreTimelineIndex,
-    path: string
+    path: string,
 ): TimedEventRef | undefined {
     return index.eventsByPath.get(path);
 }
@@ -192,7 +199,7 @@ export function buildMeasureTimeline(
     score: Score,
     partIndex: number,
     measureIndex: number,
-    options: TimelineBuildOptions = {}
+    options: TimelineBuildOptions = {},
 ): MeasureTimeline {
     const resolvedOptions = resolveTimelineOptions(options);
     const part = score.parts[partIndex];
@@ -205,7 +212,7 @@ export function buildMeasureTimeline(
             severity: "error",
             code: "timeline-missing-measure",
             message: `Missing part ${partIndex + 1} or measure ${measureIndex + 1}.`,
-            path
+            path,
         });
 
         return {
@@ -215,14 +222,14 @@ export function buildMeasureTimeline(
             measureNumber: measureIndex + 1,
             expectedBeats: 0,
             sequences: [],
-            diagnostics
+            diagnostics,
         };
     }
 
     const measureNumber = measure.index ?? measureIndex + 1;
     const expectedBeats = getTimeSignatureBeats(
         resolveTimeSignatureForMeasure(score, measureIndex, measureNumber),
-        resolvedOptions.fallbackBeats
+        resolvedOptions.fallbackBeats,
     );
     const sequences = measure.sequences.map((sequence, sequenceIndex) => {
         const sequencePath = `${path}.sequences[${sequenceIndex}]`;
@@ -237,16 +244,16 @@ export function buildMeasureTimeline(
                 contentPath: [],
                 startBeat: 0,
                 scale: 1,
-                grace: false
+                grace: false,
             },
-            events
+            events,
         );
         const sequenceDiagnostics = getSequenceDiagnostics(
             usedBeats,
             expectedBeats,
             sequencePath,
             measureIndex,
-            resolvedOptions
+            resolvedOptions,
         );
         diagnostics.push(...sequenceDiagnostics);
 
@@ -255,7 +262,7 @@ export function buildMeasureTimeline(
             expectedBeats,
             usedBeats,
             events,
-            diagnostics: sequenceDiagnostics
+            diagnostics: sequenceDiagnostics,
         };
     });
 
@@ -266,14 +273,14 @@ export function buildMeasureTimeline(
         measureNumber,
         expectedBeats,
         sequences,
-        diagnostics
+        diagnostics,
     };
 }
 
 export function resolveTimeSignatureForMeasure(
     score: Score,
     measureIndex: number,
-    measureNumber = measureIndex + 1
+    measureNumber = measureIndex + 1,
 ): { count?: number; unit?: number } | undefined {
     let resolved = score.global.measures[0]?.time;
 
@@ -289,12 +296,11 @@ export function resolveTimeSignatureForMeasure(
 
 export function getTimelineEventSource(
     score: Score,
-    event: Pick<TimedEventRef, "partIndex" | "measureIndex" | "sequenceIndex" | "contentPath">
+    event: Pick<TimedEventRef, "partIndex" | "measureIndex" | "sequenceIndex" | "contentPath">,
 ): unknown {
-    let content = score.parts[event.partIndex]
-        ?.measures[event.measureIndex]
-        ?.sequences[event.sequenceIndex]
-        ?.content as unknown[] | undefined;
+    let content = score.parts[event.partIndex]?.measures[event.measureIndex]?.sequences[
+        event.sequenceIndex
+    ]?.content as unknown[] | undefined;
 
     let item: unknown;
     for (let index = 0; index < event.contentPath.length; index += 1) {
@@ -302,9 +308,7 @@ export function getTimelineEventSource(
         item = content[event.contentPath[index]];
 
         if (index < event.contentPath.length - 1) {
-            content = isRecord(item) && Array.isArray(item.content)
-                ? item.content
-                : undefined;
+            content = isRecord(item) && Array.isArray(item.content) ? item.content : undefined;
         }
     }
 
@@ -325,7 +329,7 @@ interface TimelineWalkContext {
 function collectTimedEvents(
     content: unknown[],
     context: TimelineWalkContext,
-    events: TimedEventRef[]
+    events: TimedEventRef[],
 ): number {
     let beat = context.startBeat;
 
@@ -345,17 +349,30 @@ function collectTimedEvents(
                     path: `${path}.content`,
                     contentPath,
                     startBeat,
-                    scale: childScale
+                    scale: childScale,
                 },
-                events
+                events,
             );
-            events.push(createTimedEvent(item, "tuplet", context, contentPath, path, startBeat, endBeat - startBeat, 0));
+            events.push(
+                createTimedEvent(
+                    item,
+                    "tuplet",
+                    context,
+                    contentPath,
+                    path,
+                    startBeat,
+                    endBeat - startBeat,
+                    0,
+                ),
+            );
             beat = endBeat;
             continue;
         }
 
         if (item.type === "grace" && Array.isArray(item.content)) {
-            events.push(createTimedEvent(item, "grace", context, contentPath, path, beat, 0, 0, true));
+            events.push(
+                createTimedEvent(item, "grace", context, contentPath, path, beat, 0, 0, true),
+            );
             collectTimedEvents(
                 item.content,
                 {
@@ -363,9 +380,9 @@ function collectTimedEvents(
                     path: `${path}.content`,
                     contentPath,
                     startBeat: beat,
-                    grace: true
+                    grace: true,
                 },
-                events
+                events,
             );
             continue;
         }
@@ -376,35 +393,41 @@ function collectTimedEvents(
         }
 
         if (Array.isArray(item.notes) && item.notes.length > 0) {
-            const nominalDurationBeats = getDurationInBeats(asNoteValue(item.duration)) * context.scale;
+            const nominalDurationBeats =
+                getDurationInBeats(asNoteValue(item.duration)) * context.scale;
             const durationBeats = context.grace ? 0 : nominalDurationBeats;
-            events.push(createTimedEvent(
-                item,
-                "note",
-                context,
-                contentPath,
-                path,
-                beat,
-                durationBeats,
-                nominalDurationBeats
-            ));
+            events.push(
+                createTimedEvent(
+                    item,
+                    "note",
+                    context,
+                    contentPath,
+                    path,
+                    beat,
+                    durationBeats,
+                    nominalDurationBeats,
+                ),
+            );
             beat += durationBeats;
             continue;
         }
 
         if (isRecord(item.rest)) {
-            const nominalDurationBeats = getDurationInBeats(asNoteValue(item.duration)) * context.scale;
+            const nominalDurationBeats =
+                getDurationInBeats(asNoteValue(item.duration)) * context.scale;
             const durationBeats = context.grace ? 0 : nominalDurationBeats;
-            events.push(createTimedEvent(
-                item,
-                "rest",
-                context,
-                contentPath,
-                path,
-                beat,
-                durationBeats,
-                nominalDurationBeats
-            ));
+            events.push(
+                createTimedEvent(
+                    item,
+                    "rest",
+                    context,
+                    contentPath,
+                    path,
+                    beat,
+                    durationBeats,
+                    nominalDurationBeats,
+                ),
+            );
             beat += durationBeats;
         }
     }
@@ -421,7 +444,7 @@ function createTimedEvent(
     startBeat: number,
     durationBeats: number,
     nominalDurationBeats: number,
-    grace = context.grace
+    grace = context.grace,
 ): TimedEventRef {
     return {
         id: typeof item.id === "string" ? item.id : undefined,
@@ -438,7 +461,7 @@ function createTimedEvent(
         grace,
         hidden: isRecord(item.rest) ? item.rest.hidden === true : undefined,
         staff: resolveStaff(item),
-        position: { fraction: [startBeat, 1] }
+        position: { fraction: [startBeat, 1] },
     };
 }
 
@@ -447,7 +470,7 @@ function getSequenceDiagnostics(
     expectedBeats: number,
     path: string,
     measureIndex: number,
-    options: Required<TimelineBuildOptions>
+    options: Required<TimelineBuildOptions>,
 ): TimelineDiagnostic[] {
     if (!options.includeRhythmDiagnostics) return [];
     if (!Number.isFinite(expectedBeats) || expectedBeats <= 0) return [];
@@ -456,18 +479,20 @@ function getSequenceDiagnostics(
     if (Math.abs(delta) <= options.rhythmEpsilon) return [];
     if (options.allowPickupMeasure && measureIndex === 0 && delta < 0) return [];
 
-    return [{
-        severity: "warning",
-        code: delta > 0 ? "rhythm-overfull" : "rhythm-underfull",
-        message: `Sequence uses ${roundBeats(usedBeats)} beats, expected ${roundBeats(expectedBeats)}.`,
-        path
-    }];
+    return [
+        {
+            severity: "warning",
+            code: delta > 0 ? "rhythm-overfull" : "rhythm-underfull",
+            message: `Sequence uses ${roundBeats(usedBeats)} beats, expected ${roundBeats(expectedBeats)}.`,
+            path,
+        },
+    ];
 }
 
 function resolveTimelineOptions(options: TimelineBuildOptions): Required<TimelineBuildOptions> {
     return {
         ...DEFAULT_TIMELINE_OPTIONS,
-        ...options
+        ...options,
     };
 }
 
@@ -497,7 +522,7 @@ function resolveStaff(item: Record<string, unknown>): number | undefined {
     if (typeof item.staff === "number") return item.staff;
     if (Array.isArray(item.notes)) {
         const firstStaff = item.notes
-            .map((note) => isRecord(note) ? note.staff : undefined)
+            .map((note) => (isRecord(note) ? note.staff : undefined))
             .find((staff): staff is number => typeof staff === "number");
         return firstStaff;
     }

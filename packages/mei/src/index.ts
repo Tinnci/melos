@@ -14,7 +14,7 @@ import type {
     Score,
     Sequence,
     Tuplet,
-    Wedge
+    Wedge,
 } from "@melos/core";
 import { ScoreSchema } from "@melos/core";
 
@@ -65,7 +65,7 @@ const MEI_DURATIONS: Record<string, NoteValue["base"]> = {
     "512": "512th",
     "1024": "1024th",
     "2048": "2048th",
-    "4096": "4096th"
+    "4096": "4096th",
 };
 
 export class MEIToMNX {
@@ -73,7 +73,7 @@ export class MEIToMNX {
         ignoreAttributes: false,
         attributeNamePrefix: "@_",
         textNodeName: "#text",
-        trimValues: true
+        trimValues: true,
     });
 
     convert(meiContent: string): Score {
@@ -99,20 +99,22 @@ export class MEIToMNX {
             eventCounter: 1,
             noteCounter: 1,
             noteIndex: new Map(),
-            lyricLines: new Map()
+            lyricLines: new Map(),
         };
 
         const globalMeasures = measures.map((measure, index) =>
-            this.parseGlobalMeasure(measure, scoreDef, index)
+            this.parseGlobalMeasure(measure, scoreDef, index),
         );
 
-        const parts = staffDefs.map((staffDef, partIndex): Part => ({
-            id: `P${partIndex + 1}`,
-            name: staffDef.label || `Staff ${staffDef.n}`,
-            measures: measures.map((measure, measureIndex) =>
-                this.parsePartMeasure(measure, staffDef, measureIndex, scoreDef, context)
-            )
-        }));
+        const parts = staffDefs.map(
+            (staffDef, partIndex): Part => ({
+                id: `P${partIndex + 1}`,
+                name: staffDef.label || `Staff ${staffDef.n}`,
+                measures: measures.map((measure, measureIndex) =>
+                    this.parsePartMeasure(measure, staffDef, measureIndex, scoreDef, context),
+                ),
+            }),
+        );
 
         this.applyLinks(scoreNode, context);
 
@@ -121,15 +123,18 @@ export class MEIToMNX {
             mnx: { version: 1 },
             global: {
                 measures: globalMeasures,
-                lyrics: lyrics.length > 0 ? lyrics : undefined
+                lyrics: lyrics.length > 0 ? lyrics : undefined,
             },
-            parts
+            parts,
         };
 
         return ScoreSchema.parse(score);
     }
 
-    private getStaffDefinitions(scoreDef: MeiNode | undefined, measures: MeiNode[]): StaffDefinition[] {
+    private getStaffDefinitions(
+        scoreDef: MeiNode | undefined,
+        measures: MeiNode[],
+    ): StaffDefinition[] {
         const definitions = scoreDef ? findDescendants(scoreDef, "staffDef") : [];
         if (definitions.length > 0) {
             return definitions.map((staffDef, index) => {
@@ -141,7 +146,7 @@ export class MEIToMNX {
                 return {
                     n,
                     label,
-                    clef: sign ? { sign, line: clefLine } : undefined
+                    clef: sign ? { sign, line: clefLine } : undefined,
                 };
             });
         }
@@ -160,7 +165,11 @@ export class MEIToMNX {
         return Array.from(staffNumbers).map((n) => ({ n, label: `Staff ${n}` }));
     }
 
-    private parseGlobalMeasure(measure: MeiNode, scoreDef: MeiNode | undefined, index: number): GlobalMeasure {
+    private parseGlobalMeasure(
+        measure: MeiNode,
+        scoreDef: MeiNode | undefined,
+        index: number,
+    ): GlobalMeasure {
         const globalMeasure: GlobalMeasure = { index: index + 1 };
         if (index === 0 && scoreDef) {
             const count = parseInteger(attr(scoreDef, "meter.count"));
@@ -202,16 +211,17 @@ export class MEIToMNX {
         staffDef: StaffDefinition,
         measureIndex: number,
         scoreDef: MeiNode | undefined,
-        context: MeiContext
+        context: MeiContext,
     ): PartMeasure {
         const staff = this.findStaff(measure, staffDef.n);
         const layers = staff ? findChildren(staff, "layer") : findChildren(measure, "layer");
-        const parsedLayers = layers.length > 0
-            ? layers.map((layer) => this.parseLayer(layer, context))
-            : [{ content: [], beams: [] } satisfies ParsedLayer];
+        const parsedLayers =
+            layers.length > 0
+                ? layers.map((layer) => this.parseLayer(layer, context))
+                : [{ content: [], beams: [] } satisfies ParsedLayer];
 
         const sequences: Sequence[] = parsedLayers.map((layer) => ({
-            content: layer.content
+            content: layer.content,
         }));
 
         const beams = parsedLayers.flatMap((layer) => layer.beams);
@@ -224,13 +234,14 @@ export class MEIToMNX {
         return {
             index: measureIndex + 1,
             sequences,
-            clefs: measureIndex === 0 && staffDef.clef
-                ? [{ clef: staffDef.clef, staff: parseInteger(staffDef.n) }]
-                : undefined,
+            clefs:
+                measureIndex === 0 && staffDef.clef
+                    ? [{ clef: staffDef.clef, staff: parseInteger(staffDef.n) }]
+                    : undefined,
             beams: beams.length > 0 ? beams : undefined,
             wedges: wedges.length > 0 ? wedges : undefined,
             pedals: pedals.length > 0 ? pedals : undefined,
-            ottavas: ottavas.length > 0 ? ottavas : undefined
+            ottavas: ottavas.length > 0 ? ottavas : undefined,
         };
     }
 
@@ -272,13 +283,14 @@ export class MEIToMNX {
 
         return {
             content: parsed.content,
-            beams: eventIds.length > 1
-                ? [...parsed.beams, { events: eventIds }]
-                : parsed.beams
+            beams: eventIds.length > 1 ? [...parsed.beams, { events: eventIds }] : parsed.beams,
         };
     }
 
-    private parseTuplet(tupletNode: MeiNode, context: MeiContext): { tuplet: Tuplet; beams: Beam[] } {
+    private parseTuplet(
+        tupletNode: MeiNode,
+        context: MeiContext,
+    ): { tuplet: Tuplet; beams: Beam[] } {
         const parsed = this.parseLayer(tupletNode, context);
         const duration = this.durationFromNode(tupletNode, "eighth");
         const actual = parseInteger(attr(tupletNode, "num")) || 3;
@@ -289,18 +301,23 @@ export class MEIToMNX {
                 type: "tuplet",
                 inner: { duration, multiple: actual },
                 outer: { duration, multiple: normal },
-                content: parsed.content
+                content: parsed.content,
             },
-            beams: parsed.beams
+            beams: parsed.beams,
         };
     }
 
-    private parseGraceGroup(graceNode: MeiNode, context: MeiContext): { grace: { type: "grace"; content: Event[] }; beams: Beam[] } {
+    private parseGraceGroup(
+        graceNode: MeiNode,
+        context: MeiContext,
+    ): { grace: { type: "grace"; content: Event[] }; beams: Beam[] } {
         const parsed = this.parseLayer(graceNode, context);
-        const events = parsed.content.filter((item): item is Event => "id" in item && !("type" in item));
+        const events = parsed.content.filter(
+            (item): item is Event => "id" in item && !("type" in item),
+        );
         return {
             grace: { type: "grace", content: events },
-            beams: parsed.beams
+            beams: parsed.beams,
         };
     }
 
@@ -313,7 +330,7 @@ export class MEIToMNX {
             notes: [note],
             staff: parseInteger(attr(noteNode, "staff")),
             articulations: this.parseArticulations(noteNode),
-            lyrics: this.parseLyrics(noteNode, context)
+            lyrics: this.parseLyrics(noteNode, context),
         };
 
         const compacted = compactEvent(event);
@@ -326,7 +343,13 @@ export class MEIToMNX {
         const duration = this.durationFromNode(chordNode);
         const notes = findChildren(chordNode, "note").map((noteNode) => {
             const note = this.parseNote(noteNode, context);
-            this.registerNote(noteNode, { id: eventId, duration, notes: [] }, note, context, eventId);
+            this.registerNote(
+                noteNode,
+                { id: eventId, duration, notes: [] },
+                note,
+                context,
+                eventId,
+            );
             return note;
         });
 
@@ -335,7 +358,7 @@ export class MEIToMNX {
             duration,
             notes,
             staff: parseInteger(attr(chordNode, "staff")),
-            articulations: this.parseArticulations(chordNode)
+            articulations: this.parseArticulations(chordNode),
         };
         const compacted = compactEvent(event);
 
@@ -355,7 +378,7 @@ export class MEIToMNX {
             id: xmlId(restNode) || `rest-${attr(restNode, "n") || "event"}`,
             duration: this.durationFromNode(restNode),
             rest: {},
-            staff: parseInteger(attr(restNode, "staff"))
+            staff: parseInteger(attr(restNode, "staff")),
         };
         return compactEvent(event);
     }
@@ -368,7 +391,7 @@ export class MEIToMNX {
             id: noteId,
             staff: parseInteger(attr(noteNode, "staff")),
             notehead: normalizeNotehead(attr(noteNode, "head.shape")),
-            color: attr(noteNode, "color")
+            color: attr(noteNode, "color"),
         };
 
         if (pname && octave !== undefined) {
@@ -376,7 +399,7 @@ export class MEIToMNX {
             note.pitch = {
                 step: pname.toUpperCase() as Note["pitch"] extends { step: infer S } ? S : never,
                 octave,
-                alter
+                alter,
             };
             if (alter !== undefined || attr(noteNode, "accid")) {
                 note.accidentalDisplay = { show: true };
@@ -390,11 +413,16 @@ export class MEIToMNX {
         const rawDuration = attr(node, "dur");
         return {
             base: rawDuration ? MEI_DURATIONS[rawDuration] || fallback : fallback,
-            dots: parseInteger(attr(node, "dots")) || 0
+            dots: parseInteger(attr(node, "dots")) || 0,
         };
     }
 
-    private prependDynamics(measure: MeiNode, staffNumber: string, sequences: Sequence[], context: MeiContext) {
+    private prependDynamics(
+        measure: MeiNode,
+        staffNumber: string,
+        sequences: Sequence[],
+        context: MeiContext,
+    ) {
         const firstSequence = sequences[0];
         if (!firstSequence) return;
 
@@ -406,7 +434,7 @@ export class MEIToMNX {
         for (const value of dynamics.reverse()) {
             firstSequence.content.unshift({
                 type: "dynamic",
-                value
+                value,
             });
         }
 
@@ -417,7 +445,12 @@ export class MEIToMNX {
         }
     }
 
-    private parseHairpins(measure: MeiNode, staffNumber: string, scoreDef: MeiNode | undefined, measureIndex: number): Wedge[] {
+    private parseHairpins(
+        measure: MeiNode,
+        staffNumber: string,
+        scoreDef: MeiNode | undefined,
+        measureIndex: number,
+    ): Wedge[] {
         return findDescendants(measure, "hairpin")
             .filter((node) => this.matchesStaff(node, staffNumber))
             .map((node) => {
@@ -428,14 +461,19 @@ export class MEIToMNX {
                     position: this.tstampToPosition(attr(node, "tstamp"), scoreDef),
                     end: {
                         measure: measureIndex + 1,
-                        position: this.tstampToPosition(attr(node, "tstamp2"), scoreDef)
+                        position: this.tstampToPosition(attr(node, "tstamp2"), scoreDef),
                     },
-                    staff: parseInteger(staffNumber)
+                    staff: parseInteger(staffNumber),
                 } satisfies Wedge;
             });
     }
 
-    private parsePedals(measure: MeiNode, staffNumber: string, scoreDef: MeiNode | undefined, measureIndex: number): Pedal[] {
+    private parsePedals(
+        measure: MeiNode,
+        staffNumber: string,
+        scoreDef: MeiNode | undefined,
+        measureIndex: number,
+    ): Pedal[] {
         return findDescendants(measure, "pedal")
             .filter((node) => this.matchesStaff(node, staffNumber))
             .map((node) => {
@@ -445,23 +483,32 @@ export class MEIToMNX {
                     position: this.tstampToPosition(attr(node, "tstamp"), scoreDef),
                     end: attr(node, "tstamp2")
                         ? {
-                            measure: measureIndex + 1,
-                            position: this.tstampToPosition(attr(node, "tstamp2"), scoreDef)
-                        }
+                              measure: measureIndex + 1,
+                              position: this.tstampToPosition(attr(node, "tstamp2"), scoreDef),
+                          }
                         : undefined,
                     line: attr(node, "line") === "true" || attr(node, "form") === "line",
                     sign: attr(node, "glyph.name") !== "none",
-                    staff: parseInteger(staffNumber)
+                    staff: parseInteger(staffNumber),
                 } satisfies Pedal;
             });
     }
 
-    private parseOttavas(measure: MeiNode, staffNumber: string, scoreDef: MeiNode | undefined, measureIndex: number): Ottava[] {
+    private parseOttavas(
+        measure: MeiNode,
+        staffNumber: string,
+        scoreDef: MeiNode | undefined,
+        measureIndex: number,
+    ): Ottava[] {
         return findDescendants(measure, "octave")
             .filter((node) => this.matchesStaff(node, staffNumber))
             .map((node) => {
                 const displacement = parseInteger(attr(node, "dis")) || 8;
-                const place = (attr(node, "dis.place") || attr(node, "place") || "above").toLowerCase();
+                const place = (
+                    attr(node, "dis.place") ||
+                    attr(node, "place") ||
+                    "above"
+                ).toLowerCase();
                 const valueAbs = displacement >= 22 ? 3 : displacement >= 15 ? 2 : 1;
                 const value = (place === "below" ? -valueAbs : valueAbs) as Ottava["value"];
                 return {
@@ -469,9 +516,9 @@ export class MEIToMNX {
                     position: this.tstampToPosition(attr(node, "tstamp"), scoreDef),
                     end: {
                         measure: measureIndex + 1,
-                        position: this.tstampToPosition(attr(node, "tstamp2"), scoreDef)
+                        position: this.tstampToPosition(attr(node, "tstamp2"), scoreDef),
                     },
-                    staff: parseInteger(staffNumber)
+                    staff: parseInteger(staffNumber),
                 };
             });
     }
@@ -483,7 +530,10 @@ export class MEIToMNX {
             if (source?.event.id && target?.event.id) {
                 source.event.slurs = [
                     ...(source.event.slurs || []),
-                    { target: target.event.id, side: attr(slur, "curvedir") === "below" ? "down" : "up" }
+                    {
+                        target: target.event.id,
+                        side: attr(slur, "curvedir") === "below" ? "down" : "up",
+                    },
                 ];
             }
         }
@@ -498,19 +548,21 @@ export class MEIToMNX {
     }
 
     private parseLyrics(noteNode: MeiNode, context: MeiContext): Event["lyrics"] {
-        const lyrics = findChildren(noteNode, "verse").map((verse, index) => {
-            const line = attr(verse, "n") || String(index + 1);
-            const text = textOfChild(verse, "syl") || textContent(verse);
-            const lineId = `verse-${line}`;
-            if (!context.lyricLines.has(lineId)) {
-                context.lyricLines.set(lineId, { id: lineId, name: `Verse ${line}` });
-            }
-            return {
-                text,
-                line: lineId,
-                syllabic: parseSyllabic(attr(findFirstDescendant(verse, "syl"), "con"))
-            };
-        }).filter((lyric) => lyric.text);
+        const lyrics = findChildren(noteNode, "verse")
+            .map((verse, index) => {
+                const line = attr(verse, "n") || String(index + 1);
+                const text = textOfChild(verse, "syl") || textContent(verse);
+                const lineId = `verse-${line}`;
+                if (!context.lyricLines.has(lineId)) {
+                    context.lyricLines.set(lineId, { id: lineId, name: `Verse ${line}` });
+                }
+                return {
+                    text,
+                    line: lineId,
+                    syllabic: parseSyllabic(attr(findFirstDescendant(verse, "syl"), "con")),
+                };
+            })
+            .filter((lyric) => lyric.text);
 
         return lyrics.length > 0 ? lyrics : undefined;
     }
@@ -518,7 +570,9 @@ export class MEIToMNX {
     private parseArticulations(node: MeiNode): Articulation[] | undefined {
         const articulations = [
             ...(attr(node, "artic") || "").split(/\s+/),
-            ...findChildren(node, "artic").map((artic) => attr(artic, "artic") || textContent(artic))
+            ...findChildren(node, "artic").map(
+                (artic) => attr(artic, "artic") || textContent(artic),
+            ),
         ]
             .map(normalizeArticulation)
             .filter((articulation): articulation is Articulation => !!articulation);
@@ -527,8 +581,9 @@ export class MEIToMNX {
     }
 
     private findStaff(measure: MeiNode, staffNumber: string): MeiNode | undefined {
-        return findChildren(measure, "staff")
-            .find((staff) => (attr(staff, "n") || "1") === staffNumber);
+        return findChildren(measure, "staff").find(
+            (staff) => (attr(staff, "n") || "1") === staffNumber,
+        );
     }
 
     private matchesStaff(node: MeiNode, staffNumber: string): boolean {
@@ -559,7 +614,7 @@ export class MEIToMNX {
         event: Event,
         note: Note,
         context: MeiContext,
-        eventIdOverride?: string
+        eventIdOverride?: string,
     ) {
         const id = xmlId(noteNode);
         if (id) {
@@ -578,7 +633,7 @@ export class MEIToMNX {
 }
 
 function asRecord(value: unknown): MeiNode {
-    return value && typeof value === "object" ? value as MeiNode : {};
+    return value && typeof value === "object" ? (value as MeiNode) : {};
 }
 
 function localName(name: string): string {
@@ -658,7 +713,9 @@ function textContent(node: MeiNode | undefined): string {
     if (!node) return "";
     const text = node["#text"];
     const ownText = text === undefined ? "" : String(text);
-    return `${ownText}${childEntries(node).map((child) => textContent(child.node)).join("")}`;
+    return `${ownText}${childEntries(node)
+        .map((child) => textContent(child.node))
+        .join("")}`;
 }
 
 function textOfChild(node: MeiNode, childName: string): string | undefined {
@@ -776,12 +833,12 @@ function stripRef(value: string | undefined): string {
 
 function compactEvent(event: Event): Event {
     return Object.fromEntries(
-        Object.entries(event).filter(([, value]) => value !== undefined)
+        Object.entries(event).filter(([, value]) => value !== undefined),
     ) as Event;
 }
 
 function compactNote(note: Note): Note {
     return Object.fromEntries(
-        Object.entries(note).filter(([, value]) => value !== undefined)
+        Object.entries(note).filter(([, value]) => value !== undefined),
     ) as Note;
 }

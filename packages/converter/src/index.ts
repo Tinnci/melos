@@ -2,11 +2,20 @@ import { XMLParser } from "fast-xml-parser";
 import type { Score, GlobalMeasure, Part, PartMeasure, LyricLine, Jump } from "@melos/core";
 import { MeasureParser, type PartParsingContext } from "./parsers/MeasureParser";
 import { parseInteger, resetIdCounters } from "./parsers/Utils";
-import { findOrderedRoot, getOrderedChildren, getOrderedContent, type OrderedXmlNode } from "./parsers/OrderedXml";
+import {
+    findOrderedRoot,
+    getOrderedChildren,
+    getOrderedContent,
+    type OrderedXmlNode,
+} from "./parsers/OrderedXml";
 
 export class MusicXMLToMNX {
     private xmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_" });
-    private orderedXmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", preserveOrder: true });
+    private orderedXmlParser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: "@_",
+        preserveOrder: true,
+    });
 
     convert(xmlContent: string): Score {
         resetIdCounters();
@@ -21,7 +30,9 @@ export class MusicXMLToMNX {
 
         // 1. Build Global Track (Time, Key) & Global Divisions (Assumption: unified)
         const partsArray = Array.isArray(root.part) ? root.part : [root.part];
-        const firstPartMeasures = Array.isArray(partsArray[0]?.measure) ? partsArray[0].measure : [partsArray[0]?.measure];
+        const firstPartMeasures = Array.isArray(partsArray[0]?.measure)
+            ? partsArray[0].measure
+            : [partsArray[0]?.measure];
 
         const globalMeasures: GlobalMeasure[] = [];
         let initialDivisions = 1;
@@ -40,14 +51,14 @@ export class MusicXMLToMNX {
             if (timeAttributes?.time) {
                 gm.time = {
                     count: parseInt(timeAttributes.time.beats),
-                    unit: parseInt(timeAttributes.time["beat-type"])
+                    unit: parseInt(timeAttributes.time["beat-type"]),
                 };
             }
 
             const keyAttributes = attributes.find((a: any) => a?.key);
             if (keyAttributes?.key) {
                 gm.key = {
-                    fifths: parseInt(keyAttributes.key.fifths)
+                    fifths: parseInt(keyAttributes.key.fifths),
                 };
                 if (keyAttributes.key.mode) {
                     gm.key.mode = keyAttributes.key.mode;
@@ -76,7 +87,9 @@ export class MusicXMLToMNX {
                             gm.repeatStart = {};
                             gm.barline = { type: "repeat-forward" };
                         } else if (direction === "backward") {
-                            const times = bl.repeat["@_times"] ? parseInt(bl.repeat["@_times"]) : undefined;
+                            const times = bl.repeat["@_times"]
+                                ? parseInt(bl.repeat["@_times"])
+                                : undefined;
                             gm.repeatEnd = times ? { times } : {};
                             gm.barline = { type: "repeat-backward" };
                         }
@@ -89,11 +102,14 @@ export class MusicXMLToMNX {
 
                         if (endingType === "start" && number) {
                             // Parse ending numbers (e.g., "1" or "1, 2")
-                            const numbers = number.split(/[,\s]+/).map((n: string) => parseInt(n.trim())).filter((n: number) => !isNaN(n));
+                            const numbers = number
+                                .split(/[,\s]+/)
+                                .map((n: string) => parseInt(n.trim()))
+                                .filter((n: number) => !isNaN(n));
                             gm.ending = {
                                 numbers: numbers,
                                 duration: 1, // Will be updated when we see the stop
-                                open: endingType === "discontinue"
+                                open: endingType === "discontinue",
                             };
                         }
                     }
@@ -115,7 +131,9 @@ export class MusicXMLToMNX {
                 const jumps: Jump[] = [];
 
                 directions.forEach((d: any) => {
-                    const dTypes = Array.isArray(d["direction-type"]) ? d["direction-type"] : [d["direction-type"]];
+                    const dTypes = Array.isArray(d["direction-type"])
+                        ? d["direction-type"]
+                        : [d["direction-type"]];
 
                     dTypes.forEach((dt: any) => {
                         if (dt.segno) {
@@ -125,7 +143,8 @@ export class MusicXMLToMNX {
                             jumps.push({ type: "coda" });
                         }
                         if (dt.words) {
-                            const rawText = (typeof dt.words === "object" ? dt.words["#text"] : dt.words) || "";
+                            const rawText =
+                                (typeof dt.words === "object" ? dt.words["#text"] : dt.words) || "";
                             const text = String(rawText).trim().toLowerCase().replace(/\./g, ""); // "d.c." -> "dc"
 
                             if (text === "fine") {
@@ -156,7 +175,7 @@ export class MusicXMLToMNX {
         });
 
         // Shared lyric lines collection across all parts
-        const sharedLyricLines = new Map<string, { id: string, name: string }>();
+        const sharedLyricLines = new Map<string, { id: string; name: string }>();
         const orderedPartNodes = getOrderedChildren(orderedRoot, "part");
 
         // 1.5 Parse Part Metadata (Sound definitions)
@@ -168,17 +187,26 @@ export class MusicXMLToMNX {
 
             spArr.forEach((sp: any) => {
                 const partId = sp["@_id"];
-                const name = typeof sp["part-name"] === 'object' ? sp["part-name"]["#text"] : sp["part-name"];
+                const name =
+                    typeof sp["part-name"] === "object"
+                        ? sp["part-name"]["#text"]
+                        : sp["part-name"];
                 const sounds: any[] = [];
 
                 if (sp["midi-instrument"]) {
-                    const miArr = Array.isArray(sp["midi-instrument"]) ? sp["midi-instrument"] : [sp["midi-instrument"]];
+                    const miArr = Array.isArray(sp["midi-instrument"])
+                        ? sp["midi-instrument"]
+                        : [sp["midi-instrument"]];
                     miArr.forEach((mi: any) => {
                         sounds.push({
                             id: mi["@_id"],
-                            "midi-program": mi["midi-program"] ? parseInt(mi["midi-program"]) : undefined,
-                            "midi-channel": mi["midi-channel"] ? parseInt(mi["midi-channel"]) : undefined,
-                            "midi-bank": mi["midi-bank"] ? parseInt(mi["midi-bank"]) : undefined
+                            "midi-program": mi["midi-program"]
+                                ? parseInt(mi["midi-program"])
+                                : undefined,
+                            "midi-channel": mi["midi-channel"]
+                                ? parseInt(mi["midi-channel"])
+                                : undefined,
+                            "midi-bank": mi["midi-bank"] ? parseInt(mi["midi-bank"]) : undefined,
                         });
                     });
                 }
@@ -199,7 +227,7 @@ export class MusicXMLToMNX {
                 activeWedges: {},
                 activeOttavas: {}, // [NEW] Ottava tracking
                 activeTremolos: {}, // [NEW] Multi-note Tremolo
-                lyricLines: sharedLyricLines // Pass shared map
+                lyricLines: sharedLyricLines, // Pass shared map
             };
 
             const mnxMeasures: PartMeasure[] = partMeasuresRaw.map((m: any, mIndex: number) => {
@@ -214,7 +242,7 @@ export class MusicXMLToMNX {
                     context,
                     partDivisions,
                     mIndex + 1,
-                    getOrderedContent(orderedMeasureNodes[mIndex])
+                    getOrderedContent(orderedMeasureNodes[mIndex]),
                 );
                 return parser.parse();
             });
@@ -226,7 +254,7 @@ export class MusicXMLToMNX {
                 id: partId,
                 name: meta?.name || `Part ${pIndex + 1}`,
                 sounds: meta?.sounds && meta.sounds.length > 0 ? meta.sounds : undefined,
-                measures: mnxMeasures
+                measures: mnxMeasures,
             };
         });
 
@@ -237,9 +265,9 @@ export class MusicXMLToMNX {
             mnx: { version: 1 },
             global: {
                 measures: globalMeasures,
-                lyrics: lyricLinesArray.length > 0 ? lyricLinesArray : undefined
+                lyrics: lyricLinesArray.length > 0 ? lyricLinesArray : undefined,
             },
-            parts: mnxParts
+            parts: mnxParts,
         };
     }
 }

@@ -70,7 +70,9 @@ const mockMusicXML = `
 
 console.log("Converting MusicXML (Chord Example)...");
 const score = converter.convert(mockMusicXML);
-console.log(`- Events in Measure 1: ${score.parts[0].measures[0].sequences[0].content.length} (Expected 2)`);
+console.log(
+    `- Events in Measure 1: ${score.parts[0].measures[0].sequences[0].content.length} (Expected 2)`,
+);
 
 // Test 2: Tuplet Example
 const mockMusicXMLWithTuplet = `
@@ -139,11 +141,11 @@ const content = m1.sequences[0].content;
 console.log(`- Top level elements: ${content.length} (Expected 3: Note, Tuplet, Note)`);
 
 const tupletObj = content[1] as any;
-if (tupletObj.type === 'tuplet') {
-   console.log(`- Tuplet found! Contains ${tupletObj.content.length} events (Expected 3)`);
+if (tupletObj.type === "tuplet") {
+    console.log(`- Tuplet found! Contains ${tupletObj.content.length} events (Expected 3)`);
 } else {
-   console.error("- Error: Tuplet structure not generated correctly. Found:");
-   console.log(JSON.stringify(content, null, 2));
+    console.error("- Error: Tuplet structure not generated correctly. Found:");
+    console.log(JSON.stringify(content, null, 2));
 }
 
 // Test 3: Beams Example
@@ -182,11 +184,11 @@ const measureBeams = scoreBeams.parts[0].measures[0];
 
 console.log(`- Events count: ${measureBeams.sequences[0].content.length}`);
 if (measureBeams.beams && measureBeams.beams.length > 0) {
-   console.log(`- Beams found: ${measureBeams.beams.length} (Expected 1)`);
-   console.log(`- Beam connects ${measureBeams.beams[0].events.length} events (Expected 2)`);
-   console.log("Beam JSON:", JSON.stringify(measureBeams.beams[0], null, 2));
+    console.log(`- Beams found: ${measureBeams.beams.length} (Expected 1)`);
+    console.log(`- Beam connects ${measureBeams.beams[0].events.length} events (Expected 2)`);
+    console.log("Beam JSON:", JSON.stringify(measureBeams.beams[0], null, 2));
 } else {
-   console.error("- Error: No beams generated.");
+    console.error("- Error: No beams generated.");
 }
 
 // Test 4: Slurs & Ties Example
@@ -253,15 +255,15 @@ const ev1 = eventsSlurs[0];
 const ev2 = eventsSlurs[1];
 
 if (ev1.slurs && ev1.slurs.length > 0) {
-   console.log("- Slur found on Event 1!");
-   console.log(`- Slur target: ${ev1.slurs[0].target} (Expected ${ev2.id})`);
-   if (ev1.slurs[0].target === ev2.id) {
-      console.log("  -> Slur linkage CORRECT.");
-   } else {
-      console.error("  -> Slur linkage INCORRECT.");
-   }
+    console.log("- Slur found on Event 1!");
+    console.log(`- Slur target: ${ev1.slurs[0].target} (Expected ${ev2.id})`);
+    if (ev1.slurs[0].target === ev2.id) {
+        console.log("  -> Slur linkage CORRECT.");
+    } else {
+        console.error("  -> Slur linkage INCORRECT.");
+    }
 } else {
-   // console.error("- Error: No slur generated on Event 1");
+    // console.error("- Error: No slur generated on Event 1");
 }
 
 // Test 5: Multi-Voice Example
@@ -309,19 +311,19 @@ const mVoices = scoreVoices.parts[0].measures[0];
 console.log(`- Sequences (Voices) count: ${mVoices.sequences.length} (Expected 2)`);
 
 if (mVoices.sequences.length >= 2) {
-   const v1 = mVoices.sequences[0].content;
-   const v2 = mVoices.sequences[1].content;
+    const v1 = mVoices.sequences[0].content;
+    const v2 = mVoices.sequences[1].content;
 
-   console.log(`- Voice 1 events: ${v1.length} (Expected 2)`);
-   console.log(`- Voice 2 events: ${v2.length} (Expected 1)`);
+    console.log(`- Voice 1 events: ${v1.length} (Expected 2)`);
+    console.log(`- Voice 2 events: ${v2.length} (Expected 1)`);
 
-   if (v1.length === 2 && v2.length === 1) {
-      console.log("  -> Multi-voice separation CORRECT.");
-   } else {
-      console.error("  -> Multi-voice separation INCORRECT.");
-   }
+    if (v1.length === 2 && v2.length === 1) {
+        console.log("  -> Multi-voice separation CORRECT.");
+    } else {
+        console.error("  -> Multi-voice separation INCORRECT.");
+    }
 } else {
-   console.error("- Error: Failed to generate multiple sequences.");
+    console.error("- Error: Failed to generate multiple sequences.");
 }
 
 // Test 6: Lyrics Example
@@ -378,23 +380,25 @@ const eventsLyrics = mLyrics.sequences[0].content as any[];
 
 // Validate Global Metadata
 if (scoreLyrics.global.lyrics && scoreLyrics.global.lyrics.length > 0) {
-   console.log(`- Global Lyric Lines found: ${scoreLyrics.global.lyrics.length} (Expected 1)`);
-   console.log(`- Line ID: ${scoreLyrics.global.lyrics[0].id}, Name: ${scoreLyrics.global.lyrics[0].name}`);
+    console.log(`- Global Lyric Lines found: ${scoreLyrics.global.lyrics.length} (Expected 1)`);
+    console.log(
+        `- Line ID: ${scoreLyrics.global.lyrics[0].id}, Name: ${scoreLyrics.global.lyrics[0].name}`,
+    );
 } else {
-   // console.error("- Error: No global lyric lines generated.");
+    // console.error("- Error: No global lyric lines generated.");
 }
 
 // Validate Event Lyrics
 const evL1 = eventsLyrics[0];
 if (evL1.lyrics && evL1.lyrics.length > 0) {
-   console.log(`- Event 1 Lyric: "${evL1.lyrics[0].text}" (${evL1.lyrics[0].syllabic})`);
-   if (evL1.lyrics[0].text === "Hel" && evL1.lyrics[0].syllabic === "begin") {
-      console.log("  -> Lyric 1 content CORRECT.");
-   } else {
-      console.error("  -> Lyric 1 content INCORRECT.");
-   }
+    console.log(`- Event 1 Lyric: "${evL1.lyrics[0].text}" (${evL1.lyrics[0].syllabic})`);
+    if (evL1.lyrics[0].text === "Hel" && evL1.lyrics[0].syllabic === "begin") {
+        console.log("  -> Lyric 1 content CORRECT.");
+    } else {
+        console.error("  -> Lyric 1 content INCORRECT.");
+    }
 } else {
-   // console.error("- Error: No lyric generated on Event 1");
+    // console.error("- Error: No lyric generated on Event 1");
 }
 
 // Test 7: Dynamics (Directions) Example
@@ -454,21 +458,22 @@ const item1 = seqDynContent[1] as any;
 const item2 = seqDynContent[2] as any;
 const item3 = seqDynContent[3] as any;
 
-const isType0 = item0.type === 'dynamic' && item0.value === 'p';
+const isType0 = item0.type === "dynamic" && item0.value === "p";
 const isType1 = item1.notes?.length > 0;
-const isType2 = item2.type === 'dynamic' && item2.value === 'f';
+const isType2 = item2.type === "dynamic" && item2.value === "f";
 const isType3 = item3.notes?.length > 0;
 
 if (isType0 && isType1 && isType2 && isType3) {
-   console.log("  -> Dynamics sequence order CORRECT (p -> Note -> f -> Note).");
+    console.log("  -> Dynamics sequence order CORRECT (p -> Note -> f -> Note).");
 } else {
-   console.error("  -> Dynamics sequence order INCORRECT.");
-   console.log("     Found types:",
-      item0.type || "event",
-      item1.type || "event",
-      item2.type || "event",
-      item3.type || "event"
-   );
+    console.error("  -> Dynamics sequence order INCORRECT.");
+    console.log(
+        "     Found types:",
+        item0.type || "event",
+        item1.type || "event",
+        item2.type || "event",
+        item3.type || "event",
+    );
 }
 
 // Test 8: Wedge (Crescendo/Diminuendo) Example
@@ -524,35 +529,36 @@ const mWedge = scoreWedge.parts[0].measures[0];
 // console.log(JSON.stringify(mWedge.wedges, null, 2));
 
 if (mWedge.wedges && mWedge.wedges.length > 0) {
-   const w = mWedge.wedges[0];
-   console.log(`- Wedge found: ${w.type}`);
+    const w = mWedge.wedges[0];
+    console.log(`- Wedge found: ${w.type}`);
 
-   // Check start position
-   // Note 1 duration = 2 ticks. Divisions = 2. Whole Note = 8 ticks.
-   // Start position should seem to be after Note 1?
-   // Based on our simplified logic: 'start' direction is after note 1 in sorted events ONLY if x > note 1 x.
-   // In XML above: Note1 x=10, Direction x=20.
-   // Parser Logic: Note 1 handled -> Ticker += 2. direction handled -> Start Position = 2/8 = 1/4?
+    // Check start position
+    // Note 1 duration = 2 ticks. Divisions = 2. Whole Note = 8 ticks.
+    // Start position should seem to be after Note 1?
+    // Based on our simplified logic: 'start' direction is after note 1 in sorted events ONLY if x > note 1 x.
+    // In XML above: Note1 x=10, Direction x=20.
+    // Parser Logic: Note 1 handled -> Ticker += 2. direction handled -> Start Position = 2/8 = 1/4?
 
-   // Verify Rhythmic Position [numerator, denominator]
-   console.log(`- Start Position: ${w.position.fraction[0]}/${w.position.fraction[1]}`);
+    // Verify Rhythmic Position [numerator, denominator]
+    console.log(`- Start Position: ${w.position.fraction[0]}/${w.position.fraction[1]}`);
 
-   // Check End Position
-   if (w.end) {
-      console.log(`- End Position: Measure ${w.end.measure}, ${w.end.position.fraction[0]}/${w.end.position.fraction[1]}`);
+    // Check End Position
+    if (w.end) {
+        console.log(
+            `- End Position: Measure ${w.end.measure}, ${w.end.position.fraction[0]}/${w.end.position.fraction[1]}`,
+        );
 
-      if (w.position.fraction[0] === 2 && w.end.position.fraction[0] === 4) {
-         console.log("  -> Wedge timing CORRECT (Start at beat 2, End at beat 3).");
-      } else {
-         console.error("  -> Wedge timing INCORRECT.");
-      }
-   } else {
-      console.error("- Error: Wedge end position not set (active wedge leak?).");
-   }
+        if (w.position.fraction[0] === 2 && w.end.position.fraction[0] === 4) {
+            console.log("  -> Wedge timing CORRECT (Start at beat 2, End at beat 3).");
+        } else {
+            console.error("  -> Wedge timing INCORRECT.");
+        }
+    } else {
+        console.error("- Error: Wedge end position not set (active wedge leak?).");
+    }
 } else {
-   console.error("- Error: No wedges generated.");
+    console.error("- Error: No wedges generated.");
 }
-
 
 // Test 9: Articulations Example
 const mockMusicXMLArticulations = `
@@ -607,33 +613,32 @@ const eventsArticulations = mArticulations.sequences[0].content as any[];
 // Validate Staccato
 const evA1 = eventsArticulations[0];
 if (evA1.articulations && evA1.articulations.includes("staccato")) {
-   console.log("- Note 1: Staccato found (Correct).");
+    console.log("- Note 1: Staccato found (Correct).");
 } else {
-   // console.error(`- Note 1: Staccato missing. Found: ${JSON.stringify(evA1.articulations)}`);
+    // console.error(`- Note 1: Staccato missing. Found: ${JSON.stringify(evA1.articulations)}`);
 }
 
 // Validate Accent
 const evA2 = eventsArticulations[1];
 if (evA2.articulations && evA2.articulations.includes("accent")) {
-   console.log("- Note 2: Accent found (Correct).");
+    console.log("- Note 2: Accent found (Correct).");
 } else {
-   // console.error(`- Note 2: Accent missing. Found: ${JSON.stringify(evA2.articulations)}`);
+    // console.error(`- Note 2: Accent missing. Found: ${JSON.stringify(evA2.articulations)}`);
 }
 
 // Validate Tenuto + Fermata
 const evA3 = eventsArticulations[2];
 if (evA3.articulations) {
-   const hasTenuto = evA3.articulations.includes("tenuto");
-   const hasFermata = evA3.articulations.includes("fermata");
-   if (hasTenuto && hasFermata) {
-      console.log("- Note 3: Tenuto and Fermata found (Correct).");
-   } else {
-      console.error(`- Note 3: Missing items. Found: ${JSON.stringify(evA3.articulations)}`);
-   }
+    const hasTenuto = evA3.articulations.includes("tenuto");
+    const hasFermata = evA3.articulations.includes("fermata");
+    if (hasTenuto && hasFermata) {
+        console.log("- Note 3: Tenuto and Fermata found (Correct).");
+    } else {
+        console.error(`- Note 3: Missing items. Found: ${JSON.stringify(evA3.articulations)}`);
+    }
 } else {
-   console.error("- Note 3: No articulations found.");
+    console.error("- Note 3: No articulations found.");
 }
-
 
 // Test 10: Layout Breaks (System & Page)
 const mockMusicXMLLayout = `
@@ -661,18 +666,17 @@ const gmLayout = scoreLayout.global.measures;
 
 // Measure 1: System Break
 if (gmLayout[0].break === "system") {
-   console.log(`- Measure 1: System Break DETECTED (Correct).`);
+    console.log(`- Measure 1: System Break DETECTED (Correct).`);
 } else {
-   console.error(`- Measure 1: System Break MISSING. Found: ${gmLayout[0].break}`);
+    console.error(`- Measure 1: System Break MISSING. Found: ${gmLayout[0].break}`);
 }
 
 // Measure 2: Page Break
 if (gmLayout[1].break === "page") {
-   console.log(`- Measure 2: Page Break DETECTED (Correct).`);
+    console.log(`- Measure 2: Page Break DETECTED (Correct).`);
 } else {
-   console.error(`- Measure 2: Page Break MISSING. Found: ${gmLayout[1].break}`);
+    console.error(`- Measure 2: Page Break MISSING. Found: ${gmLayout[1].break}`);
 }
-
 
 // Test 11: Grace Notes Example
 const mockMusicXMLGrace = `
@@ -714,18 +718,17 @@ const itemG0 = seqGraceContent[0] as any;
 const itemG1 = seqGraceContent[1] as any;
 
 if (itemG0 && itemG0.type === "grace") {
-   console.log(`- Grace Container found (Correct).`);
-   console.log(`- Grace Events count: ${itemG0.content.length} (Expected 1)`);
+    console.log(`- Grace Container found (Correct).`);
+    console.log(`- Grace Events count: ${itemG0.content.length} (Expected 1)`);
 } else {
-   console.error(`- Grace Container MISSING. Found type: ${itemG0?.type}`);
+    console.error(`- Grace Container MISSING. Found type: ${itemG0?.type}`);
 }
 
 if (itemG1 && itemG1.notes) {
-   console.log(`- Main Note found following grace notes (Correct).`);
+    console.log(`- Main Note found following grace notes (Correct).`);
 } else {
-   console.error(`- Main Note missing.`);
+    console.error(`- Main Note missing.`);
 }
-
 
 // --- Phase 4.2: Kitchen Sink Visual Test ---
 const kitchenSinkXML = `
@@ -911,10 +914,10 @@ const scoreKitchenSink = converter.convert(kitchenSinkXML);
 // Manual patch to ensure attributes are present for renderer demo if converter didn't extract them
 const ksM1 = scoreKitchenSink.parts[0].measures[0] as any;
 if (!ksM1.attributes) {
-   ksM1.attributes = {
-      time: { beats: 4, "beat-type": 4 },
-      key: { fifths: 0 }
-   };
+    ksM1.attributes = {
+        time: { beats: 4, "beat-type": 4 },
+        key: { fifths: 0 },
+    };
 }
 
 const svgOutput = renderer.render(scoreKitchenSink);
@@ -930,7 +933,3 @@ console.log("  * M5-M6: Rests (whole, half, quarter, eighth)");
 console.log("  * M7: CHORDS (C-E-G half, G-B-D quarter, F-A-C quarter)");
 
 console.log("--- Demo Complete ---");
-
-
-
-

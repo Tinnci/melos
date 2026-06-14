@@ -7,7 +7,10 @@ export class AudioPlayer {
     private tempo: number = 120; // BPM
 
     constructor() {
-        if (typeof window !== "undefined" && (window.AudioContext || (window as any).webkitAudioContext)) {
+        if (
+            typeof window !== "undefined" &&
+            (window.AudioContext || (window as any).webkitAudioContext)
+        ) {
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
             this.ctx = new AudioContextClass();
         }
@@ -31,7 +34,7 @@ export class AudioPlayer {
      * Initialize AudioContext (must be called after user interaction usually).
      */
     public async init() {
-        if (this.ctx && this.ctx.state === 'suspended') {
+        if (this.ctx && this.ctx.state === "suspended") {
             await this.ctx.resume();
         }
     }
@@ -59,7 +62,7 @@ export class AudioPlayer {
         const startTime = this.ctx.currentTime + 0.1;
         const schedule = createPlaybackSchedule(score, {
             tempo: this.tempo,
-            startTime
+            startTime,
         });
 
         schedule.forEach((event) => {
@@ -73,7 +76,7 @@ export class AudioPlayer {
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
 
-        osc.type = 'triangle';
+        osc.type = "triangle";
         osc.frequency.value = midiToFreq(pitchToMidi(pitch));
 
         // Envelope
@@ -90,6 +93,5 @@ export class AudioPlayer {
     }
 }
 
-export * from './schedule';
-export * from './utils';
-
+export * from "./schedule";
+export * from "./utils";

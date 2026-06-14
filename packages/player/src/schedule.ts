@@ -5,7 +5,7 @@ import {
     getTimelineEventSource,
     type Note,
     type Pitch,
-    type Score
+    type Score,
 } from "@melos/core";
 
 export interface ScheduledNote {
@@ -28,14 +28,14 @@ const DEFAULT_TEMPO = 120;
 
 export function createPlaybackSchedule(
     score: Score,
-    options: PlaybackScheduleOptions = {}
+    options: PlaybackScheduleOptions = {},
 ): ScheduledNote[] {
     const tempo = options.tempo ?? DEFAULT_TEMPO;
     const startTime = options.startTime ?? 0;
     const secondsPerBeat = 60 / tempo;
     const notes: ScheduledNote[] = [];
     const timelineIndex = buildScoreTimelineIndex(score, {
-        includeRhythmDiagnostics: false
+        includeRhythmDiagnostics: false,
     });
 
     score.parts.forEach((part, partIndex) => {
@@ -46,10 +46,13 @@ export function createPlaybackSchedule(
             const measureDurationBeats = Math.max(
                 timeline?.expectedBeats ?? 0,
                 ...(timeline?.sequences.map((sequence) => sequence.usedBeats) ?? []),
-                0
+                0,
             );
 
-            for (const event of getTimelineEventsForMeasure(timelineIndex, { partIndex, measureIndex })) {
+            for (const event of getTimelineEventsForMeasure(timelineIndex, {
+                partIndex,
+                measureIndex,
+            })) {
                 if (event.kind !== "note" || event.grace || event.durationBeats <= 0) continue;
 
                 const source = getTimelineEventSource(score, event);
@@ -60,13 +63,13 @@ export function createPlaybackSchedule(
 
                     notes.push({
                         pitch: note.pitch,
-                        startTime: startTime + ((partStartBeat + event.startBeat) * secondsPerBeat),
+                        startTime: startTime + (partStartBeat + event.startBeat) * secondsPerBeat,
                         duration: event.durationBeats * secondsPerBeat,
                         partIndex,
                         measureIndex,
                         sequenceIndex: event.sequenceIndex,
                         eventId: event.id,
-                        noteId: note.id
+                        noteId: note.id,
                     });
                 });
             }
@@ -79,7 +82,9 @@ export function createPlaybackSchedule(
 }
 
 function isPlayableEvent(value: unknown): value is { notes: Note[] } {
-    return typeof value === "object"
-        && value !== null
-        && Array.isArray((value as { notes?: unknown }).notes);
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        Array.isArray((value as { notes?: unknown }).notes)
+    );
 }

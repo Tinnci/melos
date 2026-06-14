@@ -1,4 +1,3 @@
-
 import { describe, it, expect } from "bun:test";
 import { MusicXMLToMNX } from "../src/index";
 import * as fs from "fs";
@@ -12,13 +11,13 @@ describe("W3C Ground Truth Consistency", () => {
     const converter = new MusicXMLToMNX();
 
     // Get list of XML files
-    const xmlFiles = fs.readdirSync(MUSICXML_DIR).filter(f => f.endsWith(".musicxml"));
+    const xmlFiles = fs.readdirSync(MUSICXML_DIR).filter((f) => f.endsWith(".musicxml"));
 
     if (xmlFiles.length === 0) {
         console.warn("No MusicXML files found. Skipping ground truth tests.");
     }
 
-    xmlFiles.forEach(file => {
+    xmlFiles.forEach((file) => {
         // Find corresponding MNX file
         const mnxFilename = file.replace(".musicxml", ".mnx");
         const mnxPath = path.join(GROUNDTRUTH_DIR, mnxFilename);
@@ -45,7 +44,7 @@ describe("W3C Ground Truth Consistency", () => {
                 expect(actualObj.parts.length).toBe(expectedObj.parts.length);
 
                 // TODO: Enable deeper comparison once Melos output is 1:1 with W3C spec default
-                // expect(actualObj).toEqual(expectedObj); 
+                // expect(actualObj).toEqual(expectedObj);
             });
         }
     });

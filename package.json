@@ -23,17 +23,15 @@
         "build": "bun run --filter '*' build",
         "test": "bun test",
         "typecheck": "tsgo --noEmit -p tsconfig.json",
-        "format": "biome format --write package.json tsconfig.json biome.json jscpd.json knip.json .dependency-cruiser.cjs scripts/quality-audit.ts docs/architecture/quality-gates.md",
-        "format:check": "biome format package.json tsconfig.json biome.json jscpd.json knip.json .dependency-cruiser.cjs scripts/quality-audit.ts docs/architecture/quality-gates.md",
-        "format:all": "biome format --write .",
+        "format": "biome format --write .",
+        "format:check": "biome format .",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "quality:audit": "bun scripts/quality-audit.ts",
         "quality:biome": "biome lint .",
-        "quality:knip": "knip --no-config-hints --no-exit-code",
-        "quality:knip:strict": "knip --no-config-hints",
+        "quality:knip": "knip --no-config-hints",
         "quality:dup": "jscpd --config jscpd.json packages",
         "quality:arch": "depcruise packages --validate .dependency-cruiser.cjs",
-        "quality": "bun typecheck && bun run lint && bun run quality:biome && bun run quality:audit && bun run quality:knip && bun run quality:arch && bun run quality:dup && bun test"
+        "quality": "bun typecheck && bun run format:check && bun run lint && bun run quality:biome && bun run quality:audit && bun run quality:knip && bun run quality:arch && bun run quality:dup && bun test"
     }
 }

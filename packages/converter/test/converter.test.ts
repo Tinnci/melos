@@ -10,7 +10,7 @@ describe("MusicXMLToMNX Converter", () => {
         fs.readFileSync(path.join(import.meta.dir, "data/musicxml", filename), "utf-8");
 
     // --- Helper for minimal XML wrapper ---
-    const wrapMeasure = (content: string, attributes = '<divisions>1</divisions>') => `
+    const wrapMeasure = (content: string, attributes = "<divisions>1</divisions>") => `
     <score-partwise version="3.1">
        <part-list><score-part id="P1"><part-name>Music</part-name></score-part></part-list>
        <part id="P1">
@@ -45,7 +45,8 @@ describe("MusicXMLToMNX Converter", () => {
     });
 
     it("should parse tuplets correctly", () => {
-        const xml = wrapMeasure(`
+        const xml = wrapMeasure(
+            `
          <!-- Start -->
          <note>
             <pitch><step>D</step><octave>4</octave></pitch>
@@ -60,7 +61,9 @@ describe("MusicXMLToMNX Converter", () => {
             <time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>
             <notations><tuplet type="stop"/></notations>
          </note>
-        `, '<divisions>3</divisions><time><beats>3</beats><beat-type>4</beat-type></time>');
+        `,
+            "<divisions>3</divisions><time><beats>3</beats><beat-type>4</beat-type></time>",
+        );
 
         const res = converter.convert(xml);
         const content = res.parts[0].measures[0].sequences[0].content;
@@ -70,11 +73,11 @@ describe("MusicXMLToMNX Converter", () => {
         expect((content[0] as any).content).toHaveLength(2);
         expect((content[0] as any).inner).toEqual({
             duration: { base: "eighth", dots: 0 },
-            multiple: 3
+            multiple: 3,
         });
         expect((content[0] as any).outer).toEqual({
             duration: { base: "eighth", dots: 0 },
-            multiple: 2
+            multiple: 2,
         });
     });
 
@@ -118,7 +121,8 @@ describe("MusicXMLToMNX Converter", () => {
     });
 
     it("should parse wedges (hairpins) and calculate rhythmic position", () => {
-        const xml = wrapMeasure(`
+        const xml = wrapMeasure(
+            `
          <note default-x="10">
              <pitch><step>C</step><octave>4</octave></pitch>
              <duration>2</duration><type>quarter</type>
@@ -126,7 +130,9 @@ describe("MusicXMLToMNX Converter", () => {
          <direction placement="below" default-x="20">
             <direction-type><wedge type="crescendo" number="1"/></direction-type>
          </direction>
-        `, '<divisions>2</divisions>'); // 2 divs/quarter => 8 divs/whole. Note=2 divs.
+        `,
+            "<divisions>2</divisions>",
+        ); // 2 divs/quarter => 8 divs/whole. Note=2 divs.
 
         const res = converter.convert(xml);
         const measure = res.parts[0].measures[0];
@@ -367,19 +373,19 @@ describe("MusicXMLToMNX Converter", () => {
 
         expect(firstTuplet.inner).toEqual({
             duration: { base: "eighth", dots: 0 },
-            multiple: 3
+            multiple: 3,
         });
         expect(firstTuplet.outer).toEqual({
             duration: { base: "eighth", dots: 0 },
-            multiple: 2
+            multiple: 2,
         });
         expect(secondMeasureTuplet.inner).toEqual({
             duration: { base: "quarter", dots: 0 },
-            multiple: 6
+            multiple: 6,
         });
         expect(secondMeasureTuplet.outer).toEqual({
             duration: { base: "quarter", dots: 0 },
-            multiple: 4
+            multiple: 4,
         });
     });
 

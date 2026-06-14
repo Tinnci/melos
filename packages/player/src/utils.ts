@@ -8,7 +8,7 @@ const NOTE_OFFSETS: Record<string, number> = {
     F: 5,
     G: 7,
     A: 9,
-    B: 11
+    B: 11,
 };
 
 export function pitchToMidi(pitch: Pitch): number {

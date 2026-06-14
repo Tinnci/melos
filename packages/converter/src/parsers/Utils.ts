@@ -1,4 +1,3 @@
-
 import type { NoteValue } from "@melos/core";
 
 // Helper to generate IDs
@@ -19,23 +18,23 @@ export function resetIdCounters() {
 
 const MUSICXML_TYPE_TO_MNX_BASE: Record<string, NoteValue["base"]> = {
     "duplex-maxima": "duplexMaxima",
-    "maxima": "maxima",
-    "long": "longa",
-    "breve": "breve",
-    "whole": "whole",
-    "half": "half",
-    "quarter": "quarter",
-    "eighth": "eighth",
+    maxima: "maxima",
+    long: "longa",
+    breve: "breve",
+    whole: "whole",
+    half: "half",
+    quarter: "quarter",
+    eighth: "eighth",
     "16th": "16th",
     "32nd": "32nd",
     "64th": "64th",
     "128th": "128th",
     "256th": "256th",
     "512th": "512th",
-    "1024th": "1024th"
+    "1024th": "1024th",
 };
 
-const BASE_WHOLE_NOTE_UNITS: Array<{ base: NoteValue["base"], units: number }> = [
+const BASE_WHOLE_NOTE_UNITS: Array<{ base: NoteValue["base"]; units: number }> = [
     { base: "duplexMaxima", units: 16 },
     { base: "maxima", units: 8 },
     { base: "longa", units: 4 },
@@ -52,10 +51,15 @@ const BASE_WHOLE_NOTE_UNITS: Array<{ base: NoteValue["base"], units: number }> =
     { base: "512th", units: 1 / 512 },
     { base: "1024th", units: 1 / 1024 },
     { base: "2048th", units: 1 / 2048 },
-    { base: "4096th", units: 1 / 4096 }
+    { base: "4096th", units: 1 / 4096 },
 ];
 
-export function musicXmlNoteValue(type: unknown, durationTicks: unknown, divisions: number, dots: number): NoteValue {
+export function musicXmlNoteValue(
+    type: unknown,
+    durationTicks: unknown,
+    divisions: number,
+    dots: number,
+): NoteValue {
     const mappedType = typeof type === "string" ? MUSICXML_TYPE_TO_MNX_BASE[type] : undefined;
     if (mappedType) {
         return { base: mappedType, dots };
@@ -84,7 +88,10 @@ export function parseInteger(value: unknown): number | undefined {
     return Number.isNaN(parsed) ? undefined : parsed;
 }
 
-function inferNoteValueFromDuration(durationTicks: number, divisions: number): NoteValue | undefined {
+function inferNoteValueFromDuration(
+    durationTicks: number,
+    divisions: number,
+): NoteValue | undefined {
     if (durationTicks <= 0 || divisions <= 0) return undefined;
 
     const wholeNoteTicks = divisions * 4;

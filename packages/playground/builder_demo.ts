@@ -10,7 +10,7 @@ const builder = new ScoreBuilder();
 builder.addGlobalMeasure({
     index: 1,
     time: { count: 4, unit: 4 },
-    key: { fifths: 0 }
+    key: { fifths: 0 },
 });
 
 builder.addPart("Piano", (part) => {
@@ -34,11 +34,14 @@ builder.addPart("Piano", (part) => {
     part.addMeasure(2, (measure) => {
         measure.addSequence((seq) => {
             // C Major Chord Half Note
-            seq.chord([
-                { step: "C", octave: 4 },
-                { step: "E", octave: 4 },
-                { step: "G", octave: 4 }
-            ], "half");
+            seq.chord(
+                [
+                    { step: "C", octave: 4 },
+                    { step: "E", octave: 4 },
+                    { step: "G", octave: 4 },
+                ],
+                "half",
+            );
 
             // Rest Half
             seq.rest("half");

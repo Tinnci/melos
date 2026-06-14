@@ -3,7 +3,7 @@ import {
     getDurationInBeats,
     getSequenceContentBeats,
     getTimeSignatureBeats,
-    getTupletScale
+    getTupletScale,
 } from "../src/rhythm";
 
 describe("core rhythm utilities", () => {

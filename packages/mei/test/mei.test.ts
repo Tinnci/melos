@@ -6,8 +6,7 @@ import type { Event, Tuplet } from "@melos/core";
 import { MEIToMNX } from "../src/index";
 
 describe("MEIToMNX", () => {
-    const fixture = (name: string) =>
-        readFileSync(join(import.meta.dir, "data", name), "utf-8");
+    const fixture = (name: string) => readFileSync(join(import.meta.dir, "data", name), "utf-8");
 
     it("converts a common MEI score subset into the Melos core score model", () => {
         const score = new MEIToMNX().convert(fixture("basic.mei"));
@@ -52,19 +51,19 @@ describe("MEIToMNX", () => {
             type: "crescendo",
             position: { fraction: [0, 4] },
             end: { measure: 1, position: { fraction: [2, 4] } },
-            staff: 1
+            staff: 1,
         });
         expect(measure.pedals?.[0]).toMatchObject({
             type: "start",
             position: { fraction: [0, 4] },
             end: { measure: 1, position: { fraction: [2, 4] } },
             line: true,
-            sign: true
+            sign: true,
         });
         expect(measure.ottavas?.[0]).toMatchObject({
             value: 1,
             position: { fraction: [0, 4] },
-            end: { measure: 1, position: { fraction: [3, 4] } }
+            end: { measure: 1, position: { fraction: [3, 4] } },
         });
     });
 

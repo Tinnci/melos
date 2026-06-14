@@ -9,23 +9,27 @@ describe("player timing utilities", () => {
     });
 
     it("calculates note value quantities", () => {
-        expect(getNoteValueQuantityInBeats({
-            duration: { base: "eighth" },
-            multiple: 3
-        })).toBe(1.5);
+        expect(
+            getNoteValueQuantityInBeats({
+                duration: { base: "eighth" },
+                multiple: 3,
+            }),
+        ).toBe(1.5);
     });
 
     it("calculates tuplets as outer duration over inner duration", () => {
-        expect(getTupletScale({
-            inner: {
-                duration: { base: "eighth" },
-                multiple: 3
-            },
-            outer: {
-                duration: { base: "eighth" },
-                multiple: 2
-            }
-        })).toBe(2 / 3);
+        expect(
+            getTupletScale({
+                inner: {
+                    duration: { base: "eighth" },
+                    multiple: 3,
+                },
+                outer: {
+                    duration: { base: "eighth" },
+                    multiple: 2,
+                },
+            }),
+        ).toBe(2 / 3);
     });
 
     it("falls back to natural timing for incomplete tuplets", () => {

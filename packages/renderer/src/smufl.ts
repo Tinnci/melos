@@ -66,51 +66,84 @@ export function getSmuflChar(glyphName: string): string | undefined {
     return codepoint === undefined ? undefined : String.fromCodePoint(codepoint);
 }
 
-export function resolveClefGlyph(sign: string, override?: string): SmuflGlyphName | string | undefined {
+export function resolveClefGlyph(
+    sign: string,
+    override?: string,
+): SmuflGlyphName | string | undefined {
     if (override) return override;
     switch (sign) {
-        case "G": return "gClef";
-        case "F": return "fClef";
-        case "C": return "cClef";
-        case "percussion": return "unpitchedPercussionClef1";
-        default: return undefined;
+        case "G":
+            return "gClef";
+        case "F":
+            return "fClef";
+        case "C":
+            return "cClef";
+        case "percussion":
+            return "unpitchedPercussionClef1";
+        default:
+            return undefined;
     }
 }
 
 export function resolveAccidentalGlyph(alter: number): SmuflGlyphName | undefined {
     switch (alter) {
-        case 2: return "accidentalDoubleSharp";
-        case 1: return "accidentalSharp";
-        case 0: return "accidentalNatural";
-        case -1: return "accidentalFlat";
-        case -2: return "accidentalDoubleFlat";
-        default: return undefined;
+        case 2:
+            return "accidentalDoubleSharp";
+        case 1:
+            return "accidentalSharp";
+        case 0:
+            return "accidentalNatural";
+        case -1:
+            return "accidentalFlat";
+        case -2:
+            return "accidentalDoubleFlat";
+        default:
+            return undefined;
     }
 }
 
-export function resolveNoteheadGlyph(duration: string, notehead?: string): SmuflGlyphName | undefined {
+export function resolveNoteheadGlyph(
+    duration: string,
+    notehead?: string,
+): SmuflGlyphName | undefined {
     if (notehead === "x") return "noteheadXBlack";
-    if (notehead === "diamond") return duration === "whole" || duration === "half" ? "noteheadDiamondHalf" : "noteheadDiamondBlack";
-    if (notehead === "square") return duration === "whole" || duration === "half" ? "noteheadSquareWhite" : "noteheadSquareBlack";
+    if (notehead === "diamond")
+        return duration === "whole" || duration === "half"
+            ? "noteheadDiamondHalf"
+            : "noteheadDiamondBlack";
+    if (notehead === "square")
+        return duration === "whole" || duration === "half"
+            ? "noteheadSquareWhite"
+            : "noteheadSquareBlack";
     if (notehead === "triangle") return "noteheadTriangleUpBlack";
     if (notehead && notehead !== "normal") return undefined;
 
     switch (duration) {
-        case "whole": return "noteheadWhole";
-        case "half": return "noteheadHalf";
-        default: return "noteheadBlack";
+        case "whole":
+            return "noteheadWhole";
+        case "half":
+            return "noteheadHalf";
+        default:
+            return "noteheadBlack";
     }
 }
 
 export function resolveRestGlyph(duration: string): SmuflGlyphName | undefined {
     switch (duration) {
-        case "whole": return "restWhole";
-        case "half": return "restHalf";
-        case "quarter": return "restQuarter";
-        case "eighth": return "rest8th";
-        case "16th": return "rest16th";
-        case "32nd": return "rest32nd";
-        default: return undefined;
+        case "whole":
+            return "restWhole";
+        case "half":
+            return "restHalf";
+        case "quarter":
+            return "restQuarter";
+        case "eighth":
+            return "rest8th";
+        case "16th":
+            return "rest16th";
+        case "32nd":
+            return "rest32nd";
+        default:
+            return undefined;
     }
 }
 
@@ -144,16 +177,26 @@ export function resolveDynamicGlyphs(value: string, override?: string): string[]
     return glyphs[normalized] ?? [];
 }
 
-export function resolveArticulationGlyph(articulation: string, placement: "above" | "below"): SmuflGlyphName | undefined {
+export function resolveArticulationGlyph(
+    articulation: string,
+    placement: "above" | "below",
+): SmuflGlyphName | undefined {
     const above = placement === "above";
     switch (articulation) {
-        case "accent": return above ? "articAccentAbove" : "articAccentBelow";
-        case "staccato": return above ? "articStaccatoAbove" : "articStaccatoBelow";
-        case "tenuto": return above ? "articTenutoAbove" : "articTenutoBelow";
-        case "staccatissimo": return above ? "articStaccatissimoAbove" : "articStaccatissimoBelow";
-        case "strong-accent": return above ? "articMarcatoAbove" : "articMarcatoBelow";
-        case "fermata": return above ? "fermataAbove" : "fermataBelow";
-        default: return undefined;
+        case "accent":
+            return above ? "articAccentAbove" : "articAccentBelow";
+        case "staccato":
+            return above ? "articStaccatoAbove" : "articStaccatoBelow";
+        case "tenuto":
+            return above ? "articTenutoAbove" : "articTenutoBelow";
+        case "staccatissimo":
+            return above ? "articStaccatissimoAbove" : "articStaccatissimoBelow";
+        case "strong-accent":
+            return above ? "articMarcatoAbove" : "articMarcatoBelow";
+        case "fermata":
+            return above ? "fermataAbove" : "fermataBelow";
+        default:
+            return undefined;
     }
 }
 

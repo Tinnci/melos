@@ -34,7 +34,10 @@ function App() {
   const [isExportingPdf, setIsExportingPdf] = useState(false)
   const [isExportingMidi, setIsExportingMidi] = useState(false)
   const scoreTitle = score
-    ? score.parts.map((part) => part.name).filter(Boolean).join(' / ') || 'MNX Score'
+    ? score.parts
+        .map((part) => part.name)
+        .filter(Boolean)
+        .join(' / ') || 'MNX Score'
     : 'No Score Loaded'
 
   // Initialize hooks
@@ -46,9 +49,10 @@ function App() {
     if (fixture !== 'smufl-edge-cases' && fixture !== 'mei-basic') return
 
     try {
-      const score = fixture === 'mei-basic'
-        ? new MEIToMNX().convert(meiBasicFixture)
-        : new MusicXMLToMNX().convert(smuflEdgeCasesXml)
+      const score =
+        fixture === 'mei-basic'
+          ? new MEIToMNX().convert(meiBasicFixture)
+          : new MusicXMLToMNX().convert(smuflEdgeCasesXml)
       setScore(score)
     } catch (err) {
       console.error('Fixture load failed:', err)
@@ -104,9 +108,7 @@ function App() {
           <div className="flex h-7 w-7 items-center justify-center rounded-sm border border-[#96320f] bg-[#ff5a1f]">
             <Music className="h-4 w-4 text-black" />
           </div>
-          <span className="text-[13px] font-black text-[#111]">
-            Melos Studio
-          </span>
+          <span className="text-[13px] font-black text-[#111]">Melos Studio</span>
           <Badge variant="default">Beta</Badge>
         </div>
 
@@ -178,9 +180,7 @@ function App() {
                   <span className="ml-2 text-[#317100] animate-pulse">Playing</span>
                 )}
               </span>
-              <h2 className="truncate text-[13px] font-bold text-[#121212]">
-                {scoreTitle}
-              </h2>
+              <h2 className="truncate text-[13px] font-bold text-[#121212]">{scoreTitle}</h2>
             </div>
 
             {/* Error toast */}

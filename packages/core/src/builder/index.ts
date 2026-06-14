@@ -1,6 +1,12 @@
 import type {
-    Score, GlobalMeasure, Part, PartMeasure, Sequence,
-    Note, NoteValue, Event
+    Score,
+    GlobalMeasure,
+    Part,
+    PartMeasure,
+    Sequence,
+    Note,
+    NoteValue,
+    Event,
 } from "../schema";
 
 // Helper types
@@ -43,12 +49,12 @@ export class ScoreBuilder {
     build(): Score {
         return {
             mnx: {
-                version: 1
+                version: 1,
             },
             global: {
-                measures: this.globalMeasures
+                measures: this.globalMeasures,
             },
-            parts: this.parts.map(p => p.build())
+            parts: this.parts.map((p) => p.build()),
         };
     }
 }
@@ -65,7 +71,7 @@ export class PartBuilder {
 
     constructor(name: string, id?: string) {
         this.name = name;
-        this.id = id || name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        this.id = id || name.toLowerCase().replace(/[^a-z0-9]/g, "-");
     }
 
     setShortName(shortName: string): PartBuilder {
@@ -93,7 +99,7 @@ export class PartBuilder {
             id: this.id,
             name: this.name,
             "short-name": this.shortName,
-            measures: this.measures.map(m => m.build())
+            measures: this.measures.map((m) => m.build()),
         };
     }
 }
@@ -123,7 +129,7 @@ export class PartMeasureBuilder {
     build(): PartMeasure {
         return {
             index: this.index,
-            sequences: this.sequences.map(s => s.build())
+            sequences: this.sequences.map((s) => s.build()),
         };
     }
 }
@@ -142,21 +148,26 @@ export class SequenceBuilder {
      * @param duration Duration string (quarter, half, etc) or object
      * @param alter Alteration (1 for sharp, -1 for flat, etc)
      */
-    note(step: string, octave: number, duration: string | NoteValue, alter?: number): SequenceBuilder {
-        const noteVal = typeof duration === 'string' ? this.parseDuration(duration) : duration;
+    note(
+        step: string,
+        octave: number,
+        duration: string | NoteValue,
+        alter?: number,
+    ): SequenceBuilder {
+        const noteVal = typeof duration === "string" ? this.parseDuration(duration) : duration;
         const validStep = step.toUpperCase() as any;
 
         const note: Note = {
             pitch: {
                 step: validStep,
                 octave: octave,
-                alter: alter
-            }
+                alter: alter,
+            },
         };
 
         const event: Event = {
             duration: noteVal,
-            notes: [note]
+            notes: [note],
         };
 
         this.events.push(event);
@@ -166,20 +177,23 @@ export class SequenceBuilder {
     /**
      * Add a chord (multiple notes, same duration).
      */
-    chord(notes: { step: string, octave: number, alter?: number }[], duration: string | NoteValue): SequenceBuilder {
-        const noteVal = typeof duration === 'string' ? this.parseDuration(duration) : duration;
+    chord(
+        notes: { step: string; octave: number; alter?: number }[],
+        duration: string | NoteValue,
+    ): SequenceBuilder {
+        const noteVal = typeof duration === "string" ? this.parseDuration(duration) : duration;
 
-        const noteObjs: Note[] = notes.map(n => ({
+        const noteObjs: Note[] = notes.map((n) => ({
             pitch: {
                 step: n.step.toUpperCase() as any,
                 octave: n.octave,
-                alter: n.alter
-            }
+                alter: n.alter,
+            },
         }));
 
         const event: Event = {
             duration: noteVal,
-            notes: noteObjs
+            notes: noteObjs,
         };
 
         this.events.push(event);
@@ -190,10 +204,10 @@ export class SequenceBuilder {
      * Add a rest.
      */
     rest(duration: string | NoteValue): SequenceBuilder {
-        const noteVal = typeof duration === 'string' ? this.parseDuration(duration) : duration;
+        const noteVal = typeof duration === "string" ? this.parseDuration(duration) : duration;
         const event: Event = {
             duration: noteVal,
-            rest: {}
+            rest: {},
         };
         this.events.push(event);
         return this;
@@ -205,7 +219,7 @@ export class SequenceBuilder {
 
     build(): Sequence {
         return {
-            content: this.events
+            content: this.events,
         };
     }
 
@@ -215,15 +229,14 @@ export class SequenceBuilder {
         let base = str;
         let dots = 0;
 
-        while (base.endsWith('.')) {
+        while (base.endsWith(".")) {
             dots++;
             base = base.slice(0, -1);
         }
 
         return {
             base: base as any, // "quarter", "half", etc.
-            dots: dots > 0 ? dots : undefined
+            dots: dots > 0 ? dots : undefined,
         };
     }
 }
-

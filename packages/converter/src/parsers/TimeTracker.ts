@@ -51,12 +51,12 @@ export class TimeTracker {
      * @returns RhythmicPosition object suitable for MNX.
      */
     getCurrentPosition(voiceId?: string): RhythmicPosition {
-        const currentTicks = voiceId ? (this.ticks[voiceId] || 0) : this.documentTicks;
+        const currentTicks = voiceId ? this.ticks[voiceId] || 0 : this.documentTicks;
         const wholeNoteTicks = this.divisions * 4;
 
         // Return raw fraction: [accumulatedTicks, wholeNoteTicks]
         return {
-            fraction: [currentTicks, wholeNoteTicks]
+            fraction: [currentTicks, wholeNoteTicks],
         };
     }
 

@@ -7,47 +7,51 @@ describe("renderer spacing solver", () => {
         const score = ScoreSchema.parse({
             mnx: { version: 1 },
             global: { measures: [{ time: { count: 4, unit: 4 } }] },
-            parts: [{
-                id: "P1",
-                measures: [{
-                    sequences: [
+            parts: [
+                {
+                    id: "P1",
+                    measures: [
                         {
-                            content: [
+                            sequences: [
                                 {
-                                    id: "upper-1",
-                                    duration: { base: "quarter" },
-                                    notes: [{ pitch: { step: "C", octave: 5 } }]
+                                    content: [
+                                        {
+                                            id: "upper-1",
+                                            duration: { base: "quarter" },
+                                            notes: [{ pitch: { step: "C", octave: 5 } }],
+                                        },
+                                        {
+                                            id: "upper-2",
+                                            duration: { base: "quarter" },
+                                            notes: [{ pitch: { step: "D", octave: 5 } }],
+                                        },
+                                    ],
                                 },
                                 {
-                                    id: "upper-2",
-                                    duration: { base: "quarter" },
-                                    notes: [{ pitch: { step: "D", octave: 5 } }]
-                                }
-                            ]
+                                    content: [
+                                        {
+                                            id: "skip",
+                                            duration: { base: "quarter" },
+                                            rest: { hidden: true },
+                                        },
+                                        {
+                                            id: "lower-entry",
+                                            duration: { base: "quarter" },
+                                            notes: [{ pitch: { step: "C", octave: 4 } }],
+                                        },
+                                    ],
+                                },
+                            ],
                         },
-                        {
-                            content: [
-                                {
-                                    id: "skip",
-                                    duration: { base: "quarter" },
-                                    rest: { hidden: true }
-                                },
-                                {
-                                    id: "lower-entry",
-                                    duration: { base: "quarter" },
-                                    notes: [{ pitch: { step: "C", octave: 4 } }]
-                                }
-                            ]
-                        }
-                    ]
-                }]
-            }]
+                    ],
+                },
+            ],
         });
 
         const plan = createRenderPlan(score, {
             paddingX: 0,
             paddingY: 0,
-            systemHeaderWidth: 0
+            systemHeaderWidth: 0,
         });
         const measure = plan.systems[0].measures[0];
         const spacing = solveMeasureSpacing(score, measure);
@@ -69,33 +73,43 @@ describe("renderer spacing solver", () => {
         const score = ScoreSchema.parse({
             mnx: { version: 1 },
             global: { measures: [{ time: { count: 4, unit: 4 } }] },
-            parts: [{
-                id: "P1",
-                measures: [{
-                    sequences: [{
-                        content: [
-                            {
-                                type: "grace",
-                                content: [{
-                                    id: "grace-1",
-                                    duration: { base: "16th" },
-                                    notes: [{ pitch: { step: "B", octave: 4 } }]
-                                }]
-                            },
-                            {
-                                type: "tuplet",
-                                inner: { duration: { base: "eighth" }, multiple: 3 },
-                                outer: { duration: { base: "eighth" }, multiple: 2 },
-                                content: [{
-                                    id: "tuplet-1",
-                                    duration: { base: "eighth" },
-                                    notes: [{ pitch: { step: "C", octave: 5 } }]
-                                }]
-                            }
-                        ]
-                    }]
-                }]
-            }]
+            parts: [
+                {
+                    id: "P1",
+                    measures: [
+                        {
+                            sequences: [
+                                {
+                                    content: [
+                                        {
+                                            type: "grace",
+                                            content: [
+                                                {
+                                                    id: "grace-1",
+                                                    duration: { base: "16th" },
+                                                    notes: [{ pitch: { step: "B", octave: 4 } }],
+                                                },
+                                            ],
+                                        },
+                                        {
+                                            type: "tuplet",
+                                            inner: { duration: { base: "eighth" }, multiple: 3 },
+                                            outer: { duration: { base: "eighth" }, multiple: 2 },
+                                            content: [
+                                                {
+                                                    id: "tuplet-1",
+                                                    duration: { base: "eighth" },
+                                                    notes: [{ pitch: { step: "C", octave: 5 } }],
+                                                },
+                                            ],
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
         });
 
         const plan = createRenderPlan(score);

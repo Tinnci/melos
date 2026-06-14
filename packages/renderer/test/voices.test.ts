@@ -7,44 +7,50 @@ describe("multi-sequence rendering", () => {
         const score = ScoreSchema.parse({
             mnx: { version: 1 },
             global: { measures: [{}] },
-            parts: [{
-                id: "P1",
-                measures: [{
-                    sequences: [
+            parts: [
+                {
+                    id: "P1",
+                    measures: [
                         {
-                            content: [{
-                                id: "lower",
-                                duration: { base: "whole" },
-                                notes: [{ pitch: { step: "C", octave: 4 } }]
-                            }]
+                            sequences: [
+                                {
+                                    content: [
+                                        {
+                                            id: "lower",
+                                            duration: { base: "whole" },
+                                            notes: [{ pitch: { step: "C", octave: 4 } }],
+                                        },
+                                    ],
+                                },
+                                {
+                                    content: [
+                                        {
+                                            id: "upper-1",
+                                            duration: { base: "quarter" },
+                                            notes: [{ pitch: { step: "E", octave: 5 } }],
+                                        },
+                                        {
+                                            id: "upper-2",
+                                            duration: { base: "quarter" },
+                                            notes: [{ pitch: { step: "F", octave: 5 } }],
+                                        },
+                                        {
+                                            id: "upper-3",
+                                            duration: { base: "quarter" },
+                                            notes: [{ pitch: { step: "G", octave: 5 } }],
+                                        },
+                                        {
+                                            id: "upper-4",
+                                            duration: { base: "quarter" },
+                                            notes: [{ pitch: { step: "A", octave: 5 } }],
+                                        },
+                                    ],
+                                },
+                            ],
                         },
-                        {
-                            content: [
-                                {
-                                    id: "upper-1",
-                                    duration: { base: "quarter" },
-                                    notes: [{ pitch: { step: "E", octave: 5 } }]
-                                },
-                                {
-                                    id: "upper-2",
-                                    duration: { base: "quarter" },
-                                    notes: [{ pitch: { step: "F", octave: 5 } }]
-                                },
-                                {
-                                    id: "upper-3",
-                                    duration: { base: "quarter" },
-                                    notes: [{ pitch: { step: "G", octave: 5 } }]
-                                },
-                                {
-                                    id: "upper-4",
-                                    duration: { base: "quarter" },
-                                    notes: [{ pitch: { step: "A", octave: 5 } }]
-                                }
-                            ]
-                        }
-                    ]
-                }]
-            }]
+                    ],
+                },
+            ],
         });
 
         const renderer = new Renderer();
@@ -61,28 +67,32 @@ describe("multi-sequence rendering", () => {
         const score = ScoreSchema.parse({
             mnx: { version: 1 },
             global: { measures: [{}] },
-            parts: [{
-                id: "P1",
-                measures: [{
-                    sequences: [
-                        { content: [] },
+            parts: [
+                {
+                    id: "P1",
+                    measures: [
                         {
-                            content: [
+                            sequences: [
+                                { content: [] },
                                 {
-                                    id: "skip",
-                                    duration: { base: "half" },
-                                    rest: { hidden: true }
+                                    content: [
+                                        {
+                                            id: "skip",
+                                            duration: { base: "half" },
+                                            rest: { hidden: true },
+                                        },
+                                        {
+                                            id: "entry",
+                                            duration: { base: "quarter" },
+                                            notes: [{ pitch: { step: "E", octave: 5 } }],
+                                        },
+                                    ],
                                 },
-                                {
-                                    id: "entry",
-                                    duration: { base: "quarter" },
-                                    notes: [{ pitch: { step: "E", octave: 5 } }]
-                                }
-                            ]
-                        }
-                    ]
-                }]
-            }]
+                            ],
+                        },
+                    ],
+                },
+            ],
         });
 
         const renderer = new Renderer();

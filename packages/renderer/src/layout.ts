@@ -71,7 +71,7 @@ export function analyzeMeasureLayout(
     score: Score,
     partIndex: number,
     measureIndex: number,
-    options: MeasureLayoutOptions = {}
+    options: MeasureLayoutOptions = {},
 ): MeasureLayoutAnalysis {
     const part = score.parts[partIndex];
     const globalMeasure = score.global.measures[measureIndex];
@@ -86,7 +86,7 @@ export function analyzeMeasureLayout(
             severity: "error",
             code: "layout-missing-measure",
             message: `Missing part ${partIndex + 1} or measure ${measureIndex + 1}.`,
-            path: `parts[${partIndex}].measures[${measureIndex}]`
+            path: `parts[${partIndex}].measures[${measureIndex}]`,
         });
 
         return {
@@ -100,7 +100,7 @@ export function analyzeMeasureLayout(
             overlayCount: 0,
             estimatedWidth: minMeasureWidth,
             contributions,
-            diagnostics
+            diagnostics,
         };
     }
 
@@ -110,7 +110,7 @@ export function analyzeMeasureLayout(
         kind: "hard",
         role: "barline",
         width: BARLINE_WIDTH,
-        path: `${measurePath}.startBarline`
+        path: `${measurePath}.startBarline`,
     });
 
     for (const [clefIndex, clef] of (measure.clefs || []).entries()) {
@@ -120,7 +120,7 @@ export function analyzeMeasureLayout(
             role: "clef",
             width: CLEF_WIDTH,
             path: `${measurePath}.clefs[${clefIndex}]`,
-            position: clef.position
+            position: clef.position,
         });
     }
 
@@ -129,8 +129,10 @@ export function analyzeMeasureLayout(
             id: `global.measures[${measureIndex}].key`,
             kind: "hard",
             role: "keySignature",
-            width: KEY_SIGNATURE_BASE_WIDTH + Math.abs(globalMeasure.key.fifths || 0) * KEY_SIGNATURE_ACCIDENTAL_WIDTH,
-            path: `global.measures[${measureIndex}].key`
+            width:
+                KEY_SIGNATURE_BASE_WIDTH +
+                Math.abs(globalMeasure.key.fifths || 0) * KEY_SIGNATURE_ACCIDENTAL_WIDTH,
+            path: `global.measures[${measureIndex}].key`,
         });
     }
 
@@ -140,19 +142,21 @@ export function analyzeMeasureLayout(
             kind: "hard",
             role: "timeSignature",
             width: TIME_SIGNATURE_WIDTH,
-            path: `global.measures[${measureIndex}].time`
+            path: `global.measures[${measureIndex}].time`,
         });
     }
 
     const sequenceWidths: number[] = [];
     for (const [sequenceIndex, sequence] of measure.sequences.entries()) {
         const sequencePath = `${measurePath}.sequences[${sequenceIndex}]`;
-        sequenceWidths.push(collectContentContributions(
-            sequence.content,
-            sequencePath,
-            sequenceIndex,
-            contributions
-        ));
+        sequenceWidths.push(
+            collectContentContributions(
+                sequence.content,
+                sequencePath,
+                sequenceIndex,
+                contributions,
+            ),
+        );
     }
 
     if (measure.multimeasureRest) {
@@ -161,7 +165,7 @@ export function analyzeMeasureLayout(
             kind: "soft",
             role: "multimeasureRest",
             width: minMeasureWidth,
-            path: `${measurePath}.multimeasureRest`
+            path: `${measurePath}.multimeasureRest`,
         });
     }
 
@@ -172,7 +176,7 @@ export function analyzeMeasureLayout(
         kind: "hard",
         role: "barline",
         width: BARLINE_WIDTH,
-        path: `${measurePath}.endBarline`
+        path: `${measurePath}.endBarline`,
     });
 
     const timeline = buildMeasureTimeline(score, partIndex, measureIndex);
@@ -182,12 +186,15 @@ export function analyzeMeasureLayout(
 
     const hardWidth = sumContributionWidths(contributions, "hard");
     const softWidth = sumContributionWidths(contributions, "soft");
-    const overlayCount = contributions.filter((contribution) => contribution.kind === "overlay").length;
-    const contentWidth = Math.max(...sequenceWidths, measure.multimeasureRest ? minMeasureWidth : 0, 0);
-    const estimatedWidth = Math.max(
-        minMeasureWidth,
-        hardWidth + measurePadding * 2 + contentWidth
+    const overlayCount = contributions.filter(
+        (contribution) => contribution.kind === "overlay",
+    ).length;
+    const contentWidth = Math.max(
+        ...sequenceWidths,
+        measure.multimeasureRest ? minMeasureWidth : 0,
+        0,
     );
+    const estimatedWidth = Math.max(minMeasureWidth, hardWidth + measurePadding * 2 + contentWidth);
 
     return {
         partId: part.id,
@@ -200,7 +207,7 @@ export function analyzeMeasureLayout(
         overlayCount,
         estimatedWidth,
         contributions,
-        diagnostics
+        diagnostics,
     };
 }
 
@@ -213,7 +220,10 @@ export function estimateEventWidth(item: unknown, grace = false): number {
         return grace ? GRACE_EVENT_WIDTH : estimateNoteWidth(asNoteValue(item.duration));
     }
     if ((item.type === "tuplet" || item.type === "grace") && Array.isArray(item.content)) {
-        return item.content.reduce((sum, child) => sum + estimateEventWidth(child, item.type === "grace"), 0);
+        return item.content.reduce(
+            (sum, child) => sum + estimateEventWidth(child, item.type === "grace"),
+            0,
+        );
     }
     return 0;
 }
@@ -238,7 +248,7 @@ export function estimateNoteWidth(duration?: NoteValue): number {
             break;
     }
 
-    return width + ((duration?.dots || 0) * 7);
+    return width + (duration?.dots || 0) * 7;
 }
 
 function collectContentContributions(
@@ -246,7 +256,7 @@ function collectContentContributions(
     path: string,
     sequenceIndex: number,
     contributions: SpacingContribution[],
-    grace = false
+    grace = false,
 ): number {
     let width = 0;
 
@@ -264,7 +274,7 @@ function collectContentContributions(
                 width: eventWidth,
                 path: eventPath,
                 sequenceIndex,
-                duration
+                duration,
             });
             width += eventWidth;
             continue;
@@ -280,7 +290,7 @@ function collectContentContributions(
                 width: eventWidth,
                 path: eventPath,
                 sequenceIndex,
-                duration
+                duration,
             });
             width += eventWidth;
             continue;
@@ -293,7 +303,7 @@ function collectContentContributions(
                 role: "dynamic",
                 width: OVERLAY_WIDTH,
                 path: eventPath,
-                sequenceIndex
+                sequenceIndex,
             });
             continue;
         }
@@ -305,14 +315,14 @@ function collectContentContributions(
                 role: item.type,
                 width: OVERLAY_WIDTH,
                 path: eventPath,
-                sequenceIndex
+                sequenceIndex,
             });
             width += collectContentContributions(
                 item.content,
                 eventPath,
                 sequenceIndex,
                 contributions,
-                item.type === "grace"
+                item.type === "grace",
             );
         }
     }
@@ -323,7 +333,7 @@ function collectContentContributions(
 function collectMeasureOverlays(
     measure: { wedges?: unknown[]; ottavas?: unknown[]; pedals?: unknown[] },
     measurePath: string,
-    contributions: SpacingContribution[]
+    contributions: SpacingContribution[],
 ): void {
     collectOverlayArray(measure.wedges, measurePath, "wedges", "wedge", contributions);
     collectOverlayArray(measure.ottavas, measurePath, "ottavas", "ottava", contributions);
@@ -335,24 +345,28 @@ function collectOverlayArray(
     measurePath: string,
     propertyName: string,
     role: Extract<SpacingContributionRole, "wedge" | "ottava" | "pedal">,
-    contributions: SpacingContribution[]
+    contributions: SpacingContribution[],
 ): void {
     for (const [index, item] of (items || []).entries()) {
-        const position = isRecord(item) && isRecord(item.position)
-            ? item.position as RhythmicPosition
-            : undefined;
+        const position =
+            isRecord(item) && isRecord(item.position)
+                ? (item.position as RhythmicPosition)
+                : undefined;
         contributions.push({
             id: `${measurePath}.${propertyName}[${index}]`,
             kind: "overlay",
             role,
             width: OVERLAY_WIDTH,
             path: `${measurePath}.${propertyName}[${index}]`,
-            position
+            position,
         });
     }
 }
 
-function sumContributionWidths(contributions: SpacingContribution[], kind: SpacingContributionKind): number {
+function sumContributionWidths(
+    contributions: SpacingContribution[],
+    kind: SpacingContributionKind,
+): number {
     return contributions
         .filter((contribution) => contribution.kind === kind)
         .reduce((sum, contribution) => sum + contribution.width, 0);
