@@ -3,6 +3,7 @@ import type {
     Sequence,
     Event,
     Note,
+    Grace,
     Beam,
     Tuplet,
     Lyric,
@@ -30,8 +31,25 @@ import {
     xmlText,
 } from "./OrderedXml";
 
+type SequenceItem = Sequence["content"][number];
+type GraceContainer = Grace;
+type NoteParseResult = {
+    eventId: string;
+    note: Note | null;
+    pitchKey: string;
+    currentContainer: Container;
+};
+type NotationLinkContext = {
+    event: Event | null;
+    note: Note | null;
+    pitchKey: string;
+};
+type PitchStep = NonNullable<Note["pitch"]>["step"];
+type LyricSyllabic = NonNullable<Lyric["syllabic"]>;
+type EventArticulation = NonNullable<Event["articulations"]>[number];
+
 export interface Container {
-    content: any[];
+    content: SequenceItem[];
     endCondition?: { type: "tuplet"; number?: number };
 }
 
@@ -54,7 +72,7 @@ export interface PartParsingContext {
 }
 
 interface VoiceContext {
-    root: any[];
+    root: SequenceItem[];
     stack: Container[];
     currentEvent: Event | null;
 }
@@ -89,7 +107,7 @@ export class MeasureParser {
     private getVoiceContext(voiceId: string): VoiceContext {
         let ctx = this.voiceContexts.get(voiceId);
         if (!ctx) {
-            const rootContent: any[] = [];
+            const rootContent: SequenceItem[] = [];
             ctx = {
                 root: rootContent,
                 stack: [{ content: rootContent }],
@@ -423,322 +441,368 @@ export class MeasureParser {
         }
     }
 
-    private handleNote(xNote: any, ctx: VoiceContext) {
-        // --- 0. Stack Management (Tuplet Start/Stop) ---
-        let currentContainer = ctx.stack[ctx.stack.length - 1];
+    private handleNote(noteXml: XmlRecord, ctx: VoiceContext) {
+        const notations = xmlRecords(noteXml.notations);
+        const currentContainer = this.openTupletContainer(noteXml, notations, ctx);
+        const parseResult = this.createOrExtendEvent(noteXml, ctx, currentContainer);
+        const linkContext: NotationLinkContext = {
+            event: ctx.currentEvent,
+            note: parseResult.note,
+            pitchKey: parseResult.pitchKey,
+        };
 
-        if (xNote.notations) {
-            const notations = Array.isArray(xNote.notations) ? xNote.notations : [xNote.notations];
-            const tupletStartNode = this.findTupletNotation(notations, "start");
+        this.applyArticulations(notations, linkContext.event);
+        this.applyTremolo(notations, linkContext.event);
+        this.applySlursAndTies(notations, linkContext);
+        this.applyBeams(noteXml, parseResult.eventId);
+        this.closeTupletContainer(notations, ctx, parseResult.currentContainer);
+    }
 
-            if (tupletStartNode) {
-                const newTuplet = this.createTuplet(xNote, tupletStartNode);
-                currentContainer.content.push(newTuplet);
+    private openTupletContainer(
+        noteXml: XmlRecord,
+        notations: XmlRecord[],
+        ctx: VoiceContext,
+    ): Container {
+        const currentContainer = ctx.stack[ctx.stack.length - 1];
+        const tupletStartNode = this.findTupletNotation(notations, "start");
+        if (!tupletStartNode) return currentContainer;
 
-                const newContainer: Container = {
-                    content: newTuplet.content,
-                    endCondition: {
-                        type: "tuplet",
-                        number: parseInteger(tupletStartNode["@_number"]),
-                    },
-                };
-                ctx.stack.push(newContainer);
-                currentContainer = newContainer;
-            }
-        }
+        const newTuplet = this.createTuplet(noteXml, tupletStartNode);
+        currentContainer.content.push(newTuplet);
 
-        // --- 0.5 Grace Note Detection ---
-        const isGrace = xNote.grace !== undefined;
-        let graceContainer: any = null;
+        const newContainer: Container = {
+            content: newTuplet.content,
+            endCondition: {
+                type: "tuplet",
+                number: parseInteger(tupletStartNode["@_number"]),
+            },
+        };
+        ctx.stack.push(newContainer);
+        return newContainer;
+    }
 
-        if (isGrace) {
-            const lastItem = currentContainer.content[currentContainer.content.length - 1];
-            if (lastItem && lastItem.type === "grace") {
-                graceContainer = lastItem;
-            } else {
-                graceContainer = {
-                    type: "grace",
-                    content: [],
-                };
-                currentContainer.content.push(graceContainer);
-            }
-        }
-
-        // --- 1. Event / Note Logic ---
-        const isRest = xNote.rest !== undefined;
-        const isChord = xNote.chord !== undefined;
-        const staff = parseInteger(xNote.staff);
-
-        let dots = 0;
-        if (xNote.dot !== undefined) {
-            dots = Array.isArray(xNote.dot) ? xNote.dot.length : 1;
-        }
-        const duration = musicXmlNoteValue(
-            xNote.type,
-            xNote.duration,
-            this.timeTracker.getDivisions(),
-            dots,
-        );
-        // Pitch Logic
-        let noteObj: Note | null = null;
-        let pitchKey = "";
-
-        if (!isRest) {
-            if (xNote.pitch) {
-                noteObj = {
-                    id: generateNoteId(),
-                    pitch: {
-                        step: xNote.pitch.step,
-                        octave: parseInt(xNote.pitch.octave),
-                        alter: xNote.pitch.alter ? parseInt(xNote.pitch.alter) : undefined,
-                    },
-                    staff,
-                };
-                if (xNote.accidental) {
-                    const accObj =
-                        typeof xNote.accidental === "object"
-                            ? xNote.accidental
-                            : { "#text": xNote.accidental };
-                    noteObj.accidentalDisplay = {
-                        show: true,
-                        cautionary:
-                            accObj["@_parentheses"] === "yes" || accObj["@_cautionary"] === "yes",
-                        editorial: accObj["@_editorial"] === "yes",
-                    };
-                }
-                pitchKey = `${noteObj.pitch!.step}${noteObj.pitch!.octave}`;
-            } else if (xNote.unpitched) {
-                noteObj = {
-                    id: generateNoteId(),
-                    unpitched: {
-                        step: xNote.unpitched["display-step"] || "C",
-                        octave: parseInt(xNote.unpitched["display-octave"] || "4"),
-                    },
-                    staff,
-                };
-                pitchKey = "unpitched";
-            }
-
-            if (noteObj && xNote.notehead) {
-                const nh = this.normalizeNotehead(xmlText(xNote.notehead));
-                if (nh) {
-                    noteObj.notehead = nh;
-                }
-                if (typeof xNote.notehead === "object" && xNote.notehead["@_color"]) {
-                    noteObj.color = xNote.notehead["@_color"];
-                }
-            }
-            if (noteObj && xNote["@_color"]) {
-                noteObj.color = xNote["@_color"];
-            }
-        }
-
-        // Event Generation
-        let eventId: string;
+    private createOrExtendEvent(
+        noteXml: XmlRecord,
+        ctx: VoiceContext,
+        currentContainer: Container,
+    ): NoteParseResult {
+        const isRest = hasXmlValue(noteXml.rest);
+        const isChord = hasXmlValue(noteXml.chord);
+        const isGrace = hasXmlValue(noteXml.grace);
+        const staff = parseInteger(noteXml.staff);
+        const { note, pitchKey } = this.createNoteObject(noteXml, isRest, staff);
 
         if (isChord && ctx.currentEvent && !isRest) {
-            if (noteObj && ctx.currentEvent.notes) {
-                ctx.currentEvent.notes.push(noteObj);
-            }
-            if (staff !== undefined && ctx.currentEvent.staff === undefined) {
-                ctx.currentEvent.staff = staff;
-            }
-            eventId = ctx.currentEvent.id!;
-        } else {
-            eventId = generateEventId();
-            const evt: Event = {
-                id: eventId,
-                duration,
-                staff,
+            this.appendChordNote(ctx.currentEvent, note, staff);
+            return {
+                eventId: ctx.currentEvent.id || "",
+                note,
+                pitchKey,
+                currentContainer,
             };
+        }
 
-            if (isRest) {
-                evt.rest = {};
-            } else if (noteObj) {
-                evt.notes = [noteObj];
+        const event = this.createEvent(noteXml, note, isRest, staff);
+        this.applyLyrics(noteXml, event);
+        this.appendEvent(event, currentContainer, isGrace);
+        ctx.currentEvent = event;
+
+        return {
+            eventId: event.id || "",
+            note,
+            pitchKey,
+            currentContainer,
+        };
+    }
+
+    private createNoteObject(
+        noteXml: XmlRecord,
+        isRest: boolean,
+        staff?: number,
+    ): { note: Note | null; pitchKey: string } {
+        if (isRest) return { note: null, pitchKey: "" };
+
+        const note =
+            this.createPitchedNote(noteXml, staff) || this.createUnpitchedNote(noteXml, staff);
+        if (!note) return { note: null, pitchKey: "" };
+
+        this.applyNoteheadAndColor(noteXml, note);
+
+        if (note.pitch) {
+            return { note, pitchKey: `${note.pitch.step}${note.pitch.octave}` };
+        }
+
+        return { note, pitchKey: "unpitched" };
+    }
+
+    private createPitchedNote(noteXml: XmlRecord, staff?: number): Note | null {
+        const pitch = noteXml.pitch;
+        if (!isXmlRecord(pitch)) return null;
+
+        const step = asPitchStep(xmlText(pitch.step));
+        const octave = parseInteger(pitch.octave);
+        if (!step || octave === undefined) return null;
+
+        const note: Note = {
+            id: generateNoteId(),
+            pitch: {
+                step,
+                octave,
+                alter: parseInteger(pitch.alter),
+            },
+            staff,
+        };
+
+        this.applyAccidentalDisplay(noteXml, note);
+        return note;
+    }
+
+    private createUnpitchedNote(noteXml: XmlRecord, staff?: number): Note | null {
+        const unpitched = noteXml.unpitched;
+        if (!isXmlRecord(unpitched)) return null;
+
+        return {
+            id: generateNoteId(),
+            unpitched: {
+                step: xmlText(unpitched["display-step"]) || "C",
+                octave: parseInteger(unpitched["display-octave"]) || 4,
+            },
+            staff,
+        };
+    }
+
+    private applyAccidentalDisplay(noteXml: XmlRecord, note: Note) {
+        const accidental = noteXml.accidental;
+        if (!hasXmlValue(accidental)) return;
+
+        const accObj = isXmlRecord(accidental) ? accidental : {};
+        note.accidentalDisplay = {
+            show: true,
+            cautionary:
+                xmlText(accObj["@_parentheses"]) === "yes" ||
+                xmlText(accObj["@_cautionary"]) === "yes",
+            editorial: xmlText(accObj["@_editorial"]) === "yes",
+        };
+    }
+
+    private applyNoteheadAndColor(noteXml: XmlRecord, note: Note) {
+        const notehead = noteXml.notehead;
+        if (hasXmlValue(notehead)) {
+            const normalized = this.normalizeNotehead(xmlText(notehead));
+            if (normalized) {
+                note.notehead = normalized;
+            }
+            if (isXmlRecord(notehead)) {
+                const color = xmlText(notehead["@_color"]);
+                if (color) {
+                    note.color = color;
+                }
+            }
+        }
+
+        const color = xmlText(noteXml["@_color"]);
+        if (color) {
+            note.color = color;
+        }
+    }
+
+    private createEvent(
+        noteXml: XmlRecord,
+        note: Note | null,
+        isRest: boolean,
+        staff?: number,
+    ): Event {
+        const event: Event = {
+            id: generateEventId(),
+            duration: musicXmlNoteValue(
+                noteXml.type,
+                noteXml.duration,
+                this.timeTracker.getDivisions(),
+                countXmlItems(noteXml.dot),
+            ),
+            staff,
+        };
+
+        if (isRest) {
+            event.rest = {};
+        } else if (note) {
+            event.notes = [note];
+        }
+
+        return event;
+    }
+
+    private appendChordNote(event: Event, note: Note | null, staff?: number) {
+        if (note && event.notes) {
+            event.notes.push(note);
+        }
+        if (staff !== undefined && event.staff === undefined) {
+            event.staff = staff;
+        }
+    }
+
+    private appendEvent(event: Event, currentContainer: Container, isGrace: boolean) {
+        if (isGrace) {
+            this.getGraceContainer(currentContainer).content.push(event);
+            return;
+        }
+
+        currentContainer.content.push(event);
+    }
+
+    private getGraceContainer(currentContainer: Container): GraceContainer {
+        const lastItem = currentContainer.content[currentContainer.content.length - 1];
+        if (isGraceContainer(lastItem)) {
+            return lastItem;
+        }
+
+        const graceContainer: GraceContainer = {
+            type: "grace",
+            content: [],
+        };
+        currentContainer.content.push(graceContainer);
+        return graceContainer;
+    }
+
+    private applyLyrics(noteXml: XmlRecord, event: Event) {
+        const eventLyrics: Lyric[] = xmlRecords(noteXml.lyric).map((lyricXml) => {
+            const number = xmlText(lyricXml["@_number"]) || "1";
+            const lineId = `line${number}`;
+
+            if (!this.context.lyricLines.has(lineId)) {
+                const name = xmlText(lyricXml["@_name"]) || `Verse ${number}`;
+                this.context.lyricLines.set(lineId, { id: lineId, name });
             }
 
-            // --- 1.1 Lyrics Logic ---
-            if (xNote.lyric) {
-                const lyrics = Array.isArray(xNote.lyric) ? xNote.lyric : [xNote.lyric];
-                const eventLyrics: Lyric[] = [];
+            return {
+                text: xmlText(lyricXml.text) || "",
+                syllabic: asLyricSyllabic(xmlText(lyricXml.syllabic)),
+                line: lineId,
+            };
+        });
 
-                lyrics.forEach((l: any) => {
-                    const num = l["@_number"] || "1";
-                    const lineId = `line${num}`;
+        if (eventLyrics.length > 0) {
+            event.lyrics = eventLyrics;
+        }
+    }
 
-                    if (!this.context.lyricLines.has(lineId)) {
-                        const name = l["@_name"] || `Verse ${num}`;
-                        this.context.lyricLines.set(lineId, { id: lineId, name });
+    private applyArticulations(notations: XmlRecord[], event: Event | null) {
+        if (!event) return;
+
+        const articulations = collectArticulations(notations);
+        if (articulations.length > 0) {
+            event.articulations = articulations;
+        }
+    }
+
+    private applyTremolo(notations: XmlRecord[], event: Event | null) {
+        if (!event) return;
+
+        notations.forEach((notation) => {
+            const ornaments = notation.ornaments;
+            if (!isXmlRecord(ornaments)) return;
+
+            xmlRecords(ornaments.tremolo).forEach((tremolo) => {
+                const marks = parseInteger(tremolo["#text"]) || 3;
+                const type = xmlText(tremolo["@_type"]);
+
+                if (type === "start") {
+                    const id = `trem-${generateEventId()}`;
+                    event.tremolo = { type: "start", marks, id };
+                    this.context.activeTremolos[1] = { id };
+                } else if (type === "stop") {
+                    const active = this.context.activeTremolos[1];
+                    if (active) {
+                        event.tremolo = { type: "stop", marks, id: active.id };
+                        delete this.context.activeTremolos[1];
                     }
+                } else {
+                    event.tremolo = marks;
+                }
+            });
+        });
+    }
 
-                    eventLyrics.push({
-                        text: l.text,
-                        syllabic: l.syllabic,
-                        line: lineId,
-                    });
+    private applySlursAndTies(notations: XmlRecord[], linkContext: NotationLinkContext) {
+        notations.forEach((notation) => {
+            this.applySlurs(notation, linkContext.event);
+            if (linkContext.note) {
+                this.applyTies(notation, linkContext.note, linkContext.pitchKey);
+            }
+        });
+    }
+
+    private applySlurs(notation: XmlRecord, event: Event | null) {
+        if (!event) return;
+
+        xmlRecords(notation.slur).forEach((slur) => {
+            const number = parseInteger(slur["@_number"]) || 1;
+            const type = xmlText(slur["@_type"]);
+
+            if (type === "start") {
+                this.context.activeSlurs[number] = { sourceEvent: event };
+            } else if (type === "stop") {
+                const pending = this.context.activeSlurs[number];
+                if (!pending) return;
+
+                pending.sourceEvent.slurs = pending.sourceEvent.slurs || [];
+                pending.sourceEvent.slurs.push({
+                    target: event.id || "",
+                    side: xmlText(slur["@_placement"]) === "below" ? "down" : "up",
                 });
-
-                if (eventLyrics.length > 0) {
-                    evt.lyrics = eventLyrics;
-                }
+                delete this.context.activeSlurs[number];
             }
+        });
+    }
 
-            if (isGrace) {
-                graceContainer.content.push(evt);
-            } else {
-                currentContainer.content.push(evt);
+    private applyTies(notation: XmlRecord, note: Note, pitchKey: string) {
+        xmlRecords(notation.tied).forEach((tied) => {
+            const type = xmlText(tied["@_type"]);
+            const key = xmlText(tied["@_number"]);
+            const tieKey = key ? `num:${key}` : pitchKey;
+
+            if (type === "start") {
+                this.context.activeTies[tieKey] = { sourceNote: note };
+            } else if (type === "stop") {
+                const pending = this.context.activeTies[tieKey];
+                if (!pending) return;
+
+                pending.sourceNote.ties = pending.sourceNote.ties || [];
+                pending.sourceNote.ties.push({ target: note.id || "" });
+                delete this.context.activeTies[tieKey];
             }
-            ctx.currentEvent = evt;
-        }
+        });
+    }
 
-        // --- 1.2 Articulations Logic ---
-        if (xNote.notations) {
-            const notations = Array.isArray(xNote.notations) ? xNote.notations : [xNote.notations];
-            const collectedArticulations: string[] = [];
+    private applyBeams(noteXml: XmlRecord, eventId: string) {
+        xmlRecords(noteXml.beam).forEach((beam) => {
+            const number = parseInteger(beam["@_number"]) || 1;
+            const type = xmlText(beam["#text"]);
 
-            notations.forEach((n: any) => {
-                // 1. Fermata
-                if (n.fermata) {
-                    collectedArticulations.push("fermata");
-                }
-
-                // 2. Articulations container
-                if (n.articulations) {
-                    const arts = n.articulations;
-                    const keys = Object.keys(arts);
-
-                    keys.forEach((key) => {
-                        if (key === "staccato") collectedArticulations.push("staccato");
-                        else if (key === "accent") collectedArticulations.push("accent");
-                        else if (key === "tenuto") collectedArticulations.push("tenuto");
-                        else if (key === "strong-accent")
-                            collectedArticulations.push("strong-accent");
-                        else if (key === "staccatissimo")
-                            collectedArticulations.push("staccatissimo");
-                    });
-                }
-            });
-
-            if (collectedArticulations.length > 0 && ctx.currentEvent) {
-                ctx.currentEvent.articulations = collectedArticulations as any[];
+            if (type === "begin") {
+                this.activeBeams[number] = { eventIds: [eventId] };
+            } else if (type === "continue") {
+                this.activeBeams[number]?.eventIds.push(eventId);
+            } else if (type === "end" && this.activeBeams[number]) {
+                this.activeBeams[number].eventIds.push(eventId);
+                this.beams.push({ events: this.activeBeams[number].eventIds });
+                delete this.activeBeams[number];
             }
+        });
+    }
 
-            // [NEW] Tremolo parsing from ornaments
-            notations.forEach((n: any) => {
-                if (n.ornaments?.tremolo) {
-                    const tremolo = n.ornaments.tremolo;
-                    // Get the number value (slashes count)
-                    const marks = parseInt(tremolo["#text"] || tremolo || "3");
-                    const type = tremolo["@_type"]; // "single", "start", or "stop"
-
-                    // [UPDATED] Multi-note Tremolo Support
-                    if (type === "single" || type === undefined) {
-                        if (ctx.currentEvent) {
-                            ctx.currentEvent.tremolo = marks; // Keep as number for single
-                        }
-                    } else if (type === "start") {
-                        const id = `trem-${generateEventId()}`;
-                        if (ctx.currentEvent) {
-                            ctx.currentEvent.tremolo = { type: "start", marks, id };
-                        }
-                        this.context.activeTremolos[1] = { id };
-                    } else if (type === "stop") {
-                        const active = this.context.activeTremolos[1];
-                        if (active && ctx.currentEvent) {
-                            ctx.currentEvent.tremolo = { type: "stop", marks, id: active.id };
-                            delete this.context.activeTremolos[1];
-                        }
-                    }
-                }
-            });
-        }
-
-        // --- 1.3 Slurs Logic (Event Level) ---
-        if (xNote.notations) {
-            const notations = Array.isArray(xNote.notations) ? xNote.notations : [xNote.notations];
-
-            notations.forEach((n: any) => {
-                if (n.slur) {
-                    const slurs = Array.isArray(n.slur) ? n.slur : [n.slur];
-                    slurs.forEach((s: any) => {
-                        const number = parseInt(s["@_number"] || "1");
-                        const type = s["@_type"];
-
-                        if (type === "start" && ctx.currentEvent) {
-                            this.context.activeSlurs[number] = { sourceEvent: ctx.currentEvent };
-                        } else if (type === "stop" && ctx.currentEvent) {
-                            const pending = this.context.activeSlurs[number];
-                            if (pending) {
-                                const source = pending.sourceEvent;
-                                if (!source.slurs) source.slurs = [];
-                                source.slurs.push({
-                                    target: ctx.currentEvent!.id!,
-                                    side: s["@_placement"] === "below" ? "down" : "up",
-                                });
-                                delete this.context.activeSlurs[number];
-                            }
-                        }
-                    });
-                }
-
-                if (n.tied && noteObj) {
-                    const tieds = Array.isArray(n.tied) ? n.tied : [n.tied];
-                    tieds.forEach((t: any) => {
-                        const type = t["@_type"];
-                        const key = t["@_number"] ? `num:${t["@_number"]}` : pitchKey;
-
-                        if (type === "start") {
-                            this.context.activeTies[key] = { sourceNote: noteObj! };
-                        } else if (type === "stop") {
-                            const pending = this.context.activeTies[key];
-                            if (pending) {
-                                const source = pending.sourceNote;
-                                if (!source.ties) source.ties = [];
-                                source.ties.push({ target: noteObj!.id! });
-                                delete this.context.activeTies[key];
-                            }
-                        }
-                    });
-                }
-            });
-        }
-
-        // --- 1.5 Beam Logic ---
-        if (xNote.beam) {
-            const beamList = Array.isArray(xNote.beam) ? xNote.beam : [xNote.beam];
-            beamList.forEach((b: any) => {
-                const number = parseInt(b["@_number"] || "1");
-                const type = b["#text"];
-
-                if (type === "begin") {
-                    this.activeBeams[number] = { eventIds: [eventId] };
-                } else if (type === "continue") {
-                    if (this.activeBeams[number]) {
-                        this.activeBeams[number].eventIds.push(eventId);
-                    }
-                } else if (type === "end") {
-                    if (this.activeBeams[number]) {
-                        this.activeBeams[number].eventIds.push(eventId);
-                        this.beams.push({
-                            events: this.activeBeams[number].eventIds,
-                        });
-                        delete this.activeBeams[number];
-                    }
-                }
-            });
-        }
-
-        // --- 2. Tuplet STOP Logic ---
-        if (xNote.notations) {
-            const notations = Array.isArray(xNote.notations) ? xNote.notations : [xNote.notations];
-            const tupletStopNode = this.findTupletNotation(notations, "stop");
-
-            if (tupletStopNode) {
-                if (ctx.stack.length > 1 && currentContainer.endCondition?.type === "tuplet") {
-                    ctx.stack.pop();
-                }
-            }
+    private closeTupletContainer(
+        notations: XmlRecord[],
+        ctx: VoiceContext,
+        currentContainer: Container,
+    ) {
+        const tupletStopNode = this.findTupletNotation(notations, "stop");
+        if (
+            tupletStopNode &&
+            ctx.stack.length > 1 &&
+            currentContainer.endCondition?.type === "tuplet"
+        ) {
+            ctx.stack.pop();
         }
     }
 
@@ -795,4 +859,83 @@ export class MeasureParser {
 
         return undefined;
     }
+}
+
+function countXmlItems(value: unknown): number {
+    if (value === undefined) return 0;
+    return Array.isArray(value) ? value.length : 1;
+}
+
+function isGraceContainer(item: SequenceItem | undefined): item is GraceContainer {
+    if (typeof item !== "object" || item === null || !("type" in item) || !("content" in item)) {
+        return false;
+    }
+
+    return item.type === "grace" && Array.isArray(item.content);
+}
+
+function asPitchStep(value: string | undefined): PitchStep | undefined {
+    return isPitchStep(value) ? value : undefined;
+}
+
+function isPitchStep(value: string | undefined): value is PitchStep {
+    return (
+        value === "A" ||
+        value === "B" ||
+        value === "C" ||
+        value === "D" ||
+        value === "E" ||
+        value === "F" ||
+        value === "G"
+    );
+}
+
+function asLyricSyllabic(value: string | undefined): LyricSyllabic | undefined {
+    return isLyricSyllabic(value) ? value : undefined;
+}
+
+function isLyricSyllabic(value: string | undefined): value is LyricSyllabic {
+    return (
+        value === "begin" ||
+        value === "end" ||
+        value === "middle" ||
+        value === "single" ||
+        value === "start" ||
+        value === "stop"
+    );
+}
+
+function collectArticulations(notations: XmlRecord[]): EventArticulation[] {
+    const articulations: EventArticulation[] = [];
+
+    notations.forEach((notation) => {
+        if (hasXmlValue(notation.fermata)) {
+            articulations.push("fermata");
+        }
+
+        xmlRecords(notation.articulations).forEach((articulationSet) => {
+            Object.keys(articulationSet).forEach((key) => {
+                const articulation = asEventArticulation(key);
+                if (articulation) {
+                    articulations.push(articulation);
+                }
+            });
+        });
+    });
+
+    return articulations;
+}
+
+function asEventArticulation(value: string): EventArticulation | undefined {
+    if (
+        value === "staccato" ||
+        value === "tenuto" ||
+        value === "accent" ||
+        value === "strong-accent" ||
+        value === "staccatissimo"
+    ) {
+        return value;
+    }
+
+    return undefined;
 }
