@@ -6,15 +6,14 @@ This document defines the target renderer pipeline. Package dependency rules
 are in `docs/architecture/api-boundaries.md`; capability status is in
 `docs/research/notation-capability-matrix.md`.
 
-## Current State
+## Renderer State
 
 Implemented:
 
 - `Renderer.render(score)` serializes SVG preview output.
 - `renderer/src/smufl.ts` resolves common SMuFL glyph names.
 - `renderer/src/layout.ts` analyzes hard, soft, and overlay spacing
-  contributions.
-- `renderer/src/layout.ts` consumes `@melos/core` timeline rhythm data.
+  contributions from `@melos/core` timeline data.
 
 Still coupled:
 
@@ -60,7 +59,7 @@ The renderer uses three contribution kinds:
 This model is implemented in `renderer/src/layout.ts` and tested in
 `renderer/test/layout.test.ts`.
 
-## Backend-Neutral Glyph Plan
+## Glyph Plan Contract Sketch
 
 The next renderer abstraction should be a glyph plan before SVG output:
 
@@ -100,7 +99,7 @@ limitations:
 Core timeline already emits rhythm diagnostics. Renderer-specific diagnostics
 should stay in renderer layers.
 
-## Migration Order
+## Renderer Migration Order
 
 1. Keep `Renderer.render(score)` as the stable public API.
 2. Expand `analyzeMeasureLayout()` until it explains current measure widths.
@@ -111,3 +110,6 @@ should stay in renderer layers.
    pedals, and ottavas.
 7. Add backend-neutral glyph-plan snapshot tests.
 
+Broader notation priorities belong in
+`docs/research/notation-capability-matrix.md`; this file only tracks renderer
+pipeline work.

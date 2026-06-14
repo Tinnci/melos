@@ -5,25 +5,18 @@ Date: 2026-06-14
 This document defines package responsibilities and dependency direction for
 Melos. It is the source of truth for API layering.
 
-## Principles
+## Design Rules
 
-Mature notation systems point to the same separation:
+Source evidence lives in the research notes. The architecture decision for
+Melos is:
 
-- VexFlow exposes low-level engraving objects (`Voice`, `Formatter`,
-  `TickContext`) and keeps horizontal alignment state separate from score
-  parsing.
-- OpenSheetMusicDisplay exposes a high-level `load()` / `render()` facade, but
-  internally separates `MusicSheet` from `GraphicalMusicSheet`.
-- abcjs exposes a compact parse/render API while keeping an engraver-created
-  visual object for selection and synth timing.
-- LilyPond separates timing/context, engraving objects, spacing, and output.
-- MusiXTeX separates fixed and scalable spacing before final layout.
-- PMX shows the maintenance cost of a monolithic converter/engraver.
-- M-Tx shows lyrics and melisma need semantic state.
-- Gregorio shows specialist notation should be isolated by adapter/plugin.
-- LyLuaTeX shows external compilers belong in optional tooling.
-
-Melos applies those lessons with a browser-native TypeScript stack.
+- `@melos/core` owns canonical semantics, rhythm math, and timeline queries.
+- Source formats are adapters into the core score model.
+- Rendering and playback consume core timeline data instead of traversing score
+  content independently.
+- UI packages orchestrate workflows but delegate notation semantics downward.
+- External engines are optional comparison/export tooling, not runtime
+  dependencies for the browser editor.
 
 ## Package Boundaries
 
@@ -57,29 +50,17 @@ Melos applies those lessons with a browser-native TypeScript stack.
 `@melos/web` may orchestrate all packages, but should delegate notation
 semantics to lower-level APIs.
 
-## Current Corrections
+## Implemented Shared APIs
 
-The current work corrected these layering issues:
+The current shared surface is intentionally small:
 
-- `@melos/core` now exposes `buildScoreTimeline()` and
-  `buildMeasureTimeline()` with validation policy options.
-- `@melos/core` now exposes timeline indexing APIs so consumers can query
-  measures, sequences, event ids, and event paths without knowing nested MNX
-  content structure.
-- `@melos/renderer` layout analysis consumes the core timeline for rhythm
-  data.
-- `@melos/mnx` validator consumes the core timeline instead of maintaining its
-  own duration table.
-- `@melos/web` rhythm summaries consume the core timeline instead of computing
-  voice duration locally.
-- `@melos/web` selection detail reads use the core timeline index for event
-  lookup, including duplicate event ids scoped by part.
-- `@melos/player` builds playback schedules from the core timeline instead of
-  traversing score content with local rhythm math.
-- `@melos/mnx` still owns validation policy such as whether pickup underfill is
-  allowed by default.
-- Pitch bound checks in `@melos/mnx` now recurse through nested grace/tuplet
-  content.
+- `@melos/core` exposes normalized timeline construction and timeline indexes.
+- `@melos/mnx`, `@melos/renderer`, `@melos/player`, and `@melos/web` consume
+  the core timeline for rhythm-sensitive behavior.
+- `@melos/mnx` keeps validation policy, such as pickup-measure tolerance, while
+  reusing core rhythm diagnostics.
+- `@melos/web` uses the timeline index for selection reads, including duplicate
+  event ids scoped by part.
 
 ## Public APIs
 
