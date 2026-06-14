@@ -110,6 +110,7 @@ export function Sidebar() {
                     {noteDurationBases.map((duration) => (
                         <button
                             key={duration}
+                            type="button"
                             className="tool-cell aspect-square disabled:pointer-events-none"
                             disabled={!canEdit}
                             title={`Insert ${duration} note`}
@@ -131,6 +132,7 @@ export function Sidebar() {
                     {noteDurationBases.map((duration) => (
                         <button
                             key={duration}
+                            type="button"
                             className="tool-cell aspect-square disabled:pointer-events-none"
                             disabled={!canEdit}
                             title={`Insert ${duration} rest`}
@@ -157,6 +159,7 @@ export function Sidebar() {
                     ].map((accidental) => (
                         <button
                             key={accidental.title}
+                            type="button"
                             className="tool-cell aspect-square disabled:pointer-events-none"
                             disabled={!canEditNote}
                             title={accidental.title}
@@ -178,6 +181,7 @@ export function Sidebar() {
                     {dynamicValues.map((dynamic) => (
                         <button
                             key={dynamic}
+                            type="button"
                             className="tool-cell aspect-square font-serif italic disabled:pointer-events-none"
                             disabled={!canEdit}
                             title={`Insert ${dynamic}`}

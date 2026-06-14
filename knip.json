@@ -1,0 +1,34 @@
+{
+    "$schema": "https://unpkg.com/knip@6/schema.json",
+    "ignoreFiles": [
+        "packages/*/renderer/src/index.js",
+        "packages/core/scripts/sync-spec.ts",
+        "packages/playground/builder_demo.ts",
+        "packages/web/src/components/index.ts"
+    ],
+    "ignoreDependencies": [
+        "@melos/core",
+        "@melos/player",
+        "@typescript-eslint/eslint-plugin",
+        "@typescript-eslint/parser",
+        "json-schema-to-typescript",
+        "tailwindcss"
+    ],
+    "ignoreExportsUsedInFile": true,
+    "workspaces": {
+        "packages/*": {
+            "entry": [
+                "src/index.ts",
+                "src/main.tsx",
+                "vite.config.ts",
+                "index.ts",
+                "test/**/*.ts"
+            ],
+            "project": [
+                "**/*.{ts,tsx}",
+                "!dist/**",
+                "!renderer/src/index.js"
+            ]
+        }
+    }
+}

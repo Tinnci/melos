@@ -3,7 +3,7 @@
  * File import with TailwindCSS + shadcn/ui
  */
 
-import { useCallback, useState, useRef, type DragEvent, type ChangeEvent } from 'react'
+import { useCallback, useState, useRef, type ChangeEvent, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react'
 import { useScoreStore } from '@/store'
 import { MusicXMLToMNX } from '@melos/converter'
 import { MEIToMNX } from '@melos/mei'
@@ -90,12 +90,19 @@ export function Dropzone({ onLoadDemo }: DropzoneProps) {
         [processFile]
     )
 
-    const handleBrowseClick = useCallback((e: React.MouseEvent) => {
+    const handleBrowseClick = useCallback((e: MouseEvent) => {
         e.stopPropagation()
         fileInputRef.current?.click()
     }, [])
 
+    const handleDropzoneKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        onLoadDemo?.()
+    }, [onLoadDemo])
+
     return (
+        // biome-ignore lint/a11y/useSemanticElements: The drop target contains nested action buttons.
         <div
             className={`
         schematic-surface flex-1 flex flex-col items-center justify-center gap-4 p-8
@@ -109,6 +116,7 @@ export function Dropzone({ onLoadDemo }: DropzoneProps) {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => onLoadDemo?.()}
+            onKeyDown={handleDropzoneKeyDown}
             role="button"
             tabIndex={0}
         >

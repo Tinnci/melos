@@ -609,7 +609,9 @@ export class Renderer {
         const positions: number[] = [];
         content.forEach((item) => {
             if (item.notes) {
-                item.notes.forEach((note: Note) => positions.push(this.calculateY(note, staffTopY)));
+                item.notes.forEach((note: Note) => {
+                    positions.push(this.calculateY(note, staffTopY));
+                });
             } else if ((item.type === "tuplet" || item.type === "grace") && Array.isArray(item.content)) {
                 positions.push(...this.collectSequenceYPositions(item.content, staffTopY));
             }

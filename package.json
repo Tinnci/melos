@@ -5,19 +5,35 @@
         "packages/*"
     ],
     "devDependencies": {
+        "@biomejs/biome": "^2.5.0",
         "@eslint/js": "^9.39.1",
         "@typescript-eslint/eslint-plugin": "^8.48.1",
         "@typescript-eslint/parser": "^8.48.1",
+        "@typescript/native-preview": "^7.0.0-dev.20260421.2",
         "bun-types": "^1.3.3",
+        "dependency-cruiser": "^17.4.3",
         "eslint": "^9.39.1",
         "globals": "^16.5.0",
+        "jscpd": "^5.0.9",
+        "knip": "^6.16.1",
         "typescript": "^5.0.0",
         "typescript-eslint": "^8.48.1"
     },
     "scripts": {
         "build": "bun run --filter '*' build",
         "test": "bun test",
+        "typecheck": "tsgo --noEmit -p tsconfig.json",
+        "format": "biome format --write package.json tsconfig.json biome.json jscpd.json knip.json .dependency-cruiser.cjs scripts/quality-audit.ts docs/architecture/quality-gates.md",
+        "format:check": "biome format package.json tsconfig.json biome.json jscpd.json knip.json .dependency-cruiser.cjs scripts/quality-audit.ts docs/architecture/quality-gates.md",
+        "format:all": "biome format --write .",
         "lint": "eslint .",
-        "lint:fix": "eslint . --fix"
+        "lint:fix": "eslint . --fix",
+        "quality:audit": "bun scripts/quality-audit.ts",
+        "quality:biome": "biome lint .",
+        "quality:knip": "knip --no-config-hints --no-exit-code",
+        "quality:knip:strict": "knip --no-config-hints",
+        "quality:dup": "jscpd --config jscpd.json packages",
+        "quality:arch": "depcruise packages --validate .dependency-cruiser.cjs",
+        "quality": "bun typecheck && bun run lint && bun run quality:biome && bun run quality:audit && bun run quality:knip && bun run quality:arch && bun run quality:dup && bun test"
     }
 }

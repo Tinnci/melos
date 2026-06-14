@@ -3,7 +3,7 @@
  * Editable score and selection properties.
  */
 
-import { useMemo, type ChangeEvent } from 'react'
+import { useMemo, type ChangeEvent, type KeyboardEvent, type MouseEvent } from 'react'
 import {
     articulationOptions,
     getSelectedEventDetails,
@@ -182,6 +182,21 @@ export function PropertiesPanel() {
 
     const handleAccidentalChange = (event: ChangeEvent<HTMLSelectElement>) => {
         updateSelectedNoteAccidental(event.target.value === 'none' ? null : Number(event.target.value))
+    }
+
+    const togglePartSelection = (partId: string) => {
+        selectPart(partId === selectedPartId ? null : partId)
+    }
+
+    const handlePartClick = (event: MouseEvent<HTMLDivElement>, partId: string) => {
+        if (event.target instanceof HTMLInputElement) return
+        togglePartSelection(partId)
+    }
+
+    const handlePartKeyDown = (event: KeyboardEvent<HTMLDivElement>, partId: string) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        togglePartSelection(partId)
     }
 
     return (
@@ -490,9 +505,13 @@ export function PropertiesPanel() {
                     {parts.length > 0 ? (
                         <div className="space-y-1.5">
                             {parts.map((part) => (
+                                // biome-ignore lint/a11y/useSemanticElements: Part rows contain an inline name input when selected.
                                 <div
                                     key={part.id}
-                                    onClick={() => selectPart(part.id === selectedPartId ? null : part.id)}
+                                    onClick={(event) => handlePartClick(event, part.id)}
+                                    onKeyDown={(event) => handlePartKeyDown(event, part.id)}
+                                    role="button"
+                                    tabIndex={0}
                                     className={`
                                         w-full flex items-center gap-2 border p-2 transition-colors cursor-pointer
                                         ${selectedPartId === part.id
@@ -507,7 +526,7 @@ export function PropertiesPanel() {
                                     />
                                     <div className="flex-1 text-left min-w-0">
                                         {selectedPartId === part.id ? (
-                                            <div onClick={(event) => event.stopPropagation()}>
+                                            <div>
                                                 <Label htmlFor={`part-name-${part.id}`} className="sr-only">Part Name</Label>
                                                 <Input
                                                     id={`part-name-${part.id}`}

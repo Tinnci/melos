@@ -155,6 +155,13 @@ export function ScoreCanvas() {
                 <div
                     className="mx-auto w-fit border border-[#c9cbc5] bg-white p-4 [&_svg]:h-auto [&_svg]:min-w-[600px] [&_svg]:w-full"
                     style={zoomStyle}
+                    role="application"
+                    // biome-ignore lint/a11y/noNoninteractiveTabindex: The SVG selection surface needs keyboard focus for Escape clearing.
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Escape') setSelection(null)
+                    }}
+                    // biome-ignore lint/security/noDangerouslySetInnerHtml: Renderer output is trusted SVG generated from the in-memory score model.
                     dangerouslySetInnerHTML={{ __html: scoreMarkup }}
                     onClick={handleCanvasClick}
                 />

@@ -190,9 +190,11 @@ function writeVariableLength(value: number): number[] {
     let buffer = value & 0x7f
     const bytes: number[] = []
 
-    while ((value >>= 7) > 0) {
+    value >>= 7
+    while (value > 0) {
         buffer <<= 8
         buffer |= (value & 0x7f) | 0x80
+        value >>= 7
     }
 
     while (true) {

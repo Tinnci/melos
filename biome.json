@@ -1,0 +1,53 @@
+{
+    "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
+    "files": {
+        "ignoreUnknown": true,
+        "includes": [
+            "package.json",
+            "packages/*/package.json",
+            "tsconfig.json",
+            "packages/*/tsconfig*.json",
+            "eslint.config.mjs",
+            "scripts/**/*.ts",
+            "packages/**/*.ts",
+            "packages/**/*.tsx",
+            "!**/node_modules",
+            "!**/dist",
+            "!**/coverage",
+            "!.codex-research",
+            "!packages/*/renderer/src/index.js"
+        ]
+    },
+    "formatter": {
+        "enabled": true,
+        "indentStyle": "space",
+        "indentWidth": 4,
+        "lineWidth": 100
+    },
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "preset": "recommended"
+        }
+    },
+    "javascript": {
+        "formatter": {
+            "quoteStyle": "double",
+            "semicolons": "always"
+        }
+    },
+    "overrides": [
+        {
+            "includes": ["packages/web/**/*.{ts,tsx}", "packages/web/tsconfig*.json"],
+            "formatter": {
+                "indentWidth": 2
+            },
+            "javascript": {
+                "formatter": {
+                    "quoteStyle": "single",
+                    "semicolons": "asNeeded"
+                }
+            }
+        }
+    ]
+}

@@ -19,10 +19,6 @@ export function getOrderedChildren(node: OrderedXmlNode | undefined, tagName: st
     return children.filter((child: OrderedXmlNode) => getOrderedTag(child) === tagName);
 }
 
-export function findOrderedChild(node: OrderedXmlNode | undefined, tagName: string): OrderedXmlNode | undefined {
-    return getOrderedChildren(node, tagName)[0];
-}
-
 export function findOrderedRoot(nodes: OrderedXmlNode[], tagName: string): OrderedXmlNode | undefined {
     return nodes.find(node => getOrderedTag(node) === tagName);
 }

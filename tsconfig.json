@@ -3,31 +3,21 @@
         "target": "esnext",
         "module": "esnext",
         "moduleResolution": "bundler",
-        "types": [
-            "bun-types"
-        ],
+        "jsx": "react-jsx",
+        "allowImportingTsExtensions": true,
+        "types": ["bun-types"],
         "strict": true,
         "skipLibCheck": true,
-        "baseUrl": ".",
         "paths": {
-            "@melos/core": [
-                "./packages/core/src/index.ts"
-            ],
-            "@melos/converter": [
-                "./packages/converter/src/index.ts"
-            ],
-            "@melos/mnx": [
-                "./packages/mnx/src/index.ts"
-            ],
-            "@melos/mei": [
-                "./packages/mei/src/index.ts"
-            ],
-            "@melos/renderer": [
-                "./packages/renderer/src/index.ts"
-            ],
-            "@melos/player": [
-                "./packages/player/src/index.ts"
-            ]
+            "@melos/core": ["./packages/core/src/index.ts"],
+            "@melos/converter": ["./packages/converter/src/index.ts"],
+            "@melos/mnx": ["./packages/mnx/src/index.ts"],
+            "@melos/mei": ["./packages/mei/src/index.ts"],
+            "@melos/renderer": ["./packages/renderer/src/index.ts"],
+            "@melos/player": ["./packages/player/src/index.ts"],
+            "@/*": ["./packages/web/src/*"]
         }
-    }
+    },
+    "include": ["packages/**/*.ts", "packages/**/*.tsx", "scripts/**/*.ts"],
+    "exclude": ["node_modules", "dist", "coverage", ".codex-research", "packages/*/dist"]
 }
