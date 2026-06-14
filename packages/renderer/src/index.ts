@@ -11,6 +11,7 @@ import {
 import { solveMeasureSpacing, type MeasureSpacing } from "./spacing";
 import { GlyphPlanner } from "./glyphPlanner";
 import { SvgRenderBackend } from "./svgBackend";
+import { createRenderPipeline, type RenderPipeline } from "./pipeline";
 
 export * from "./smufl";
 export * from "./layout";
@@ -18,6 +19,7 @@ export * from "./plan";
 export * from "./spacing";
 export * from "./glyphPlanner";
 export * from "./svgBackend";
+export * from "./pipeline";
 
 type ChordLayout = {
     x: number;
@@ -179,6 +181,10 @@ export class Renderer {
 
     createPlan(score: Score): RenderPlan {
         return createRenderPlan(score, this.getRenderPlanOptions(score));
+    }
+
+    createPipeline(score: Score): RenderPipeline {
+        return createRenderPipeline(score, this.getRenderPlanOptions(score));
     }
 
     /**

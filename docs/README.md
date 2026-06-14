@@ -21,6 +21,9 @@ This directory separates decisions from evidence:
   M-Tx, LilyPond, LyLuaTeX, and Gregorio.
 - `research/notation-api-comparison.md`: source-level API comparison with
   VexFlow, OpenSheetMusicDisplay, abcjs, and LilyPond.
+- `research/rendering-engine-comparison.md`: rendering pipeline lessons and
+  Melos-specific abstraction plan from VexFlow, OpenSheetMusicDisplay, abcjs,
+  and LilyPond source code.
 
 Keep implementation plans out of research notes unless they are direct
 takeaways from the source evidence.

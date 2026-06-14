@@ -13,19 +13,29 @@ Implemented:
 - `Renderer.render(score)` serializes SVG preview output.
 - `Renderer.createPlan(score)` exposes system and measure geometry before SVG
   serialization.
+- `Renderer.createPipeline(score)` exposes the current input summary, stage
+  statuses, render plan, per-measure layout analysis, per-measure spacing, and
+  output contract for debugging and tests.
 - `renderer/src/plan.ts` wraps measures into systems from layout analysis.
 - `renderer/src/spacing.ts` maps core timeline events to measure columns and x
   positions.
+- `renderer/src/pipeline.ts` records the observable current pipeline without
+  forcing callers through SVG serialization.
+- `renderer/src/glyphPlanner.ts` resolves common score content to planned
+  SMuFL glyph names.
+- `renderer/src/svgBackend.ts` owns SMuFL glyph escaping and SVG text emission
+  helpers.
 - `renderer/src/smufl.ts` resolves common SMuFL glyph names.
 - `renderer/src/layout.ts` analyzes hard, soft, and overlay spacing
   contributions from `@melos/core` timeline data.
 
 Still coupled:
 
-- Glyph planning, curves, hitboxes, and SVG string serialization live mostly in
-  `Renderer`.
+- Curves, hitboxes, primitive paths, fallback notehead shapes, stems, flags,
+  beams, and SVG string serialization live mostly in `Renderer`.
 - Collision avoidance is not a separate pass.
-- SVG is the only backend.
+- SVG is still the only backend, and the current SVG backend is helper-level
+  rather than a full `RenderDocument` serializer.
 
 ## Target Pipeline
 
@@ -48,9 +58,9 @@ Score
 | Measure layout analysis | Hard/soft/overlay spacing contributions | Started in `@melos/renderer` |
 | Render plan | Systems, measure x/y/width, content ranges, layout diagnostics | Started in `@melos/renderer` |
 | Spacing solver | Event columns and x positions from timeline beats | Started in `@melos/renderer` |
-| Glyph planner | SMuFL glyphs, text items, stems, beams, curves, hitboxes | Partly inside `Renderer` |
+| Glyph planner | SMuFL glyph names for clefs, noteheads, rests, accidentals, dynamics, articulations, pedals | Started in `GlyphPlanner`; geometry still mostly in `Renderer` |
 | Collision resolver | Accidentals, dots, lyrics, articulations, dynamics, spans | Missing |
-| Render backend | SVG/canvas/PDF/test serialization | SVG inline in `Renderer` |
+| Render backend | SVG/canvas/PDF/test serialization | Started in `SvgRenderBackend`; many primitives remain inline in `Renderer` |
 
 ## Current Inputs And Outputs
 
@@ -59,11 +69,15 @@ Renderer input:
 ```ts
 Renderer.render(score: Score): string
 Renderer.createPlan(score: Score): RenderPlan
+Renderer.createPipeline(score: Score): RenderPipeline
+createRenderPipeline(score: Score, options?: RenderPlanOptions): RenderPipeline
 solveMeasureSpacing(score: Score, measure: RenderPlanMeasure): MeasureSpacing
 ```
 
 Intermediate outputs:
 
+- `RenderPipeline`: inspectable pipeline wrapper with input summary, stage
+  statuses, render plan, per-measure layout/spacing, and output contract.
 - `MeasureLayoutAnalysis`: per-measure spacing contributions and diagnostics.
 - `RenderPlan`: part systems, measure geometry, content x-ranges, and collected
   layout diagnostics.
@@ -149,6 +163,49 @@ interface GlyphPlanItem {
 SVG rendering should serialize this plan. Canvas, PDF, and snapshot tests can
 then reuse the same plan.
 
+## Pipeline Inspection Contract
+
+`RenderPipeline` makes the currently implemented stages inspectable:
+
+```ts
+interface RenderPipeline {
+  input: {
+    kind: "score";
+    parts: number;
+    globalMeasures: number;
+    partMeasures: number;
+  };
+  stages: readonly RenderPipelineStage[];
+  plan: RenderPlan;
+  measures: Array<{
+    partIndex: number;
+    partId?: string;
+    systemIndex: number;
+    measureIndex: number;
+    measureNumber: number;
+    geometry: {
+      x: number;
+      y: number;
+      width: number;
+      contentX: number;
+      contentWidth: number;
+    };
+    layout: MeasureLayoutAnalysis;
+    spacing: MeasureSpacing;
+  }>;
+  output: {
+    kind: "svg";
+    backend: "SvgRenderBackend";
+    width: number;
+    height: number;
+  };
+}
+```
+
+This is intentionally an inspection API, not the final drawing backend. It
+keeps the current renderer stable while giving tests and future tools a direct
+view of layout and spacing decisions.
+
 ## Renderer Diagnostics
 
 Renderer diagnostics should be structured and non-fatal for normal notation
@@ -174,10 +231,14 @@ should stay in renderer layers.
 4. Add `SpacingSolver` for column positions and stretch/compression. Started
    for timeline-aligned event columns; stretch/compression still needs a fuller
    solver.
-5. Add `GlyphPlanner` and make SVG output a backend.
-6. Add collision passes for accidentals, dots, lyrics, articulations, dynamics,
+5. Add `GlyphPlanner` and make SVG output a backend. Started.
+6. Add `RenderPipeline` inspection so inputs, intermediate outputs, and backend
+   contracts are visible without parsing SVG. Done.
+7. Add a `RenderDocument` / `RenderElement` layer and migrate SVG primitives
+   out of `Renderer`.
+8. Add collision passes for accidentals, dots, lyrics, articulations, dynamics,
    pedals, and ottavas.
-7. Add backend-neutral glyph-plan snapshot tests.
+9. Add backend-neutral glyph-plan snapshot tests.
 
 Broader notation priorities belong in
 `docs/research/notation-capability-matrix.md`; this file only tracks renderer
