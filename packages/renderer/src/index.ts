@@ -12,6 +12,7 @@ import {
 } from "./smufl";
 
 export * from "./smufl";
+export * from "./layout";
 
 type ChordLayout = {
     x: number;

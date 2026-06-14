@@ -1,0 +1,218 @@
+import { describe, expect, it } from "bun:test";
+import { ScoreSchema } from "../src/schema";
+import {
+    buildMeasureTimeline,
+    buildScoreTimeline,
+    resolveTimeSignatureForMeasure
+} from "../src/timeline";
+
+describe("core normalized timeline", () => {
+    it("resolves inherited time signatures and positions duration-bearing events", () => {
+        const score = ScoreSchema.parse({
+            mnx: { version: 1 },
+            global: {
+                measures: [
+                    { time: { count: 3, unit: 4 } },
+                    {}
+                ]
+            },
+            parts: [{
+                id: "P1",
+                measures: [
+                    { sequences: [{ content: [] }] },
+                    {
+                        sequences: [{
+                            content: [
+                                { type: "dynamic", id: "dyn-1", value: "p" },
+                                {
+                                    id: "note-1",
+                                    duration: { base: "quarter" },
+                                    notes: [{ pitch: { step: "C", octave: 4 }, staff: 1 }]
+                                },
+                                {
+                                    id: "skip-1",
+                                    duration: { base: "half" },
+                                    rest: { hidden: true },
+                                    staff: 1
+                                }
+                            ]
+                        }]
+                    }
+                ]
+            }]
+        });
+
+        expect(resolveTimeSignatureForMeasure(score, 1)).toEqual({ count: 3, unit: 4 });
+
+        const timeline = buildMeasureTimeline(score, 0, 1);
+        const sequence = timeline.sequences[0];
+
+        expect(timeline.expectedBeats).toBe(3);
+        expect(sequence.usedBeats).toBe(3);
+        expect(sequence.diagnostics).toEqual([]);
+        expect(sequence.events.map((event) => [event.kind, event.id, event.startBeat, event.durationBeats])).toEqual([
+            ["dynamic", "dyn-1", 0, 0],
+            ["note", "note-1", 0, 1],
+            ["rest", "skip-1", 1, 2]
+        ]);
+        expect(sequence.events[1].staff).toBe(1);
+        expect(sequence.events[2].hidden).toBe(true);
+    });
+
+    it("keeps grace events on the timeline without advancing rhythmic time", () => {
+        const score = ScoreSchema.parse({
+            mnx: { version: 1 },
+            global: { measures: [{ time: { count: 4, unit: 4 } }] },
+            parts: [{
+                id: "P1",
+                measures: [{
+                    sequences: [{
+                        content: [
+                            {
+                                type: "grace",
+                                content: [
+                                    {
+                                        id: "grace-1",
+                                        duration: { base: "16th" },
+                                        notes: [{ pitch: { step: "B", octave: 4 } }]
+                                    },
+                                    {
+                                        id: "grace-2",
+                                        duration: { base: "16th" },
+                                        notes: [{ pitch: { step: "C", octave: 5 } }]
+                                    }
+                                ]
+                            },
+                            {
+                                id: "main-1",
+                                duration: { base: "whole" },
+                                notes: [{ pitch: { step: "D", octave: 4 } }]
+                            }
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        const sequence = buildMeasureTimeline(score, 0, 0).sequences[0];
+        const graceNotes = sequence.events.filter((event) => event.grace && event.kind === "note");
+
+        expect(sequence.usedBeats).toBe(4);
+        expect(graceNotes).toHaveLength(2);
+        expect(graceNotes.every((event) => event.startBeat === 0 && event.durationBeats === 0)).toBe(true);
+        expect(graceNotes.map((event) => event.nominalDurationBeats)).toEqual([0.25, 0.25]);
+        expect(sequence.events.find((event) => event.id === "main-1")?.startBeat).toBe(0);
+    });
+
+    it("applies tuplet scaling to nested event timing", () => {
+        const score = ScoreSchema.parse({
+            mnx: { version: 1 },
+            global: { measures: [{ time: { count: 4, unit: 4 } }] },
+            parts: [{
+                id: "P1",
+                measures: [{
+                    sequences: [{
+                        content: [
+                            {
+                                type: "tuplet",
+                                inner: { duration: { base: "eighth" }, multiple: 3 },
+                                outer: { duration: { base: "eighth" }, multiple: 2 },
+                                content: ["C", "D", "E"].map((step, index) => ({
+                                    id: `tuplet-${index + 1}`,
+                                    duration: { base: "eighth" },
+                                    notes: [{ pitch: { step, octave: 4 } }]
+                                }))
+                            },
+                            ...["F", "G", "A"].map((step, index) => ({
+                                id: `quarter-${index + 1}`,
+                                duration: { base: "quarter" },
+                                notes: [{ pitch: { step, octave: 4 } }]
+                            }))
+                        ]
+                    }]
+                }]
+            }]
+        });
+
+        const sequence = buildMeasureTimeline(score, 0, 0).sequences[0];
+        const tupletNotes = sequence.events.filter((event) => event.id?.startsWith("tuplet-"));
+
+        expect(sequence.usedBeats).toBe(4);
+        expect(tupletNotes.map((event) => event.durationBeats)).toEqual([
+            1 / 3,
+            1 / 3,
+            1 / 3
+        ]);
+        expect(tupletNotes[1].startBeat).toBeCloseTo(1 / 3);
+        expect(sequence.events.find((event) => event.kind === "tuplet")?.durationBeats).toBe(1);
+        expect(sequence.events.find((event) => event.id === "quarter-1")?.startBeat).toBe(1);
+    });
+
+    it("reports per-sequence rhythm diagnostics and aggregates score diagnostics", () => {
+        const score = ScoreSchema.parse({
+            mnx: { version: 1 },
+            global: { measures: [{ time: { count: 4, unit: 4 } }] },
+            parts: [{
+                id: "P1",
+                measures: [{
+                    sequences: [
+                        {
+                            content: [{
+                                duration: { base: "quarter" },
+                                notes: [{ pitch: { step: "C", octave: 4 } }]
+                            }]
+                        },
+                        {
+                            content: [
+                                {
+                                    duration: { base: "whole" },
+                                    notes: [{ pitch: { step: "E", octave: 4 } }]
+                                },
+                                {
+                                    duration: { base: "quarter" },
+                                    notes: [{ pitch: { step: "F", octave: 4 } }]
+                                }
+                            ]
+                        }
+                    ]
+                }]
+            }]
+        });
+
+        const measure = buildMeasureTimeline(score, 0, 0);
+        const scoreTimeline = buildScoreTimeline(score);
+
+        expect(measure.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
+            "rhythm-underfull",
+            "rhythm-overfull"
+        ]);
+        expect(scoreTimeline.diagnostics.map((diagnostic) => diagnostic.path)).toEqual([
+            "parts[0].measures[0].sequences[0]",
+            "parts[0].measures[0].sequences[1]"
+        ]);
+    });
+
+    it("exposes rhythm validation policy as timeline options", () => {
+        const score = ScoreSchema.parse({
+            mnx: { version: 1 },
+            global: { measures: [{ time: { count: 4, unit: 4 } }] },
+            parts: [{
+                id: "P1",
+                measures: [{
+                    sequences: [{
+                        content: [{
+                            duration: { base: "quarter" },
+                            notes: [{ pitch: { step: "C", octave: 4 } }]
+                        }]
+                    }]
+                }]
+            }]
+        });
+
+        expect(buildMeasureTimeline(score, 0, 0).diagnostics.map((issue) => issue.code)).toEqual([
+            "rhythm-underfull"
+        ]);
+        expect(buildMeasureTimeline(score, 0, 0, { allowPickupMeasure: true }).diagnostics).toEqual([]);
+        expect(buildMeasureTimeline(score, 0, 0, { includeRhythmDiagnostics: false }).diagnostics).toEqual([]);
+    });
+});

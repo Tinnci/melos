@@ -1,4 +1,4 @@
-import { type Score, type NoteValue, type Sequence, type GlobalMeasure } from "@melos/core";
+import { buildScoreTimeline, type Score, type TimelineBuildOptions } from "@melos/core";
 
 export interface ValidationIssue {
     type: "error" | "warning";
@@ -6,8 +6,13 @@ export interface ValidationIssue {
     path: string; // e.g. "parts[0].measures[5]"
 }
 
+export interface MnxValidationOptions {
+    allowPickupMeasure?: boolean;
+    includeRhythmDiagnostics?: boolean;
+}
+
 export class MnxValidator {
-    static validate(score: Score): ValidationIssue[] {
+    static validate(score: Score, options: MnxValidationOptions = {}): ValidationIssue[] {
         const issues: ValidationIssue[] = [];
 
         // 1. Structure Checks: Global Measures vs Part Measures alignment
@@ -22,116 +27,62 @@ export class MnxValidator {
             }
         });
 
-        // 2. Rhythmic Integrity & Pitch Bounds
+        // 2. Rhythmic Integrity
+        const timelineOptions: TimelineBuildOptions = {
+            allowPickupMeasure: options.allowPickupMeasure ?? true,
+            includeRhythmDiagnostics: options.includeRhythmDiagnostics ?? true
+        };
+        const timeline = buildScoreTimeline(score, timelineOptions);
+        timeline.diagnostics.forEach((diagnostic) => {
+            issues.push({
+                type: diagnostic.severity === "error" ? "error" : "warning",
+                message: diagnostic.message,
+                path: diagnostic.path
+            });
+        });
+
+        // 3. Pitch Bounds
         score.parts.forEach((part, partIndex) => {
             part.measures.forEach((measure, measureIndex) => {
-                // Rhythm Check
-                const globalMeasure = score.global.measures[measureIndex];
-
-                // Only validate rhythm if time signature exists
-                if (globalMeasure && globalMeasure.time) {
-                    const timeSig = globalMeasure.time;
-                    const expectedDuration = timeSig.count * (1 / timeSig.unit);
-
-                    measure.sequences.forEach((seq, seqIndex) => {
-                        const actualDuration = this.calculateSequenceDuration(seq);
-
-                        // Allow small float error
-                        if (Math.abs(actualDuration - expectedDuration) > 0.0001) {
-                            // Pickup measure exception (1st measure can be shorter)
-                            if (measureIndex === 0 && actualDuration < expectedDuration) {
-                                // Valid pickup
-                            } else {
-                                issues.push({
-                                    type: "warning",
-                                    message: `Measure ${measureIndex + 1} (Sequence ${seqIndex + 1}): Actual duration ${actualDuration.toFixed(3)} does not match Time Signature ${timeSig.count}/${timeSig.unit} (${expectedDuration.toFixed(3)}).`,
-                                    path: `parts[${partIndex}].measures[${measureIndex}].sequences[${seqIndex}]`
-                                });
-                            }
-                        }
-
-                        // Pitch & Content Checks
-                        seq.content.forEach((event, eventIndex) => {
-                            if ('notes' in event && event.notes) {
-                                event.notes.forEach((note, noteIndex) => {
-                                    if (note.pitch) {
-                                        if (note.pitch.octave < 0 || note.pitch.octave > 9) {
-                                            issues.push({
-                                                type: "warning",
-                                                message: `Note pitch octave ${note.pitch.octave} is outside standard range (0-9).`,
-                                                path: `parts[${partIndex}].measures[${measureIndex}].sequences[${seqIndex}].events[${eventIndex}].notes[${noteIndex}]`
-                                            });
-                                        }
-                                    }
-                                });
-                            }
-                        });
-                    });
-                }
+                measure.sequences.forEach((seq, seqIndex) => {
+                    collectPitchBoundIssues(
+                        seq.content,
+                        `parts[${partIndex}].measures[${measureIndex}].sequences[${seqIndex}].content`,
+                        issues
+                    );
+                });
             });
         });
 
         return issues;
     }
+}
 
-    private static calculateSequenceDuration(sequence: Sequence): number {
-        let total = 0;
-        for (const content of sequence.content) {
-            if ('type' in content && content.type === 'tuplet') {
-                // Handle Tuplet
-                if (content.outer && content.outer.duration) {
-                    total += this.getNoteValueDuration(content.outer.duration);
+function collectPitchBoundIssues(content: unknown[], path: string, issues: ValidationIssue[]): void {
+    content.forEach((event, eventIndex) => {
+        if (!isRecord(event)) return;
+
+        const eventPath = `${path}[${eventIndex}]`;
+        if (Array.isArray(event.notes)) {
+            event.notes.forEach((note, noteIndex) => {
+                if (!isRecord(note) || !isRecord(note.pitch)) return;
+                const octave = note.pitch.octave;
+                if (typeof octave === "number" && (octave < 0 || octave > 9)) {
+                    issues.push({
+                        type: "warning",
+                        message: `Note pitch octave ${octave} is outside standard range (0-9).`,
+                        path: `${eventPath}.notes[${noteIndex}]`
+                    });
                 }
-            } else if ('type' in content && content.type === 'grace') {
-                // Grace notes do not add to duration
-            } else if ('type' in content && content.type === 'dynamic') {
-                // Dynamics do not add to duration
-            } else if ('duration' in content && content.duration) {
-                // BaseEvent (Note/Rest)
-                total += this.getNoteValueDuration(content.duration);
-            }
-        }
-        return total;
-    }
-
-    private static getNoteValueDuration(nv: NoteValue): number {
-        let base = 0;
-        switch (nv.base) {
-            case "duplexMaxima": base = 16; break;
-            case "maxima": base = 8; break;
-            case "longa": base = 4; break;
-            case "breve": base = 2; break;
-            case "whole": base = 1; break;
-            case "half": base = 1 / 2; break;
-            case "quarter": base = 1 / 4; break;
-            case "eighth": base = 1 / 8; break;
-            case "16th": base = 1 / 16; break;
-            case "32nd": base = 1 / 32; break;
-            case "64th": base = 1 / 64; break;
-            case "128th": base = 1 / 128; break;
-            case "256th": base = 1 / 256; break;
-            case "512th": base = 1 / 512; break;
-            case "1024th": base = 1 / 1024; break;
-            case "2048th": base = 1 / 2048; break;
-            case "4096th": base = 1 / 4096; break;
-            case "long" as any: base = 4; break;
-            case "/8" as any: base = 1 / 8; break;
-            case "/16" as any: base = 1 / 16; break;
-            case "/32" as any: base = 1 / 32; break;
-            case "/64" as any: base = 1 / 64; break;
-            case "/128" as any: base = 1 / 128; break;
-            case "/256" as any: base = 1 / 256; break;
-            default: base = 0;
+            });
         }
 
-        let duration = base;
-        if (nv.dots) {
-            let add = base;
-            for (let i = 0; i < nv.dots; i++) {
-                add /= 2;
-                duration += add;
-            }
+        if (Array.isArray(event.content)) {
+            collectPitchBoundIssues(event.content, `${eventPath}.content`, issues);
         }
-        return duration;
-    }
+    });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
 }
