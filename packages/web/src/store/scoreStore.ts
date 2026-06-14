@@ -9,9 +9,15 @@ import {
     type Articulation,
     type Note,
     type NoteValue,
+    type MeasureTimeline,
     type Pitch,
     type Score,
+    type ScoreTimelineIndex,
     buildMeasureTimeline,
+    buildScoreTimelineIndex,
+    getTimelineEventsById,
+    getTimelineEventSource,
+    getTimelineMeasure,
     ScoreBuilder,
 } from '@melos/core'
 
@@ -357,6 +363,13 @@ function summarizeVoiceRhythm(
     sequenceIndex: number
 ): VoiceRhythmSummary {
     const timeline = buildMeasureTimeline(score, partIndex, measureIndex)
+    return summarizeTimelineVoiceRhythm(timeline, sequenceIndex)
+}
+
+function summarizeTimelineVoiceRhythm(
+    timeline: MeasureTimeline,
+    sequenceIndex: number
+): VoiceRhythmSummary {
     const sequence = timeline.sequences[sequenceIndex]
     const expectedBeats = sequence?.expectedBeats ?? timeline.expectedBeats
     const usedBeats = sequence?.usedBeats ?? 0
@@ -407,47 +420,17 @@ function summarizeVoiceRhythm(
     }
 }
 
-function findInContent(
-    content: ScoreContentItem[],
-    eventId: string
-): { item: EditableContentItem; eventIndex: number } | null {
-    for (let index = 0; index < content.length; index += 1) {
-        const item = content[index] as EditableContentItem
-        if (item.id === eventId) {
-            return { item, eventIndex: index }
-        }
-
-        if (Array.isArray(item.content)) {
-            const nested = findInContent(item.content as ScoreContentItem[], eventId)
-            if (nested) return nested
-        }
-    }
-
-    return null
+function findSelectedTimelineEvent(
+    score: Score,
+    timelineIndex: ScoreTimelineIndex,
+    selection: Selection & { type: EditableEventKind }
+) {
+    return getTimelineEventsById(timelineIndex, selection.id)
+        .find((event) => !selection.partId || score.parts[event.partIndex]?.id === selection.partId) ?? null
 }
 
-function findEventLocation(
-    score: Score,
-    eventId: string,
-    partId?: string
-): { partIndex: number; measureIndex: number; sequenceIndex: number; eventIndex: number } | null {
-    for (let partIndex = 0; partIndex < score.parts.length; partIndex += 1) {
-        const part = score.parts[partIndex]
-        if (partId && part.id !== partId) continue
-
-        for (let measureIndex = 0; measureIndex < part.measures.length; measureIndex += 1) {
-            const measure = part.measures[measureIndex]
-
-            for (let sequenceIndex = 0; sequenceIndex < measure.sequences.length; sequenceIndex += 1) {
-                const result = findInContent(measure.sequences[sequenceIndex].content, eventId)
-                if (result) {
-                    return { partIndex, measureIndex, sequenceIndex, eventIndex: result.eventIndex }
-                }
-            }
-        }
-    }
-
-    return null
+function getTimelineEventIndex(contentPath: number[]): number {
+    return contentPath.length > 0 ? contentPath[contentPath.length - 1] : 0
 }
 
 export function getSelectedEventDetails(
@@ -456,40 +439,33 @@ export function getSelectedEventDetails(
 ): SelectedEventDetails | null {
     if (!score || !isEditableSelection(selection)) return null
 
-    for (let partIndex = 0; partIndex < score.parts.length; partIndex += 1) {
-        const part = score.parts[partIndex]
-        if (selection.partId && part.id !== selection.partId) continue
+    const timelineIndex = buildScoreTimelineIndex(score)
+    const eventRef = findSelectedTimelineEvent(score, timelineIndex, selection)
+    if (!eventRef) return null
 
-        for (let measureIndex = 0; measureIndex < part.measures.length; measureIndex += 1) {
-            const measure = part.measures[measureIndex]
+    const event = getTimelineEventSource(score, eventRef) as EditableContentItem | undefined
+    if (!event) return null
 
-            for (let sequenceIndex = 0; sequenceIndex < measure.sequences.length; sequenceIndex += 1) {
-                const result = findInContent(measure.sequences[sequenceIndex].content, selection.id)
-                if (!result) continue
+    const kind = getEventKind(event)
+    if (!kind) return null
 
-                const kind = getEventKind(result.item)
-                if (!kind) return null
-
-                return {
-                    type: kind,
-                    id: selection.id,
-                    partId: part.id,
-                    measureNumber: measure.index ?? measureIndex + 1,
-                    sequenceNumber: sequenceIndex + 1,
-                    eventIndex: result.eventIndex,
-                    rhythm: summarizeVoiceRhythm(
-                        score,
-                        partIndex,
-                        measureIndex,
-                        sequenceIndex
-                    ),
-                    event: result.item,
-                }
-            }
-        }
+    const part = score.parts[eventRef.partIndex]
+    const measure = part?.measures[eventRef.measureIndex]
+    const timeline = getTimelineMeasure(timelineIndex, eventRef)
+    if (!part || !measure || !timeline) {
+        return null
     }
 
-    return null
+    return {
+        type: kind,
+        id: selection.id,
+        partId: part.id,
+        measureNumber: measure.index ?? eventRef.measureIndex + 1,
+        sequenceNumber: eventRef.sequenceIndex + 1,
+        eventIndex: getTimelineEventIndex(eventRef.contentPath),
+        rhythm: summarizeTimelineVoiceRhythm(timeline, eventRef.sequenceIndex),
+        event,
+    }
 }
 
 export function getSelectedMeasureDetails(
@@ -515,6 +491,8 @@ export function getSelectedMeasureDetails(
     const voiceCount = Math.max(1, measure.sequences.length)
     const sequenceIndex = Math.max(0, Math.min(activeSequenceIndex, voiceCount - 1))
     const eventCount = measure.sequences[sequenceIndex]?.content.length ?? 0
+    const timelineIndex = buildScoreTimelineIndex(score)
+    const timeline = getTimelineMeasure(timelineIndex, { partIndex, measureIndex })
 
     return {
         type: 'measure',
@@ -524,7 +502,9 @@ export function getSelectedMeasureDetails(
         sequenceNumber: sequenceIndex + 1,
         voiceCount,
         eventCount,
-        rhythm: summarizeVoiceRhythm(score, partIndex, measureIndex, sequenceIndex),
+        rhythm: timeline
+            ? summarizeTimelineVoiceRhythm(timeline, sequenceIndex)
+            : summarizeVoiceRhythm(score, partIndex, measureIndex, sequenceIndex),
         measure,
     }
 }
@@ -686,11 +666,12 @@ function resolveMeasureTarget(
     }
 
     if (isEditableSelection(selection)) {
-        const eventLocation = findEventLocation(score, selection.id, selection.partId)
-        if (eventLocation) {
+        const timelineIndex = buildScoreTimelineIndex(score)
+        const eventRef = findSelectedTimelineEvent(score, timelineIndex, selection)
+        if (eventRef) {
             return {
-                partIndex: eventLocation.partIndex,
-                measureIndex: eventLocation.measureIndex,
+                partIndex: eventRef.partIndex,
+                measureIndex: eventRef.measureIndex,
             }
         }
     }

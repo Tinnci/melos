@@ -9,6 +9,13 @@ Melos. It is the source of truth for API layering.
 
 Mature notation systems point to the same separation:
 
+- VexFlow exposes low-level engraving objects (`Voice`, `Formatter`,
+  `TickContext`) and keeps horizontal alignment state separate from score
+  parsing.
+- OpenSheetMusicDisplay exposes a high-level `load()` / `render()` facade, but
+  internally separates `MusicSheet` from `GraphicalMusicSheet`.
+- abcjs exposes a compact parse/render API while keeping an engraver-created
+  visual object for selection and synth timing.
 - LilyPond separates timing/context, engraving objects, spacing, and output.
 - MusiXTeX separates fixed and scalable spacing before final layout.
 - PMX shows the maintenance cost of a monolithic converter/engraver.
@@ -56,12 +63,17 @@ The current work corrected these layering issues:
 
 - `@melos/core` now exposes `buildScoreTimeline()` and
   `buildMeasureTimeline()` with validation policy options.
+- `@melos/core` now exposes timeline indexing APIs so consumers can query
+  measures, sequences, event ids, and event paths without knowing nested MNX
+  content structure.
 - `@melos/renderer` layout analysis consumes the core timeline for rhythm
   data.
 - `@melos/mnx` validator consumes the core timeline instead of maintaining its
   own duration table.
 - `@melos/web` rhythm summaries consume the core timeline instead of computing
   voice duration locally.
+- `@melos/web` selection detail reads use the core timeline index for event
+  lookup, including duplicate event ids scoped by part.
 - `@melos/player` builds playback schedules from the core timeline instead of
   traversing score content with local rhythm math.
 - `@melos/mnx` still owns validation policy such as whether pickup underfill is
@@ -76,6 +88,13 @@ Core timeline:
 ```ts
 buildScoreTimeline(score, options?)
 buildMeasureTimeline(score, partIndex, measureIndex, options?)
+buildScoreTimelineIndex(score, options?)
+indexScoreTimeline(timeline)
+getTimelineMeasure(index, selector)
+getTimelineEventsForMeasure(index, selector)
+getTimelineEventsForSequence(index, selector)
+getTimelineEventsById(index, id)
+getTimelineEventByPath(index, path)
 resolveTimeSignatureForMeasure(score, measureIndex, measureNumber?)
 ```
 

@@ -1,5 +1,7 @@
 import {
-    buildMeasureTimeline,
+    buildScoreTimelineIndex,
+    getTimelineEventsForMeasure,
+    getTimelineMeasure,
     getTimelineEventSource,
     type Note,
     type Pitch,
@@ -32,43 +34,42 @@ export function createPlaybackSchedule(
     const startTime = options.startTime ?? 0;
     const secondsPerBeat = 60 / tempo;
     const notes: ScheduledNote[] = [];
+    const timelineIndex = buildScoreTimelineIndex(score, {
+        includeRhythmDiagnostics: false
+    });
 
     score.parts.forEach((part, partIndex) => {
         let partStartBeat = 0;
 
         part.measures.forEach((_measure, measureIndex) => {
-            const timeline = buildMeasureTimeline(score, partIndex, measureIndex, {
-                includeRhythmDiagnostics: false
-            });
+            const timeline = getTimelineMeasure(timelineIndex, { partIndex, measureIndex });
             const measureDurationBeats = Math.max(
-                timeline.expectedBeats,
-                ...timeline.sequences.map((sequence) => sequence.usedBeats),
+                timeline?.expectedBeats ?? 0,
+                ...(timeline?.sequences.map((sequence) => sequence.usedBeats) ?? []),
                 0
             );
 
-            timeline.sequences.forEach((sequence) => {
-                sequence.events.forEach((event) => {
-                    if (event.kind !== "note" || event.grace || event.durationBeats <= 0) return;
+            for (const event of getTimelineEventsForMeasure(timelineIndex, { partIndex, measureIndex })) {
+                if (event.kind !== "note" || event.grace || event.durationBeats <= 0) continue;
 
-                    const source = getTimelineEventSource(score, event);
-                    if (!isPlayableEvent(source)) return;
+                const source = getTimelineEventSource(score, event);
+                if (!isPlayableEvent(source)) continue;
 
-                    source.notes.forEach((note) => {
-                        if (!note.pitch) return;
+                source.notes.forEach((note) => {
+                    if (!note.pitch) return;
 
-                        notes.push({
-                            pitch: note.pitch,
-                            startTime: startTime + ((partStartBeat + event.startBeat) * secondsPerBeat),
-                            duration: event.durationBeats * secondsPerBeat,
-                            partIndex,
-                            measureIndex,
-                            sequenceIndex: sequence.sequenceIndex,
-                            eventId: event.id,
-                            noteId: note.id
-                        });
+                    notes.push({
+                        pitch: note.pitch,
+                        startTime: startTime + ((partStartBeat + event.startBeat) * secondsPerBeat),
+                        duration: event.durationBeats * secondsPerBeat,
+                        partIndex,
+                        measureIndex,
+                        sequenceIndex: event.sequenceIndex,
+                        eventId: event.id,
+                        noteId: note.id
                     });
                 });
-            });
+            }
 
             partStartBeat += measureDurationBeats;
         });

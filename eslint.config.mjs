@@ -14,6 +14,11 @@ export default [
         }
     },
     {
-        ignores: ["**/node_modules/", "**/dist/", "scripts/"]
+        ignores: [
+            "**/node_modules/",
+            "**/dist/",
+            ".codex-research/**",
+            "scripts/"
+        ]
     }
 ];

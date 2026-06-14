@@ -56,6 +56,25 @@ export interface ScoreTimeline {
     diagnostics: TimelineDiagnostic[];
 }
 
+export interface TimelineMeasureSelector {
+    partIndex: number;
+    measureIndex: number;
+}
+
+export interface TimelineSequenceSelector extends TimelineMeasureSelector {
+    sequenceIndex: number;
+}
+
+export interface ScoreTimelineIndex {
+    timeline: ScoreTimeline;
+    events: readonly TimedEventRef[];
+    measuresByKey: ReadonlyMap<string, MeasureTimeline>;
+    eventsByMeasure: ReadonlyMap<string, readonly TimedEventRef[]>;
+    eventsBySequence: ReadonlyMap<string, readonly TimedEventRef[]>;
+    eventsById: ReadonlyMap<string, readonly TimedEventRef[]>;
+    eventsByPath: ReadonlyMap<string, TimedEventRef>;
+}
+
 export interface TimelineBuildOptions {
     includeRhythmDiagnostics?: boolean;
     allowPickupMeasure?: boolean;
@@ -84,6 +103,89 @@ export function buildScoreTimeline(score: Score, options: TimelineBuildOptions =
     });
 
     return { measures, diagnostics };
+}
+
+export function buildScoreTimelineIndex(score: Score, options: TimelineBuildOptions = {}): ScoreTimelineIndex {
+    return indexScoreTimeline(buildScoreTimeline(score, options));
+}
+
+export function indexScoreTimeline(timeline: ScoreTimeline): ScoreTimelineIndex {
+    const events: TimedEventRef[] = [];
+    const measuresByKey = new Map<string, MeasureTimeline>();
+    const eventsByMeasure = new Map<string, TimedEventRef[]>();
+    const eventsBySequence = new Map<string, TimedEventRef[]>();
+    const eventsById = new Map<string, TimedEventRef[]>();
+    const eventsByPath = new Map<string, TimedEventRef>();
+
+    for (const measure of timeline.measures) {
+        const measureKey = createTimelineMeasureKey(measure);
+        measuresByKey.set(measureKey, measure);
+
+        for (const sequence of measure.sequences) {
+            const sequenceKey = createTimelineSequenceKey({
+                partIndex: measure.partIndex,
+                measureIndex: measure.measureIndex,
+                sequenceIndex: sequence.sequenceIndex
+            });
+
+            for (const event of sequence.events) {
+                events.push(event);
+                pushMapArray(eventsByMeasure, measureKey, event);
+                pushMapArray(eventsBySequence, sequenceKey, event);
+
+                if (event.id) {
+                    pushMapArray(eventsById, event.id, event);
+                }
+
+                eventsByPath.set(event.path, event);
+            }
+        }
+    }
+
+    return {
+        timeline,
+        events,
+        measuresByKey,
+        eventsByMeasure,
+        eventsBySequence,
+        eventsById,
+        eventsByPath
+    };
+}
+
+export function getTimelineMeasure(
+    index: ScoreTimelineIndex,
+    selector: TimelineMeasureSelector
+): MeasureTimeline | undefined {
+    return index.measuresByKey.get(createTimelineMeasureKey(selector));
+}
+
+export function getTimelineEventsForMeasure(
+    index: ScoreTimelineIndex,
+    selector: TimelineMeasureSelector
+): readonly TimedEventRef[] {
+    return index.eventsByMeasure.get(createTimelineMeasureKey(selector)) ?? [];
+}
+
+export function getTimelineEventsForSequence(
+    index: ScoreTimelineIndex,
+    selector: TimelineSequenceSelector
+): readonly TimedEventRef[] {
+    return index.eventsBySequence.get(createTimelineSequenceKey(selector)) ?? [];
+}
+
+export function getTimelineEventsById(
+    index: ScoreTimelineIndex,
+    id: string
+): readonly TimedEventRef[] {
+    return index.eventsById.get(id) ?? [];
+}
+
+export function getTimelineEventByPath(
+    index: ScoreTimelineIndex,
+    path: string
+): TimedEventRef | undefined {
+    return index.eventsByPath.get(path);
 }
 
 export function buildMeasureTimeline(
@@ -367,6 +469,24 @@ function resolveTimelineOptions(options: TimelineBuildOptions): Required<Timelin
         ...DEFAULT_TIMELINE_OPTIONS,
         ...options
     };
+}
+
+function createTimelineMeasureKey(selector: TimelineMeasureSelector): string {
+    return `${selector.partIndex}:${selector.measureIndex}`;
+}
+
+function createTimelineSequenceKey(selector: TimelineSequenceSelector): string {
+    return `${selector.partIndex}:${selector.measureIndex}:${selector.sequenceIndex}`;
+}
+
+function pushMapArray<K, V>(map: Map<K, V[]>, key: K, value: V): void {
+    const values = map.get(key);
+    if (values) {
+        values.push(value);
+        return;
+    }
+
+    map.set(key, [value]);
 }
 
 function roundBeats(value: number): number {

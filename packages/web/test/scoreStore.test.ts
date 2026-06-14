@@ -232,5 +232,53 @@ describe("score store editing actions", () => {
         const selectedEvent = useScoreStore.getState().getSelectedEvent();
         expect(selectedEvent?.rhythm.status).toBe("complete");
         expect(selectedEvent?.rhythm.usedBeats).toBe(3);
+        expect(selectedEvent?.sequenceNumber).toBe(1);
+        expect(selectedEvent?.eventIndex).toBe(1);
+    });
+
+    it("uses the timeline index to disambiguate selected duplicate ids by part", () => {
+        const score = ScoreSchema.parse({
+            mnx: { version: 1 },
+            global: { measures: [{ time: { count: 4, unit: 4 } }] },
+            parts: [
+                {
+                    id: "piano",
+                    measures: [{
+                        sequences: [{
+                            content: [{
+                                id: "shared-event",
+                                duration: { base: "quarter" },
+                                notes: [{ pitch: { step: "C", octave: 4 } }]
+                            }]
+                        }]
+                    }]
+                },
+                {
+                    id: "violin",
+                    measures: [{
+                        sequences: [{
+                            content: [{
+                                id: "shared-event",
+                                duration: { base: "quarter" },
+                                notes: [{ pitch: { step: "D", octave: 5 } }]
+                            }]
+                        }]
+                    }]
+                }
+            ]
+        });
+
+        useScoreStore.getState().setScore(score);
+        useScoreStore.getState().setSelection({
+            type: "note",
+            id: "shared-event",
+            partId: "violin"
+        });
+
+        const selectedEvent = useScoreStore.getState().getSelectedEvent();
+
+        expect(selectedEvent?.partId).toBe("violin");
+        expect(selectedEvent?.event.notes?.[0].pitch?.step).toBe("D");
+        expect(selectedEvent?.event.notes?.[0].pitch?.octave).toBe(5);
     });
 });

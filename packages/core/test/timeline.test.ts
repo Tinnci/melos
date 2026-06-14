@@ -2,8 +2,15 @@ import { describe, expect, it } from "bun:test";
 import { ScoreSchema } from "../src/schema";
 import {
     buildMeasureTimeline,
+    buildScoreTimelineIndex,
     buildScoreTimeline,
+    getTimelineEventByPath,
+    getTimelineEventsById,
+    getTimelineEventsForMeasure,
+    getTimelineEventsForSequence,
     getTimelineEventSource,
+    getTimelineMeasure,
+    indexScoreTimeline,
     resolveTimeSignatureForMeasure
 } from "../src/timeline";
 
@@ -245,5 +252,87 @@ describe("core normalized timeline", () => {
         const source = event ? getTimelineEventSource(score, event) : undefined;
 
         expect((source as { id?: string } | undefined)?.id).toBe("nested-note");
+    });
+
+    it("indexes score timeline by measure, sequence, id, and path", () => {
+        const score = ScoreSchema.parse({
+            mnx: { version: 1 },
+            global: { measures: [{ time: { count: 4, unit: 4 } }] },
+            parts: [
+                {
+                    id: "P1",
+                    measures: [{
+                        sequences: [
+                            {
+                                content: [
+                                    {
+                                        id: "shared",
+                                        duration: { base: "quarter" },
+                                        notes: [{ pitch: { step: "C", octave: 4 } }]
+                                    },
+                                    {
+                                        id: "rest-1",
+                                        duration: { base: "quarter" },
+                                        rest: {}
+                                    }
+                                ]
+                            },
+                            {
+                                content: [{
+                                    id: "shared",
+                                    duration: { base: "half" },
+                                    notes: [{ pitch: { step: "E", octave: 4 } }]
+                                }]
+                            }
+                        ]
+                    }]
+                }
+            ]
+        });
+
+        const index = buildScoreTimelineIndex(score);
+        const measure = getTimelineMeasure(index, { partIndex: 0, measureIndex: 0 });
+        const measureEvents = getTimelineEventsForMeasure(index, { partIndex: 0, measureIndex: 0 });
+        const firstSequenceEvents = getTimelineEventsForSequence(index, {
+            partIndex: 0,
+            measureIndex: 0,
+            sequenceIndex: 0
+        });
+        const sharedEvents = getTimelineEventsById(index, "shared");
+        const firstSharedByPath = getTimelineEventByPath(index, "parts[0].measures[0].sequences[0].content[0]");
+
+        expect(measure?.partId).toBe("P1");
+        expect(index.events.map((event) => event.id)).toEqual(["shared", "rest-1", "shared"]);
+        expect(measureEvents.map((event) => event.id)).toEqual(["shared", "rest-1", "shared"]);
+        expect(firstSequenceEvents.map((event) => event.id)).toEqual(["shared", "rest-1"]);
+        expect(sharedEvents).toHaveLength(2);
+        expect(sharedEvents.map((event) => event.sequenceIndex)).toEqual([0, 1]);
+        expect(firstSharedByPath?.startBeat).toBe(0);
+        expect(getTimelineEventsForMeasure(index, { partIndex: 4, measureIndex: 9 })).toEqual([]);
+    });
+
+    it("can index an existing score timeline without rebuilding it", () => {
+        const score = ScoreSchema.parse({
+            mnx: { version: 1 },
+            global: { measures: [{ time: { count: 2, unit: 4 } }] },
+            parts: [{
+                id: "P1",
+                measures: [{
+                    sequences: [{
+                        content: [{
+                            id: "note-1",
+                            duration: { base: "half" },
+                            notes: [{ pitch: { step: "C", octave: 4 } }]
+                        }]
+                    }]
+                }]
+            }]
+        });
+
+        const timeline = buildScoreTimeline(score);
+        const index = indexScoreTimeline(timeline);
+
+        expect(index.timeline).toBe(timeline);
+        expect(getTimelineEventsById(index, "note-1")[0]?.durationBeats).toBe(2);
     });
 });
