@@ -1,10 +1,18 @@
-import { getOrderedTag, orderedElementToObject, type OrderedXmlNode } from "./OrderedXml";
+import {
+    getOrderedTag,
+    isXmlRecord,
+    orderedElementToObject,
+    xmlRecords,
+    type OrderedXmlNode,
+    type XmlRecord,
+} from "./OrderedXml";
 
-export type XmlToken = {
-    _tag: "attributes" | "note" | "direction" | "backup" | "forward";
+export type XmlTokenTag = "attributes" | "note" | "direction" | "backup" | "forward";
+
+export type XmlToken = XmlRecord & {
+    _tag: XmlTokenTag;
     _x: number;
     _order: number;
-    [key: string]: any;
 };
 
 export class XmlEventStream {
@@ -15,24 +23,19 @@ export class XmlEventStream {
      * @param xmlMeasure The raw parsed MusicXML measure object.
      * @returns A sorted array of XmlToken objects.
      */
-    static extract(xmlMeasure: any, orderedMeasure?: OrderedXmlNode[]): XmlToken[] {
+    static extract(xmlMeasure: XmlRecord, orderedMeasure?: OrderedXmlNode[]): XmlToken[] {
         if (orderedMeasure) {
-            return this.extractOrdered(orderedMeasure);
+            return XmlEventStream.extractOrdered(orderedMeasure);
         }
 
         const tokens: XmlToken[] = [];
         let order = 0;
 
-        const attributes = xmlMeasure.attributes
-            ? Array.isArray(xmlMeasure.attributes)
-                ? xmlMeasure.attributes
-                : [xmlMeasure.attributes]
-            : [];
-
-        attributes.forEach((a: any) => {
-            if (a.clef) {
+        const attributes = xmlRecords(xmlMeasure.attributes);
+        attributes.forEach((attribute) => {
+            if (attribute.clef) {
                 tokens.push({
-                    ...a,
+                    ...attribute,
                     _tag: "attributes",
                     _x: 0,
                     _order: order++,
@@ -41,34 +44,24 @@ export class XmlEventStream {
         });
 
         // 1. Extract Notes
-        const notes = xmlMeasure.note
-            ? Array.isArray(xmlMeasure.note)
-                ? xmlMeasure.note
-                : [xmlMeasure.note]
-            : [];
-
-        notes.forEach((n: any) => {
+        const notes = xmlRecords(xmlMeasure.note);
+        notes.forEach((note) => {
             tokens.push({
-                ...n,
+                ...note,
                 _tag: "note",
-                _x: parseFloat(n["@_default-x"] || "0"),
+                _x: parseDefaultX(note),
                 _order: order++,
             });
         });
 
         // 2. Extract Directions (Dynamics, wedges, ottavas, pedals)
-        const directions = xmlMeasure.direction
-            ? Array.isArray(xmlMeasure.direction)
-                ? xmlMeasure.direction
-                : [xmlMeasure.direction]
-            : [];
-
-        directions.forEach((d: any) => {
-            if (this.hasRelevantDirectionType(d)) {
+        const directions = xmlRecords(xmlMeasure.direction);
+        directions.forEach((direction) => {
+            if (XmlEventStream.hasRelevantDirectionType(direction)) {
                 tokens.push({
-                    ...d,
+                    ...direction,
                     _tag: "direction",
-                    _x: parseFloat(d["@_default-x"] || "0"),
+                    _x: parseDefaultX(direction),
                     _order: order++,
                 });
             }
@@ -93,16 +86,17 @@ export class XmlEventStream {
 
         orderedMeasure.forEach((node) => {
             const tag = getOrderedTag(node);
-            if (!this.isSupportedTokenTag(tag)) return;
+            if (!XmlEventStream.isSupportedTokenTag(tag)) return;
 
             const value = orderedElementToObject(node);
-            if (tag === "direction" && !this.hasRelevantDirectionType(value)) return;
+            if (!isXmlRecord(value)) return;
+            if (tag === "direction" && !XmlEventStream.hasRelevantDirectionType(value)) return;
             if (tag === "attributes" && !value.clef) return;
 
             tokens.push({
                 ...value,
                 _tag: tag,
-                _x: parseFloat(value["@_default-x"] || "0"),
+                _x: parseDefaultX(value),
                 _order: order++,
             });
         });
@@ -110,7 +104,7 @@ export class XmlEventStream {
         return tokens;
     }
 
-    private static isSupportedTokenTag(tag: string | undefined): tag is XmlToken["_tag"] {
+    private static isSupportedTokenTag(tag: string | undefined): tag is XmlTokenTag {
         return (
             tag === "attributes" ||
             tag === "note" ||
@@ -120,13 +114,21 @@ export class XmlEventStream {
         );
     }
 
-    private static hasRelevantDirectionType(direction: any): boolean {
-        const dTypes = Array.isArray(direction["direction-type"])
-            ? direction["direction-type"]
-            : [direction["direction-type"]];
-
-        return dTypes.some(
-            (dt: any) => dt?.dynamics || dt?.wedge || dt?.["octave-shift"] || dt?.pedal,
+    private static hasRelevantDirectionType(direction: XmlRecord): boolean {
+        const dTypes = xmlRecords(direction["direction-type"]);
+        return dTypes.some((directionType) =>
+            Boolean(
+                directionType.dynamics ||
+                    directionType.wedge ||
+                    directionType["octave-shift"] ||
+                    directionType.pedal,
+            ),
         );
     }
+}
+
+function parseDefaultX(value: XmlRecord): number {
+    const raw = value["@_default-x"];
+    const parsed = typeof raw === "number" ? raw : Number.parseFloat(String(raw ?? "0"));
+    return Number.isFinite(parsed) ? parsed : 0;
 }

@@ -1,6 +1,8 @@
 import { describe, it, expect } from "bun:test";
 import { ScoreSchema } from "@melos/core";
 import { MusicXMLToMNX } from "../src/index";
+import { MeasureParser, type PartParsingContext } from "../src/parsers/MeasureParser";
+import type { XmlRecord } from "../src/parsers/OrderedXml";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -8,6 +10,14 @@ describe("MusicXMLToMNX Converter", () => {
     const converter = new MusicXMLToMNX();
     const musicXmlFixture = (filename: string) =>
         fs.readFileSync(path.join(import.meta.dir, "data/musicxml", filename), "utf-8");
+    const createPartContext = (): PartParsingContext => ({
+        activeSlurs: {},
+        activeTies: {},
+        activeWedges: {},
+        activeOttavas: {},
+        activeTremolos: {},
+        lyricLines: new Map(),
+    });
 
     // --- Helper for minimal XML wrapper ---
     const wrapMeasure = (content: string, attributes = "<divisions>1</divisions>") => `
@@ -42,6 +52,64 @@ describe("MusicXMLToMNX Converter", () => {
         expect(event.notes).toHaveLength(2);
         expect(event.notes[0].pitch.step).toBe("C");
         expect(event.notes[1].pitch.step).toBe("E");
+    });
+
+    it("should not advance time for empty-string chord markers in unordered fallback", () => {
+        const xmlMeasure: XmlRecord = {
+            note: [
+                {
+                    "@_default-x": 1,
+                    pitch: { step: "C", octave: 4 },
+                    duration: 1,
+                    type: "quarter",
+                    voice: "1",
+                },
+                {
+                    "@_default-x": 2,
+                    chord: "",
+                    pitch: { step: "E", octave: 4 },
+                    duration: 1,
+                    type: "quarter",
+                    voice: "1",
+                },
+            ],
+            direction: {
+                "@_default-x": 3,
+                voice: "1",
+                "direction-type": { wedge: { "@_type": "crescendo" } },
+            },
+        };
+
+        const res = new MeasureParser(xmlMeasure, createPartContext()).parse();
+        const firstEvent = res.sequences[0].content[0] as { notes?: unknown[] };
+
+        expect(res.sequences[0].content).toHaveLength(1);
+        expect(firstEvent.notes).toHaveLength(2);
+        expect(res.wedges?.[0]?.position.fraction).toEqual([1, 4]);
+    });
+
+    it("should not advance time for empty-string grace markers in unordered fallback", () => {
+        const xmlMeasure: XmlRecord = {
+            note: {
+                "@_default-x": 1,
+                grace: "",
+                pitch: { step: "D", octave: 4 },
+                duration: 1,
+                type: "eighth",
+                voice: "1",
+            },
+            direction: {
+                "@_default-x": 2,
+                voice: "1",
+                "direction-type": { wedge: { "@_type": "crescendo" } },
+            },
+        };
+
+        const res = new MeasureParser(xmlMeasure, createPartContext()).parse();
+        const firstItem = res.sequences[0].content[0] as { type?: string };
+
+        expect(firstItem.type).toBe("grace");
+        expect(res.wedges?.[0]?.position.fraction).toEqual([0, 4]);
     });
 
     it("should parse tuplets correctly", () => {

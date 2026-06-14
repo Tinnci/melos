@@ -21,7 +21,14 @@ import {
 } from "./Utils";
 import { TimeTracker } from "./TimeTracker";
 import { XmlEventStream } from "./XmlEventStream";
-import type { OrderedXmlNode } from "./OrderedXml";
+import {
+    hasXmlValue,
+    isXmlRecord,
+    type OrderedXmlNode,
+    type XmlRecord,
+    xmlRecords,
+    xmlText,
+} from "./OrderedXml";
 
 export interface Container {
     content: any[];
@@ -57,7 +64,7 @@ export class MeasureParser {
     private activeBeams: Record<number, { eventIds: string[] }> = {};
     private voiceContexts: Map<string, VoiceContext> = new Map();
     private voiceOrder: string[] = [];
-    private xmlMeasure: any;
+    private xmlMeasure: XmlRecord;
     private orderedMeasure?: OrderedXmlNode[];
     private context: PartParsingContext;
     private measureIndex: number;
@@ -66,7 +73,7 @@ export class MeasureParser {
     private timeTracker: TimeTracker;
 
     constructor(
-        xmlMeasure: any,
+        xmlMeasure: XmlRecord,
         context: PartParsingContext,
         globalDivisions: number = 1,
         measureIndex: number = 1,
@@ -118,7 +125,7 @@ export class MeasureParser {
             if (token._tag === "forward") {
                 const duration = parseInteger(token.duration);
                 if (duration !== undefined) {
-                    const voiceId = token.voice ? String(token.voice) : undefined;
+                    const voiceId = xmlText(token.voice) || undefined;
                     if (voiceId) {
                         this.handleForwardRest(
                             duration,
@@ -131,7 +138,7 @@ export class MeasureParser {
                 continue;
             }
 
-            const voiceId = token.voice ? String(token.voice) : undefined;
+            const voiceId = xmlText(token.voice) || undefined;
             const sequenceVoiceId = voiceId || "1";
             const staff = parseInteger(token.staff);
             const ctx = this.getVoiceContext(sequenceVoiceId);
@@ -141,15 +148,17 @@ export class MeasureParser {
 
                 // Advance time tracking
                 // Only non-chord notes AND non-grace notes advance time
-                if (!token.chord && !token.grace && token.duration) {
-                    this.timeTracker.advance(sequenceVoiceId, parseInt(token.duration));
+                const duration = parseInteger(token.duration);
+                if (
+                    !hasXmlValue(token.chord) &&
+                    !hasXmlValue(token.grace) &&
+                    duration !== undefined
+                ) {
+                    this.timeTracker.advance(sequenceVoiceId, duration);
                 }
             } else if (token._tag === "direction") {
-                const dTypes = Array.isArray(token["direction-type"])
-                    ? token["direction-type"]
-                    : [token["direction-type"]];
-
-                dTypes.forEach((dt: any) => {
+                const dTypes = xmlRecords(token["direction-type"]);
+                dTypes.forEach((dt) => {
                     if (dt.dynamics) {
                         this.handleDynamics(dt, ctx, staff);
                     }
@@ -176,9 +185,12 @@ export class MeasureParser {
 
         // [NEW] Multimeasure Rest Detection
         let multimeasureRest: MultimeasureRest | undefined = undefined;
-        if (this.xmlMeasure.attributes?.["measure-style"]?.["multiple-rest"]) {
-            const duration = parseInt(this.xmlMeasure.attributes["measure-style"]["multiple-rest"]);
-            if (duration > 1) {
+        const measureStyle = xmlRecords(this.xmlMeasure.attributes)
+            .flatMap((attribute) => xmlRecords(attribute["measure-style"]))
+            .find((style) => hasXmlValue(style["multiple-rest"]));
+        if (measureStyle) {
+            const duration = parseInteger(measureStyle["multiple-rest"]);
+            if (duration !== undefined && duration > 1) {
                 multimeasureRest = {
                     start: this.measureIndex,
                     duration: duration,
@@ -393,14 +405,14 @@ export class MeasureParser {
         }
     }
 
-    private handleDynamics(directionType: any, ctx: VoiceContext, staff?: number) {
+    private handleDynamics(directionType: XmlRecord, ctx: VoiceContext, staff?: number) {
         const dynObj = directionType.dynamics;
-        if (!dynObj) return;
+        if (!isXmlRecord(dynObj)) return;
 
         const keys = Object.keys(dynObj).filter((key) => !key.startsWith("@_"));
         if (keys.length > 0) {
             const key = keys[0];
-            const value = key === "other-dynamics" ? this.textValue(dynObj[key]) || key : key;
+            const value = key === "other-dynamics" ? xmlText(dynObj[key]) || key : key;
             const dynamicEvent: DynamicEvent = {
                 type: "dynamic",
                 value,
@@ -409,13 +421,6 @@ export class MeasureParser {
             const currentContainer = ctx.stack[ctx.stack.length - 1];
             currentContainer.content.push(dynamicEvent);
         }
-    }
-
-    private textValue(value: any): string | undefined {
-        if (typeof value === "string") return value.trim();
-        if (typeof value === "number") return String(value);
-        if (value && typeof value["#text"] === "string") return value["#text"].trim();
-        return undefined;
     }
 
     private handleNote(xNote: any, ctx: VoiceContext) {
@@ -515,7 +520,7 @@ export class MeasureParser {
             }
 
             if (noteObj && xNote.notehead) {
-                const nh = this.normalizeNotehead(this.textValue(xNote.notehead));
+                const nh = this.normalizeNotehead(xmlText(xNote.notehead));
                 if (nh) {
                     noteObj.notehead = nh;
                 }
