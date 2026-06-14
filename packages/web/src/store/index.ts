@@ -1,2 +1,21 @@
-export { useScoreStore, createDemoScore, type ScoreState, type ScoreMetadata, type PartInfo } from './scoreStore'
+export {
+    articulationOptions,
+    createDemoScore,
+    getSelectedEventDetails,
+    getSelectedMeasureDetails,
+    noteDurationBases,
+    noteheadOptions,
+    pitchSteps,
+    useScoreStore,
+    type EditableEventKind,
+    type NoteDurationBase,
+    type NoteheadOption,
+    type PartInfo,
+    type PitchStep,
+    type ScoreMetadata,
+    type ScoreState,
+    type SelectedMeasureDetails,
+    type VoiceRhythmSummary,
+    type VoiceRhythmStatus,
+} from './scoreStore'
 export { useTransportStore, type TransportState, type TransportStatus } from './transportStore'

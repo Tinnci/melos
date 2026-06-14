@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="5.0">
+  <music>
+    <body>
+      <mdiv>
+        <score>
+          <scoreDef meter.count="4" meter.unit="4" key.sig="2s">
+            <staffGrp>
+              <staffDef n="1" label="Violin" lines="5" clef.shape="G" clef.line="2"/>
+            </staffGrp>
+          </scoreDef>
+          <section>
+            <measure n="1" right="end">
+              <staff n="1">
+                <layer n="1">
+                  <note xml:id="n1" pname="c" oct="4" dur="4" dots="1" accid="s" artic="stacc" color="#3366ff">
+                    <verse n="1"><syl>La</syl></verse>
+                  </note>
+                  <beam>
+                    <note xml:id="n2" pname="d" oct="4" dur="8"/>
+                    <note xml:id="n3" pname="e" oct="4" dur="8"/>
+                  </beam>
+                  <tuplet num="3" numbase="2" dur="8">
+                    <note xml:id="n4" pname="f" oct="4" dur="8"/>
+                    <note xml:id="n5" pname="g" oct="4" dur="8"/>
+                    <note xml:id="n6" pname="a" oct="4" dur="8"/>
+                  </tuplet>
+                  <chord xml:id="ch1" dur="2">
+                    <note xml:id="n7" pname="e" oct="4"/>
+                    <note xml:id="n8" pname="g" oct="4"/>
+                  </chord>
+                  <rest xml:id="r1" dur="4" dots="1"/>
+                </layer>
+              </staff>
+              <dynam staff="1" tstamp="1">mf</dynam>
+              <hairpin staff="1" form="cres" tstamp="1" tstamp2="3"/>
+              <pedal staff="1" dir="down" form="line" tstamp="1" tstamp2="3"/>
+              <octave staff="1" dis="8" dis.place="above" tstamp="1" tstamp2="4"/>
+              <slur startid="#n2" endid="#n3"/>
+              <tie startid="#n1" endid="#n2"/>
+            </measure>
+          </section>
+        </score>
+      </mdiv>
+    </body>
+  </music>
+</mei>

@@ -364,17 +364,27 @@ export class MeasureParser {
         const dynObj = directionType.dynamics;
         if (!dynObj) return;
 
-        const keys = Object.keys(dynObj);
+        const keys = Object.keys(dynObj).filter(key => !key.startsWith("@_"));
         if (keys.length > 0) {
-            const value = keys[0];
+            const key = keys[0];
+            const value = key === "other-dynamics"
+                ? this.textValue(dynObj[key]) || key
+                : key;
             const dynamicEvent: DynamicEvent = {
                 type: "dynamic",
-                value: value as any,
+                value,
                 staff
             };
             const currentContainer = ctx.stack[ctx.stack.length - 1];
             currentContainer.content.push(dynamicEvent);
         }
+    }
+
+    private textValue(value: any): string | undefined {
+        if (typeof value === "string") return value.trim();
+        if (typeof value === "number") return String(value);
+        if (value && typeof value["#text"] === "string") return value["#text"].trim();
+        return undefined;
     }
 
     private handleNote(xNote: any, ctx: VoiceContext) {
@@ -463,9 +473,12 @@ export class MeasureParser {
             }
 
             if (noteObj && xNote.notehead) {
-                const nh = typeof xNote.notehead === 'string' ? xNote.notehead : xNote.notehead["#text"];
-                if (["x", "diamond", "triangle", "slash", "square", "circle-x", "normal"].includes(nh)) {
+                const nh = this.normalizeNotehead(this.textValue(xNote.notehead));
+                if (nh) {
                     noteObj.notehead = nh;
+                }
+                if (typeof xNote.notehead === "object" && xNote.notehead["@_color"]) {
+                    noteObj.color = xNote.notehead["@_color"];
                 }
             }
             if (noteObj && xNote["@_color"]) {
@@ -678,6 +691,24 @@ export class MeasureParser {
                 }
             }
         }
+    }
+
+    private normalizeNotehead(value?: string): Note["notehead"] | undefined {
+        if (!value) return undefined;
+        const normalized = value.trim().toLowerCase();
+        const aliases: Record<string, Note["notehead"]> = {
+            "normal": "normal",
+            "x": "x",
+            "cross": "x",
+            "diamond": "diamond",
+            "triangle": "triangle",
+            "inverted triangle": "triangle",
+            "slash": "slash",
+            "square": "square",
+            "circle-x": "circle-x",
+            "circle x": "circle-x"
+        };
+        return aliases[normalized];
     }
 
     private createTuplet(xNote: any, _tupletXml: any): Tuplet {

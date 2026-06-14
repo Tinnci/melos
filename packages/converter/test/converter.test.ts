@@ -98,6 +98,25 @@ describe("MusicXMLToMNX Converter", () => {
         expect((content[1] as any).notes).toBeDefined();
     });
 
+    it("should preserve MusicXML other-dynamics as MNX dynamic strings", () => {
+        const xml = wrapMeasure(`
+         <direction placement="below">
+            <direction-type><dynamics><other-dynamics>ppppp</other-dynamics></dynamics></direction-type>
+         </direction>
+         <note>
+            <pitch><step>C</step><octave>4</octave></pitch>
+            <duration>1</duration><type>quarter</type>
+         </note>
+        `);
+
+        const res = converter.convert(xml);
+        const content = res.parts[0].measures[0].sequences[0].content;
+
+        expect((content[0] as any).type).toBe("dynamic");
+        expect((content[0] as any).value).toBe("ppppp");
+        expect(ScoreSchema.safeParse(res).success).toBe(true);
+    });
+
     it("should parse wedges (hairpins) and calculate rhythmic position", () => {
         const xml = wrapMeasure(`
          <note default-x="10">
@@ -139,6 +158,22 @@ describe("MusicXMLToMNX Converter", () => {
         expect(event.articulations).toBeDefined();
         expect(event.articulations).toContain("tenuto");
         expect(event.articulations).toContain("fermata");
+    });
+
+    it("should normalize common MusicXML notehead aliases", () => {
+        const xml = wrapMeasure(`
+         <note>
+            <pitch><step>C</step><octave>4</octave></pitch>
+            <duration>1</duration><type>quarter</type>
+            <notehead color="#ff0000">cross</notehead>
+         </note>
+        `);
+
+        const res = converter.convert(xml);
+        const event = res.parts[0].measures[0].sequences[0].content[0] as any;
+
+        expect(event.notes[0].notehead).toBe("x");
+        expect(event.notes[0].color).toBe("#ff0000");
     });
 
     it("should parse grace notes correctly (without advancing time)", () => {

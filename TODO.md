@@ -61,10 +61,12 @@ Fill the gap of a native MNX renderer.
     - [x] Dynamic measure width calculation.
     - [x] Automatic System Wrapping (Reflow) when content exceeds page width.
     - [x] Dynamic SVG dimensions.
+    - [x] Render multiple sequences/layers per measure for MusicXML voices and MEI layers.
 - [x] **Note Rendering**
     - [x] Note head shapes: whole (hollow), half (hollow), quarter+ (filled).
     - [x] Stem direction rules (above/below middle line).
     - [x] Flags for eighth, 16th, 32nd notes.
+    - [x] Augmentation dots for dotted notes and rests.
     - [x] Ledger lines for notes outside staff.
     - [x] Chord rendering with shared stems.
     - [x] Rest symbols (whole, half, quarter, eighth).
@@ -75,6 +77,13 @@ Fill the gap of a native MNX renderer.
     - [x] Clef symbols (G-Clef implemented via Bravura SVG path extraction).
     - [x] Key/Time signature display.
     - [x] Second interval collision handling in chords.
+
+- [x] **SMuFL Integration** ✅ COMPLETE
+    - [x] Load Bravura locally in the Studio without remote font dependencies.
+    - [x] Add a local SMuFL glyph registry for clefs, accidentals, noteheads, rests, dynamics, articulations, jumps, and pedal markings.
+    - [x] Render MusicXML edge cases that often fail in MusicXML-only pipelines: double accidentals, colored noteheads, notehead aliases, custom dynamics, fermatas, and piano pedal lines.
+    - [x] Use rhythmic positions for pedal bracket endpoints instead of stretching lines to the full measure.
+    - [x] Add a Studio fixture URL for real-world visual checks: `?fixture=smufl-edge-cases`.
 
 ---
 
@@ -107,6 +116,7 @@ Current progress and short-term plan:
 - [x] Renderer preview + demo `ScoreBuilder` example renders to the canvas
 - [x] Basic playback prototype with `AudioPlayer` (Play/Stop, tempo slider)
 - [x] MusicXML importer & conversion pipeline (Dropzone + `@melos/converter` integration)
+- [x] MEI importer pipeline for common notation subset (Dropzone + `@melos/mei` integration)
 - [x] Zustand store for Score state (`scoreStore.ts`, `transportStore.ts`)
 - [x] Component modularization (Dropzone, ScoreCanvas, TransportBar, PropertiesPanel, Sidebar)
 - [x] Premium dark theme with glassmorphism design system
@@ -116,14 +126,32 @@ Current progress and short-term plan:
 - [x] TailwindCSS 4.x + shadcn/ui migration
 - [x] Editable Time Signature and Key Signature in Properties Panel
 - [x] File browse button as alternative to drag-and-drop
+- [x] Functional editor palette for inserting notes, rests, dynamics, and measures without adding renderer/editor dependencies.
+- [x] Selection inspector for editing duration, dots, pitch, accidentals, noteheads, color, articulations, dynamic text, and deletion.
+- [x] Stable event IDs for imported/demo scores so SVG selection maps back to MNX data reliably.
+- [x] Preview zoom controls and MNX JSON source view for quick editor/debug workflows.
+- [x] Renderer emits interaction metadata for notes, rests, and dynamics.
+- [x] Fix undo/redo history to store current snapshots, enabling redo after selection-based mutations.
+- [x] Measure hit targets and measure selection for cursor-style editing.
+- [x] Active voice selection, add/remove voice controls, and measure/voice-targeted insertion.
+- [x] Rhythmic capacity validation for selected voices, including underfull, complete, and overfull editor feedback.
 - [ ] Snapshot & visual regression tests for the full conversion -> render -> play pipeline
 - [ ] Accessibility, keyboard navigation and responsive refinements
 
 Immediate next steps (short-term):
 
-1. Write snapshot tests for MusicXML conversion pipeline.
-2. [x] Add more editable properties (Part names, Tempo markings).
-3. [x] Implement PDF/MIDI export functionality.
+1. Write snapshot tests for MusicXML/MEI conversion pipeline.
+2. Add part creation and instrument metadata editing with sound/MIDI program defaults.
+3. Add renderer hit targets and inspectors for control-event objects such as wedges, pedals, ottavas, repeats, endings, and MEI control events.
+4. Add rhythm-aware insert options for filling rests, splitting notes, and rejecting accidental overfill when strict mode is enabled.
+5. Promote preview screenshots for MusicXML, MEI, SMuFL, and editor mutation flows into CI visual regression checks.
+
+Open-source reference notes:
+
+- MuseScore Studio: strong reference for palettes, selection-first editing, and inspector-based property mutation. Melos should copy the interaction model, not the desktop dependency stack.
+- Verovio: strong reference for MEI-first semantics and web/headless rendering. Melos should keep MEI import/export isolated in `@melos/mei` and avoid coupling the editor to Verovio.
+- OpenSheetMusicDisplay: reference for browser MusicXML import/preview expectations. Melos should preserve import-preview ergonomics while continuing native MNX rendering.
+- VexFlow: reference for low-level web engraving APIs. Melos should mine engraving behavior ideas, but keep the current custom renderer/SMuFL path to maximize MNX control.
 
 ---
 
@@ -192,9 +220,14 @@ Features defined in W3C MNX Schema (`mnx-schema.json`) but not yet implemented i
 
 - [ ] **Braille Music Generation**: Research converting semantic MNX data to Music Braille.
 - [ ] **MusicXML Export**: `MNX -> MusicXML` (lower priority, but needed for interoperability).
+- [ ] **MEI Export**: `MNX -> MEI` for archive/scholarly interoperability.
+- [ ] **MEI Metadata & Facsimile**: Preserve `meiHead`, source descriptions, `facsimile/surface/zone`, and editorial annotations.
 - [ ] **PDF Export**: Direct PDF generation from renderer (via canvas/PDF library).
 - [ ] **MIDI Export**: Generate MIDI files from MNX data.
 - [ ] **MusicXML 4.0 Support**: Update converter for latest MusicXML features.
+- [ ] **SMuFL Metadata Coverage**: Import more font metadata, anchors, and glyph bounding boxes so renderer spacing can move beyond fixed offsets.
+- [ ] **Visual Regression Harness**: Promote the SMuFL edge-case fixture into an automated screenshot comparison test.
+- [ ] **MEI Fixture Suite**: Add real-world MEI examples covering multi-staff piano, multiple layers, editorial markup, and control events spanning measures.
 
 ---
 

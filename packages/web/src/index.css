@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Bravura';
+  src: url('../../renderer/assets/Bravura.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    MELOS STUDIO – TailwindCSS 4.x Theme Configuration
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -69,18 +77,6 @@
     background: linear-gradient(180deg, #0f172a 0%, #0a0e14 100%);
   }
 
-  /* Animated gradient background */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
-      radial-gradient(ellipse 60% 50% at 80% 50%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
-    pointer-events: none;
-    z-index: -1;
-  }
-
   /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
@@ -146,18 +142,50 @@
     @apply bg-red-500;
   }
 
-  /* SVG Note Selection Styles */
-  :global(.note-group:hover) {
+  /* SVG Selection Styles */
+  .score-object:hover {
     filter: brightness(1.2);
   }
 
-  :global(.note-group.selected) {
+  .event-hitbox {
+    fill: transparent;
+    stroke: transparent;
+    pointer-events: all;
+  }
+
+  .measure-hitbox {
+    fill: transparent;
+    stroke: transparent;
+    pointer-events: all;
+  }
+
+  .measure-hitbox:hover {
+    fill: rgba(99, 102, 241, 0.08);
+    stroke: rgba(99, 102, 241, 0.18);
+  }
+
+  .measure-hitbox.selected {
+    fill: rgba(99, 102, 241, 0.14) !important;
+    stroke: rgba(99, 102, 241, 0.5) !important;
+    stroke-width: 1.5;
+  }
+
+  .smufl-glyph[data-smufl-role="articulation"] {
+    pointer-events: none;
+  }
+
+  .score-object.selected {
     filter: brightness(1.4);
   }
 
-  :global(.note-group.selected) * {
+  .score-object.selected * {
     fill: #6366f1 !important;
     stroke: #6366f1 !important;
+  }
+
+  .score-object.selected .event-hitbox {
+    fill: transparent !important;
+    stroke: transparent !important;
   }
 }
 

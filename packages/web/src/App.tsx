@@ -15,6 +15,10 @@ import { Button } from './components/ui/button'
 import { Badge } from './components/ui/badge'
 import { Undo2, Redo2, Music, FileText, FileAudio } from 'lucide-react'
 import { exportToPdf, exportToMidi } from './lib/exporter'
+import { MusicXMLToMNX } from '@melos/converter'
+import { MEIToMNX } from '@melos/mei'
+import smuflEdgeCasesXml from '../test-fixtures/smufl-edge-cases.musicxml?raw'
+import meiBasicFixture from '../../mei/test/data/basic.mei?raw'
 
 function App() {
   const score = useScoreStore((s) => s.score)
@@ -29,10 +33,28 @@ function App() {
 
   const [isExportingPdf, setIsExportingPdf] = useState(false)
   const [isExportingMidi, setIsExportingMidi] = useState(false)
+  const scoreTitle = score
+    ? score.parts.map((part) => part.name).filter(Boolean).join(' / ') || 'MNX Score'
+    : 'No Score Loaded'
 
   // Initialize hooks
   useKeyboardShortcuts()
   usePersistence()
+
+  useEffect(() => {
+    const fixture = new URLSearchParams(window.location.search).get('fixture')
+    if (fixture !== 'smufl-edge-cases' && fixture !== 'mei-basic') return
+
+    try {
+      const score = fixture === 'mei-basic'
+        ? new MEIToMNX().convert(meiBasicFixture)
+        : new MusicXMLToMNX().convert(smuflEdgeCasesXml)
+      setScore(score)
+    } catch (err) {
+      console.error('Fixture load failed:', err)
+      setError('Fixture load failed')
+    }
+  }, [setScore, setError])
 
   const handleLoadDemo = useCallback(() => {
     const demo = createDemoScore()
@@ -157,24 +179,8 @@ function App() {
                 )}
               </span>
               <h2 className="text-lg font-semibold text-white">
-                {score ? 'Piano Exercise' : 'No Score Loaded'}
+                {scoreTitle}
               </h2>
-            </div>
-
-            {/* Keyboard hints */}
-            <div className="hidden md:flex items-center gap-3 text-xs text-slate-500">
-              <span>
-                <kbd className="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono mr-1">
-                  Space
-                </kbd>
-                Play/Stop
-              </span>
-              <span>
-                <kbd className="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono mr-1">
-                  Ctrl+Z
-                </kbd>
-                Undo
-              </span>
             </div>
 
             {/* Error toast */}

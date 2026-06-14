@@ -1,5 +1,5 @@
-import type { Note, NoteValue, Score } from "@melos/core"
-import { getDurationInBeats, getTupletScale, pitchToMidi } from "@melos/player"
+import { getDurationInBeats, getTupletScale, type Note, type NoteValue, type Score } from "@melos/core"
+import { pitchToMidi } from "@melos/player"
 
 const TICKS_PER_BEAT = 480
 const DEFAULT_VELOCITY = 88

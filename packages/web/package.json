@@ -12,6 +12,7 @@
   "dependencies": {
     "@melos/converter": "workspace:*",
     "@melos/core": "workspace:*",
+    "@melos/mei": "workspace:*",
     "@melos/player": "workspace:*",
     "@melos/renderer": "workspace:*",
     "jspdf": "^3.0.4",

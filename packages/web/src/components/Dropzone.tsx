@@ -6,6 +6,7 @@
 import { useCallback, useState, useRef, type DragEvent, type ChangeEvent } from 'react'
 import { useScoreStore } from '@/store'
 import { MusicXMLToMNX } from '@melos/converter'
+import { MEIToMNX } from '@melos/mei'
 import { Button } from '@/components/ui/button'
 import { Upload, Music, FileMusic } from 'lucide-react'
 
@@ -25,11 +26,12 @@ export function Dropzone({ onLoadDemo }: DropzoneProps) {
 
             try {
                 const content = await file.text()
-                const converter = new MusicXMLToMNX()
-                const score = converter.convert(content)
+                const score = isMeiFile(file, content)
+                    ? new MEIToMNX().convert(content)
+                    : new MusicXMLToMNX().convert(content)
                 setScore(score)
             } catch (err) {
-                console.error('MusicXML conversion error:', err)
+                console.error('Score import error:', err)
                 setError(err instanceof Error ? err.message : 'Failed to process file')
             } finally {
                 setLoading(false)
@@ -57,19 +59,20 @@ export function Dropzone({ onLoadDemo }: DropzoneProps) {
             setIsDragOver(false)
 
             const files = Array.from(e.dataTransfer.files)
-            const musicXmlFile = files.find(
+            const notationFile = files.find(
                 (f) =>
+                    f.name.endsWith('.mei') ||
                     f.name.endsWith('.musicxml') ||
                     f.name.endsWith('.mxl') ||
                     f.name.endsWith('.xml')
             )
 
-            if (!musicXmlFile) {
-                setError('Please drop a MusicXML file (.musicxml, .mxl, or .xml)')
+            if (!notationFile) {
+                setError('Please drop a MusicXML or MEI file (.musicxml, .mei, .mxl, or .xml)')
                 return
             }
 
-            await processFile(musicXmlFile)
+            await processFile(notationFile)
         },
         [processFile, setError]
     )
@@ -113,7 +116,7 @@ export function Dropzone({ onLoadDemo }: DropzoneProps) {
             <input
                 ref={fileInputRef}
                 type="file"
-                accept=".musicxml,.mxl,.xml"
+                accept=".musicxml,.mei,.mxl,.xml"
                 onChange={handleFileInput}
                 className="hidden"
             />
@@ -131,10 +134,10 @@ export function Dropzone({ onLoadDemo }: DropzoneProps) {
             {/* Text */}
             <div className="text-center">
                 <h3 className="text-xl font-semibold text-white mb-2">
-                    Drop MusicXML or Click to Load Demo
+                    Drop MusicXML/MEI or Click to Load Demo
                 </h3>
                 <p className="text-slate-400 text-sm">
-                    Import .musicxml, .mxl, or .xml files to convert them to MNX format
+                    Import .musicxml, .mei, .mxl, or .xml files to convert them to MNX format
                 </p>
             </div>
 
@@ -160,7 +163,7 @@ export function Dropzone({ onLoadDemo }: DropzoneProps) {
 
             {/* Format badges */}
             <div className="flex gap-2">
-                {['.musicxml', '.mxl', '.xml'].map((format) => (
+                {['.musicxml', '.mei', '.mxl', '.xml'].map((format) => (
                     <span
                         key={format}
                         className="px-2 py-1 text-xs font-mono bg-slate-800 text-slate-400 rounded border border-slate-700"
@@ -171,4 +174,8 @@ export function Dropzone({ onLoadDemo }: DropzoneProps) {
             </div>
         </div>
     )
+}
+
+function isMeiFile(file: File, content: string): boolean {
+    return file.name.toLowerCase().endsWith('.mei') || /<\s*(?:mei:)?mei[\s>]/i.test(content)
 }

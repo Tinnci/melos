@@ -32,6 +32,8 @@ export const PitchSchema = z.object({
 // --- Graphical / Layout Information ---
 
 export const StaffPositionSchema = z.number();
+export const SmuflGlyphSchema = z.string().min(1);
+export const SmuflFontSchema = z.string().min(1);
 
 // --- Musical Events ---
 
@@ -64,15 +66,13 @@ export const LyricSchema = z.object({
     line: z.string().optional() // References a LyricLine ID
 });
 
-export const DynamicValueSchema = z.enum([
-    "p", "pp", "ppp", "pppp",
-    "f", "ff", "fff", "ffff",
-    "mf", "mp", "sfz", "fp", "rfz"
-]);
+export const DynamicValueSchema = z.string().min(1);
 
 export const DynamicEventSchema = z.object({
     type: z.literal("dynamic"),
+    id: z.string().optional(),
     value: DynamicValueSchema,
+    glyph: SmuflGlyphSchema.optional(),
     staff: z.number().int().optional()
 });
 
@@ -131,10 +131,10 @@ export const GraceSchema = z.object({
 });
 
 export const SequenceContentSchema = z.union([
-    BaseEventSchema,
     TupletSchema,
     GraceSchema,
-    DynamicEventSchema
+    DynamicEventSchema,
+    BaseEventSchema
 ]);
 
 export const SequenceSchema = z.object({
@@ -157,7 +157,8 @@ export const ClefSchema = z.object({
     sign: z.enum(["G", "F", "C", "percussion", "TAB"]),
     line: z.number().int().optional(),
     octave: z.number().int().optional(),
-    staffPosition: z.number().int().optional()
+    staffPosition: z.number().int().optional(),
+    glyph: SmuflGlyphSchema.optional()
 });
 
 export const BeamSchema = z.object({
@@ -290,6 +291,7 @@ export const PartSchema = z.object({
     id: z.string().optional(),
     name: z.string().optional(),
     "short-name": z.string().optional(),
+    smuflFont: SmuflFontSchema.optional(),
     sounds: z.array(SoundDefinitionSchema).optional(), // [NEW] Sound definitions
     measures: z.array(PartMeasureSchema),
     dim: z.number().int().optional()
@@ -322,8 +324,11 @@ export type Event = z.infer<typeof BaseEventSchema>;
 export type Tuplet = z.infer<typeof TupletSchema>;
 export type Grace = z.infer<typeof GraceSchema>;
 export type Sequence = z.infer<typeof SequenceSchema>;
+export type Clef = z.infer<typeof ClefSchema>;
 export type GlobalMeasure = z.infer<typeof GlobalMeasureSchema>;
 export type PartMeasure = z.infer<typeof PartMeasureSchema>;
+export type SmuflGlyph = z.infer<typeof SmuflGlyphSchema>;
+export type SmuflFont = z.infer<typeof SmuflFontSchema>;
 export type MeasureRhythmicPosition = z.infer<typeof MeasureRhythmicPositionSchema>;
 export type Articulation = z.infer<typeof ArticulationSchema>;
 export type Ottava = z.infer<typeof OttavaSchema>;
