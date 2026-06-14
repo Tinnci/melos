@@ -17,7 +17,8 @@ Implemented:
   statuses, render plan, per-measure layout analysis, per-measure spacing, and
   output contract for debugging and tests.
 - `Renderer.createDocument(score)` exposes a `RenderDocument` before SVG
-  serialization.
+  serialization, including backend-neutral boxes, spans, and renderer
+  diagnostics.
 - `renderer/src/plan.ts` wraps measures into systems from layout analysis.
 - `renderer/src/spacing.ts` maps core timeline events to measure columns and x
   positions.
@@ -28,6 +29,11 @@ Implemented:
 - `renderer/src/svgBackend.ts` owns the structured `RenderDocument` /
   `RenderElement` serializer, SMuFL glyph output, text escaping, hitboxes, and
   SVG groups.
+- `renderer/src/documentPlanner.ts` plans conservative measure, staff, event,
+  adornment, pedal, ottava, wedge, tie, slur, and tremolo boxes/spans before
+  backend serialization.
+- `renderer/src/collisionResolver.ts` emits detection-only diagnostics for
+  unresolved same-column collisions and measure overflow.
 - `renderer/src/smufl.ts` resolves common SMuFL glyph names.
 - `renderer/src/layout.ts` analyzes hard, soft, and overlay spacing
   contributions from `@melos/core` timeline data.
@@ -36,7 +42,8 @@ Still coupled:
 
 - Curves, primitive paths, fallback notehead shapes, stems, flags, beams, and
   most SVG primitive creation live mostly in `Renderer`.
-- Collision avoidance is not a separate pass.
+- Collision avoidance is not implemented yet. Collision diagnostics are a
+  separate pass, but they do not currently move glyphs or spans.
 - SVG is still the only backend. `RenderDocument` currently uses a raw SVG
   bridge for unmigrated primitives, so it is a migration contract rather than a
   fully backend-neutral drawing tree.
@@ -63,8 +70,8 @@ Score
 | Render plan | Systems, measure x/y/width, content ranges, layout diagnostics | Started in `@melos/renderer` |
 | Spacing solver | Event columns and x positions from timeline beats | Started in `@melos/renderer` |
 | Glyph planner | SMuFL glyph names for clefs, noteheads, rests, accidentals, dynamics, articulations, pedals | Started in `GlyphPlanner`; geometry still mostly in `Renderer` |
-| Collision resolver | Accidentals, dots, lyrics, articulations, dynamics, spans | Missing |
-| Render document | Backend-neutral document and element tree | Started in `RenderDocument`; raw bridge remains |
+| Collision resolver | Accidentals, dots, lyrics, articulations, dynamics, spans | Started as detection-only diagnostics |
+| Render document | Backend-neutral document and element tree | Started in `RenderDocument`; boxes/spans/diagnostics are exposed and raw bridge remains |
 | Render backend | SVG/canvas/PDF/test serialization | Started in `SvgRenderBackend`; many primitives remain inline in `Renderer` |
 
 ## Current Inputs And Outputs
@@ -83,15 +90,17 @@ solveMeasureSpacing(score: Score, measure: RenderPlanMeasure): MeasureSpacing
 Intermediate outputs:
 
 - `RenderPipeline`: inspectable pipeline wrapper with input summary, stage
-  statuses, render plan, per-measure layout/spacing, and output contract.
+  statuses, render plan, per-measure layout/spacing, document metadata, and
+  output contract.
 - `MeasureLayoutAnalysis`: per-measure spacing contributions and diagnostics.
 - `RenderPlan`: part systems, measure geometry, content x-ranges, and collected
   layout diagnostics.
 - `MeasureSpacing`: timeline-aligned event columns, event x positions, and
   path/id indexes for renderer lookup.
-- `RenderDocument`: structured document wrapper with `RenderElement` items.
-  Existing unmigrated primitives are currently carried through a trusted raw
-  SVG element.
+- `RenderDocument`: structured document wrapper with `RenderElement` items,
+  backend-neutral `RenderBox` and `RenderSpan` metadata, and non-fatal renderer
+  diagnostics. Existing unmigrated primitives are currently carried through a
+  trusted raw SVG element.
 
 Renderer output:
 
@@ -203,6 +212,11 @@ interface RenderPipeline {
     layout: MeasureLayoutAnalysis;
     spacing: MeasureSpacing;
   }>;
+  document: {
+    boxes: RenderBox[];
+    spans: RenderSpan[];
+    diagnostics: RenderDiagnostic[];
+  };
   output: {
     kind: "svg";
     backend: "SvgRenderBackend";
@@ -227,6 +241,9 @@ interface RenderDocument {
   height: number;
   elements: RenderElement[];
   styles?: string[];
+  boxes?: RenderBox[];
+  spans?: RenderSpan[];
+  diagnostics?: RenderDiagnostic[];
 }
 
 type RenderElement =
@@ -243,6 +260,11 @@ type RenderElement =
 The `raw` element is intentionally temporary. It allows `Renderer.render()` to
 stay stable while stave lines, barlines, notehead fallbacks, stems, flags,
 beams, curves, and spans are migrated in smaller patches.
+
+`RenderBox` and `RenderSpan` are the retained visual index used by tests and
+future editor tooling. They are deliberately conservative and may be larger
+than final glyph outlines; their current job is to expose planned interaction
+and collision surfaces without changing the SVG output.
 
 ## Renderer Diagnostics
 
@@ -276,8 +298,9 @@ should stay in renderer layers.
    out of `Renderer`. Started with document, SMuFL glyphs, text, hitboxes, and
    group serialization.
 8. Add collision passes for accidentals, dots, lyrics, articulations, dynamics,
-   pedals, and ottavas.
-9. Add backend-neutral glyph-plan snapshot tests.
+   pedals, and ottavas. Started as detection-only diagnostics.
+9. Add backend-neutral glyph-plan snapshot tests. Started with
+   `RenderDocument` box/span/diagnostic tests.
 
 Broader notation priorities belong in
 `docs/research/notation-capability-matrix.md`; this file only tracks renderer

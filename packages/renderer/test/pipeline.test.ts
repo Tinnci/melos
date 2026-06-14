@@ -46,6 +46,11 @@ describe("renderer pipeline inspection", () => {
         );
         expect(measure.spacing.eventsById.get("note-1")).toHaveLength(1);
         expect(measure.spacing.eventsById.get("rest-1")).toHaveLength(1);
+        expect(pipeline.document.boxes.map((box) => box.role)).toEqual(
+            expect.arrayContaining(["measure", "stave", "dynamic", "note", "rest"]),
+        );
+        expect(pipeline.document.spans).toEqual([]);
+        expect(pipeline.document.diagnostics).toEqual([]);
         expect(pipeline.output).toEqual({
             kind: "svg",
             backend: "SvgRenderBackend",

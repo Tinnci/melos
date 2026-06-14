@@ -1,10 +1,16 @@
 import type { Score } from "@melos/core";
+import { resolveRenderCollisions } from "./collisionResolver";
+import {
+    createRenderDocumentMetadata,
+    DEFAULT_RENDER_DOCUMENT_METADATA_OPTIONS,
+} from "./documentPlanner";
 import {
     createRenderPlan,
     type RenderPlan,
     type RenderPlanMeasure,
     type RenderPlanOptions,
 } from "./plan";
+import type { RenderBox, RenderDiagnostic, RenderSpan } from "./renderDocument";
 import { solveMeasureSpacing, type MeasureSpacing } from "./spacing";
 
 export type RenderPipelineStageStatus = "implemented" | "partial" | "missing";
@@ -31,6 +37,12 @@ export interface RenderPipelineOutput {
     height: number;
 }
 
+export interface RenderPipelineDocument {
+    boxes: RenderBox[];
+    spans: RenderSpan[];
+    diagnostics: RenderDiagnostic[];
+}
+
 export interface RenderPipelineMeasure {
     partIndex: number;
     partId?: string;
@@ -47,6 +59,7 @@ export interface RenderPipeline {
     stages: readonly RenderPipelineStage[];
     plan: RenderPlan;
     measures: RenderPipelineMeasure[];
+    document: RenderPipelineDocument;
     output: RenderPipelineOutput;
 }
 
@@ -95,9 +108,9 @@ export const RENDER_PIPELINE_STAGES: readonly RenderPipelineStage[] = [
     },
     {
         name: "collision-resolution",
-        status: "missing",
+        status: "partial",
         input: "planned glyphs, boxes, and spans",
-        output: "adjusted glyph positions and collision diagnostics",
+        output: "box/span diagnostics without layout mutation",
         owner: "@melos/renderer",
     },
     {
@@ -114,17 +127,40 @@ export function createRenderPipeline(
     options: RenderPlanOptions = {},
 ): RenderPipeline {
     const plan = createRenderPlan(score, options);
+    const document = createPipelineDocument(score, plan);
     return {
         input: summarizeInput(score),
         stages: RENDER_PIPELINE_STAGES,
         plan,
         measures: collectPipelineMeasures(score, plan),
+        document,
         output: {
             kind: "svg",
             backend: "SvgRenderBackend",
             width: plan.width,
             height: plan.height,
         },
+    };
+}
+
+function createPipelineDocument(score: Score, plan: RenderPlan): RenderPipelineDocument {
+    const metadata = createRenderDocumentMetadata(
+        score,
+        plan,
+        DEFAULT_RENDER_DOCUMENT_METADATA_OPTIONS,
+    );
+    return {
+        boxes: metadata.boxes,
+        spans: metadata.spans,
+        diagnostics: [
+            ...metadata.diagnostics,
+            ...resolveRenderCollisions({
+                width: plan.width,
+                height: plan.height,
+                boxes: metadata.boxes,
+                spans: metadata.spans,
+            }),
+        ],
     };
 }
 

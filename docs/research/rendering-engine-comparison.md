@@ -83,14 +83,44 @@ Planned batches:
 1. Pipeline inspection API. Done: `Renderer.createPipeline()` and
    `createRenderPipeline()`.
 2. `RenderDocument` and structured `RenderElement` union for text, SMuFL glyph,
-   path, line, rect, group, and hitbox output. Started: `SvgRenderBackend` now
+   path, line, rect, group, and hitbox output. Done for the contract:
+   `SvgRenderBackend` now
    serializes structured documents and `Renderer.createDocument()` exposes the
    current document before SVG output.
 3. Move stave lines, barlines, measure hitboxes, event hitboxes, and SMUFL text
    from raw strings to structured elements. Started for SMuFL text, custom
    dynamic text, event hitboxes, measure hitboxes, and groups.
 4. Add box/span planning for accidentals, dots, articulations, dynamics,
-   pedals, ottavas, ties, slurs, and tremolos.
+   pedals, ottavas, ties, slurs, and tremolos. Done as conservative metadata in
+   `documentPlanner.ts`.
 5. Add a simple collision resolver and diagnostics:
    `collision-unresolved`, `span-endpoint-missing`, and `measure-overfull`.
+   Done as detection-only diagnostics in `collisionResolver.ts`.
 6. Add backend-neutral snapshot tests for `RenderDocument` before SVG output.
+   Done for boxes, spans, endpoint diagnostics, collision diagnostics, and
+   measure overflow.
+
+## Milestone Closeout
+
+Milestone `Renderer pipeline abstraction` now has the minimum complete
+abstraction chain:
+
+```text
+Score
+  -> core timeline
+  -> MeasureLayoutAnalysis
+  -> RenderPlan
+  -> MeasureSpacing
+  -> RenderDocument metadata boxes/spans
+  -> Collision diagnostics
+  -> SvgRenderBackend
+```
+
+Remaining renderer work should move to follow-up milestones:
+
+- Replace raw SVG bridges with structured `RenderElement` primitives for
+  staves, barlines, stems, flags, beams, fallback noteheads, and curves.
+- Turn collision diagnostics into layout-mutating placement passes for
+  accidentals, lyrics, articulations, dynamics, and spans.
+- Add Canvas/PDF/test backends only after `RenderDocument` no longer depends on
+  raw SVG for core primitives.

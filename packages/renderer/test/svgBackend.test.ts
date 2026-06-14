@@ -65,6 +65,9 @@ describe("SVG render backend", () => {
 
         expect(document.width).toBe(renderer.createPlan(score).width);
         expect(document.elements).toHaveLength(1);
+        expect(document.boxes?.map((box) => box.role)).toEqual(
+            expect.arrayContaining(["measure", "stave", "note"]),
+        );
         expect(svg).toContain('data-event-id="note-1"');
         expect(svg).toContain(`width="${document.width}"`);
         expect(svg).toContain(`height="${document.height}"`);

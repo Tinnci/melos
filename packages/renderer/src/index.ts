@@ -10,8 +10,14 @@ import {
 } from "./plan";
 import { solveMeasureSpacing, type MeasureSpacing } from "./spacing";
 import { GlyphPlanner } from "./glyphPlanner";
-import { SvgRenderBackend, type RenderDocument } from "./svgBackend";
+import { SvgRenderBackend } from "./svgBackend";
 import { createRenderPipeline, type RenderPipeline } from "./pipeline";
+import {
+    createRenderDocumentMetadata,
+    type RenderDocumentMetadataOptions,
+} from "./documentPlanner";
+import { resolveRenderCollisions } from "./collisionResolver";
+import type { RenderDocument } from "./renderDocument";
 
 export * from "./smufl";
 export * from "./layout";
@@ -19,6 +25,10 @@ export * from "./plan";
 export * from "./spacing";
 export * from "./glyphPlanner";
 export * from "./svgBackend";
+export * from "./renderDocument";
+export * from "./documentMetadata";
+export * from "./documentPlanner";
+export * from "./collisionResolver";
 export * from "./pipeline";
 
 type ChordLayout = {
@@ -189,6 +199,20 @@ export class Renderer {
 
     createDocument(score: Score): RenderDocument {
         const plan = this.createPlan(score);
+        const metadata = createRenderDocumentMetadata(
+            score,
+            plan,
+            this.getRenderDocumentMetadataOptions(),
+        );
+        const diagnostics = [
+            ...metadata.diagnostics,
+            ...resolveRenderCollisions({
+                width: plan.width,
+                height: plan.height,
+                boxes: metadata.boxes,
+                spans: metadata.spans,
+            }),
+        ];
         const state: DeferredRenderState = {
             globalPositions: new Map(),
             curveRequests: [],
@@ -205,6 +229,9 @@ export class Renderer {
             height: plan.height,
             styles: [`.smufl-glyph { font-family: ${SMUFL_FONT_STACK}; }`],
             elements: [{ kind: "raw", svg: svgContent }],
+            boxes: metadata.boxes,
+            spans: metadata.spans,
+            diagnostics,
         };
     }
 
@@ -496,6 +523,18 @@ export class Renderer {
             measurePadding: this.config.measurePadding,
             minMeasureWidth: 60,
             systemHeaderWidth: this.estimateSystemHeaderWidth(score),
+        };
+    }
+
+    private getRenderDocumentMetadataOptions(): RenderDocumentMetadataOptions {
+        return {
+            lineSpacing: this.config.lineSpacing,
+            measurePadding: this.config.measurePadding,
+            noteRadius: this.config.noteRadius,
+            stemLength: this.config.stemLength,
+            dynamicOffsetY: this.config.dynamicOffsetY,
+            pedalSignOffsetY: this.config.pedalSignOffsetY,
+            pedalLineOffsetY: this.config.pedalLineOffsetY,
         };
     }
 

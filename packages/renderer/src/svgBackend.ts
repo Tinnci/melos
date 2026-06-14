@@ -1,89 +1,40 @@
 import { getSmuflChar, SMUFL_FONT_STACK } from "./smufl";
+import type {
+    RenderAttributes,
+    RenderDocument,
+    RenderElement,
+    RenderElementBase,
+    RenderGroupElement,
+    RenderHitboxElement,
+    RenderLineElement,
+    RenderPathElement,
+    RenderRectElement,
+    RenderSmuflGlyphElement,
+    RenderTextElement,
+} from "./renderDocument";
 
-export type RenderAttributeValue = boolean | number | string | undefined;
-export type RenderAttributes = Record<string, RenderAttributeValue>;
-
-export interface RenderDocument {
-    width: number;
-    height: number;
-    elements: RenderElement[];
-    styles?: string[];
-    attributes?: RenderAttributes;
-}
-
-export type RenderElement =
-    | RenderGroupElement
-    | RenderHitboxElement
-    | RenderLineElement
-    | RenderPathElement
-    | RenderRawElement
-    | RenderRectElement
-    | RenderSmuflGlyphElement
-    | RenderTextElement;
-
-export interface RenderElementBase {
-    attributes?: RenderAttributes;
-    rawAttributes?: string;
-}
-
-export interface RenderTextElement extends RenderElementBase {
-    kind: "text";
-    x: number;
-    y: number;
-    text: string;
-    className?: string;
-    fontFamily?: string;
-    fontSize?: number;
-}
-
-export interface RenderSmuflGlyphElement extends RenderElementBase {
-    kind: "smuflGlyph";
-    x: number;
-    y: number;
-    fontSize: number;
-    glyphName?: string;
-    glyphNames?: string[];
-}
-
-export interface RenderRectElement extends RenderElementBase {
-    kind: "rect";
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
-
-export interface RenderHitboxElement extends RenderElementBase {
-    kind: "hitbox";
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    className: string;
-}
-
-export interface RenderLineElement extends RenderElementBase {
-    kind: "line";
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-}
-
-export interface RenderPathElement extends RenderElementBase {
-    kind: "path";
-    d: string;
-}
-
-export interface RenderGroupElement extends RenderElementBase {
-    kind: "group";
-    children: RenderElement[];
-}
-
-export interface RenderRawElement {
-    kind: "raw";
-    svg: string;
-}
+export type {
+    RenderAttributeValue,
+    RenderAttributes,
+    RenderBox,
+    RenderBoxLayer,
+    RenderBoxRole,
+    RenderDiagnostic,
+    RenderDiagnosticSeverity,
+    RenderDocument,
+    RenderElement,
+    RenderElementBase,
+    RenderGroupElement,
+    RenderHitboxElement,
+    RenderLineElement,
+    RenderPathElement,
+    RenderRawElement,
+    RenderRectElement,
+    RenderSmuflGlyphElement,
+    RenderSpan,
+    RenderSpanRole,
+    RenderTextElement,
+} from "./renderDocument";
 
 export class SvgRenderBackend {
     renderDocument(document: RenderDocument): string {
