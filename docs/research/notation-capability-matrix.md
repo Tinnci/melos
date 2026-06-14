@@ -2,9 +2,10 @@
 
 Date: 2026-06-14
 
-This matrix tracks notation capability status for Melos. It is a product and
-test-planning document, not an architecture document. Package boundaries live
-in `docs/architecture/api-boundaries.md`.
+This matrix is the cross-package backlog for notation capability and
+regression fixtures. Package boundaries live in
+`docs/architecture/api-boundaries.md`; renderer pipeline work lives in
+`docs/architecture/rendering-pipeline.md`.
 
 Status key:
 
@@ -50,7 +51,7 @@ Status key:
 | External comparison backend | Missing | LilyPond research note | Optional developer-only tool |
 | Structured diagnostics | Planned | core timeline, renderer layout, and web rhythm summaries | Converter adoption |
 
-## Priority Gaps
+## Cross-Package Priorities
 
 1. Add span modeling for ties, slurs, wedges, ottavas, pedals, and lyrics.
 2. Split renderer planning from SVG serialization.

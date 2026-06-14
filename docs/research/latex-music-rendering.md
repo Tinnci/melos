@@ -63,17 +63,16 @@ Gregorio parses `gabc`, builds a chant score, applies chant-specific fixes, and
 then writes GregorioTeX. The relevant lesson is plugin isolation for specialist
 notation domains.
 
-## Melos Takeaways
+## Research Takeaways
 
-1. Keep `@melos/core` as the canonical semantic layer.
-2. Keep MusicXML, MEI, and future dialects as adapters.
-3. Use a normalized timeline before layout.
-4. Separate hard, soft, and overlay spacing contributions before drawing.
-5. Keep SMuFL glyph resolution separate from layout and parsing.
-6. Treat external engines as optional comparison tools only.
-7. Grow fixtures from real edge cases, with license review before copying
+1. TeX-era systems are most useful as spacing and fixture references, not as
+   runtime architecture for a browser editor.
+2. Lyrics, melisma, spans, and specialist notation need semantic state before
+   renderer placement.
+3. External engines require optional bridge tooling with clear executable,
+   cache, quoting, and failure boundaries.
+4. Grow fixtures from real edge cases, with license review before copying
    upstream tests.
 
 See `docs/architecture/api-boundaries.md` for package boundaries and
 `docs/architecture/rendering-pipeline.md` for the renderer implementation plan.
-
