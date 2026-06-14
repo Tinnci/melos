@@ -47,11 +47,14 @@ describe("multi-sequence rendering", () => {
             }]
         });
 
-        const svg = new Renderer().render(score);
+        const renderer = new Renderer();
+        const plan = renderer.createPlan(score);
+        const measure = plan.systems[0].measures[0];
+        const svg = renderer.render(score);
 
         expect(svg).toContain('data-event-id="lower"');
         expect(svg).toContain('data-event-id="upper-4"');
-        expect(svg).toContain('x1="250"');
+        expect(svg).toContain(`x1="${measure.x + measure.width}"`);
     });
 
     it("advances hidden rests in later sequences without drawing rest glyphs", () => {

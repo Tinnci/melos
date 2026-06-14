@@ -111,8 +111,17 @@ Player scheduling:
 createPlaybackSchedule(score, options?)
 ```
 
+Renderer planning and output:
+
+```ts
+Renderer.createPlan(score)
+Renderer.render(score)
+createRenderPlan(score, options?)
+```
+
 ## Remaining Risks
 
 - Converter diagnostics are not yet structured.
-- Renderer still couples glyph planning and SVG serialization.
+- Renderer still couples glyph planning, hitboxes, curves, and SVG
+  serialization.
 - Lyrics and melisma are not yet core semantic spans.

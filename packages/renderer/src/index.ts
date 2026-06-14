@@ -10,9 +10,11 @@ import {
     resolveRestGlyph,
     SMUFL_FONT_STACK
 } from "./smufl";
+import { createRenderPlan, type RenderPlan, type RenderPlanOptions } from "./plan";
 
 export * from "./smufl";
 export * from "./layout";
+export * from "./plan";
 
 type ChordLayout = {
     x: number;
@@ -76,209 +78,178 @@ export class Renderer {
         stemLength: 35
     };
 
+    createPlan(score: Score): RenderPlan {
+        return createRenderPlan(score, this.getRenderPlanOptions(score));
+    }
+
     /**
-     * Renders a Score object to an SVG string with automatic system wrapping.
+     * Renders a Score object to an SVG string through the intermediate render plan.
      */
     render(score: Score): string {
+        const plan = this.createPlan(score);
         let svgContent = "";
-        let currentY = this.config.paddingY;
-        let maxX = 0;
 
         // Global position registry for deferred Tie/Slur/Tremolo rendering
         const globalPositions: Map<string, GlobalPosition> = new Map();
         const curveRequests: CurveRequest[] = [];
         const pendingTremolos: Map<string, { sourceId: string, marks: number }> = new Map();
 
-        score.parts.forEach((part, partIndex) => {
-            const renderedPartId = part.id || `part-${partIndex + 1}`;
-            // Track current position
-            let currentX = this.config.paddingX;
-            let systemStartY = currentY;
-            let isNewSystem = true;
+        plan.parts.forEach((partPlan) => {
+            const part = score.parts[partPlan.partIndex];
+            if (!part) return;
 
-            // Render Part Name (only on first system)
-            svgContent += `<text x="${this.config.paddingX}" y="${currentY - 15}" font-family="Arial" font-size="14">${part.name || part.id}</text>\n`;
+            const renderedPartId = part.id || `part-${partPlan.partIndex + 1}`;
 
-            part.measures.forEach((measure, mIndex) => {
-                // --- 1. Calculate measure width ---
-                const measureWidth = this.calculateMeasureWidth(measure);
+            partPlan.systems.forEach((system) => {
+                const systemY = system.y;
 
-                // --- 2. Check if we need to wrap to next system ---
-                if (currentX + measureWidth > this.config.pageWidth + this.config.paddingX && !isNewSystem) {
-                    // Finish current system's stave lines
-                    svgContent += this.renderStaveLines(this.config.paddingX, systemStartY, currentX - this.config.paddingX);
-
-                    // Move to next system
-                    currentX = this.config.paddingX;
-                    currentY += this.config.systemSpacing;
-                    systemStartY = currentY;
-                    isNewSystem = true;
+                // Render part name only on the first system for that part.
+                if (system.systemIndex === 0) {
+                    svgContent += `<text x="${this.config.paddingX}" y="${systemY - 15}" font-family="Arial" font-size="14">${part.name || part.id}</text>\n`;
                 }
 
-                // --- 3. Draw Clef, Key, Time if new system or changes ---
-                if (isNewSystem) {
-                    // Draw clef at start of system
-                    let clef: Clef = { sign: "G" };
-                    const firstMeasure = part.measures[0];
-                    // Check for clef in first measure
-                    if (firstMeasure?.clefs && firstMeasure.clefs.length > 0) {
-                        clef = firstMeasure.clefs[0].clef;
-                    }
-                    svgContent += this.renderClef(currentX + 10, currentY + 40, clef);
-                    currentX += this.config.clefWidth;
-
-                    // Draw Key Signature (Initial only for now)
-                    const initialGlobalMeasure = score.global.measures[0];
-                    const initialKey = initialGlobalMeasure?.key;
-                    if (initialKey) {
-                        const keyWidth = this.renderKeySignature(currentX, currentY, initialKey);
-                        svgContent += keyWidth.svg;
-                        currentX += keyWidth.width;
-                    }
-
-                    // Draw Time Signature
-                    const initialTime = initialGlobalMeasure?.time;
-                    if (initialTime) {
-                        const timeWidth = this.renderTimeSignature(currentX, currentY, initialTime);
-                        svgContent += timeWidth.svg;
-                        currentX += timeWidth.width;
-                    }
+                let headerX = system.x;
+                let clef: Clef = { sign: "G" };
+                const firstMeasure = part.measures[0];
+                if (firstMeasure?.clefs && firstMeasure.clefs.length > 0) {
+                    clef = firstMeasure.clefs[0].clef;
                 }
 
-                // --- 4. Draw barline at start of measure ---
-                const currentGlobalMeasure = score.global.measures[mIndex];
-                svgContent += this.renderBarline(currentX, currentY, "start", currentGlobalMeasure);
-                svgContent += this.renderMeasureHitbox(currentX, currentY, measureWidth, mIndex + 1, renderedPartId);
+                svgContent += this.renderClef(headerX + 10, systemY + 40, clef);
+                headerX += this.config.clefWidth;
 
-                // --- 4b. Draw Jumps (Start of measure: Segno, Coda) ---
-                if (currentGlobalMeasure?.jumps) {
-                    svgContent += this.renderJumps(currentX, currentY, currentGlobalMeasure.jumps, "start");
+                const initialGlobalMeasure = score.global.measures[0];
+                const initialKey = initialGlobalMeasure?.key;
+                if (initialKey) {
+                    const keyWidth = this.renderKeySignature(headerX, systemY, initialKey);
+                    svgContent += keyWidth.svg;
+                    headerX += keyWidth.width;
                 }
 
-                isNewSystem = false;
-
-                // --- 5. Render measure content ---
-                const noteX = currentX + this.config.measurePadding;
-                const renderMeasure = measure as RenderMeasure;
-
-                // Beam data collection: eventId -> position info
-                const eventPositions: Map<string, ChordLayout> = new Map();
-                // Determine which events are beamed
-                const beamedEventIds: Set<string> = new Set();
-                if (measure.beams) {
-                    for (const beam of measure.beams) {
-                        for (const eventId of beam.events) {
-                            beamedEventIds.add(eventId);
-                        }
-                    }
+                const initialTime = initialGlobalMeasure?.time;
+                if (initialTime) {
+                    const timeWidth = this.renderTimeSignature(headerX, systemY, initialTime);
+                    svgContent += timeWidth.svg;
                 }
 
-                // --- 5a. Check for Multimeasure Rest ---
-                if (renderMeasure.multimeasureRest) {
-                    const mmRest = renderMeasure.multimeasureRest;
-                    svgContent += this.renderMultimeasureRest(
-                        currentX + this.config.measurePadding,
-                        currentX + measureWidth - this.config.measurePadding,
-                        currentY,
-                        mmRest.duration
+                system.measures.forEach((measurePlan) => {
+                    const measure = part.measures[measurePlan.measureIndex];
+                    if (!measure) return;
+
+                    const measureX = measurePlan.x;
+                    const measureWidth = measurePlan.width;
+                    const measureEndX = measureX + measureWidth;
+                    const globalMeasure = score.global.measures[measurePlan.measureIndex];
+
+                    svgContent += this.renderBarline(measureX, systemY, "start", globalMeasure);
+                    svgContent += this.renderMeasureHitbox(
+                        measureX,
+                        systemY,
+                        measureWidth,
+                        measurePlan.measureNumber,
+                        renderedPartId
                     );
-                    // Skip regular note content rendering for this measure
-                } else {
-                    // --- 5b. Render regular measure content ---
-                    const sequences = renderMeasure.sequences || [];
-                    const stemDirections = this.sequenceStemDirections(sequences, currentY);
-                    sequences.forEach((sequence, sequenceIndex) => {
-                        svgContent += this.renderSequenceContent(
-                            sequence.content || [],
-                            noteX,
-                            currentY,
-                            renderedPartId,
-                            stemDirections[sequenceIndex],
-                            beamedEventIds,
-                            eventPositions,
-                            globalPositions,
-                            curveRequests,
-                            pendingTremolos
-                        );
-                    });
 
-                    // --- 5c. Render Beams ---
-                    if (measure.beams && eventPositions.size > 0) {
+                    if (globalMeasure?.jumps) {
+                        svgContent += this.renderJumps(measureX, systemY, globalMeasure.jumps, "start");
+                    }
+
+                    const renderMeasure = measure as RenderMeasure;
+                    const eventPositions: Map<string, ChordLayout> = new Map();
+                    const beamedEventIds: Set<string> = new Set();
+                    if (measure.beams) {
                         for (const beam of measure.beams) {
-                            svgContent += this.renderBeam(beam.events, eventPositions);
-                        }
-                    }
-
-                    // --- 5d. Render Ottavas (8va, 8vb, etc.) ---
-                    if (renderMeasure.ottavas) {
-                        for (const ottava of renderMeasure.ottavas) {
-                            // Simplified: render ottava spanning the measure where it starts
-                            const startX = currentX + this.config.measurePadding;
-                            const endX = currentX + measureWidth - this.config.measurePadding;
-                            svgContent += this.renderOttava(startX, endX, currentY, ottava.value);
-                        }
-                    }
-
-                    // --- 5e. Render Pedals (Sustain) ---
-                    if (renderMeasure.pedals) {
-                        const pedalEvents = renderMeasure.pedals;
-                        pedalEvents.forEach((p) => {
-                            const contentStartX = currentX + this.config.measurePadding;
-                            const contentWidth = measureWidth - (this.config.measurePadding * 2);
-                            const pX = this.rhythmicPositionToX(
-                                contentStartX,
-                                contentWidth,
-                                p.position
-                            );
-
-                            if (p.type === 'start') {
-                                if (p.sign) {
-                                    svgContent += this.renderPedalSign(pX, currentY, 'start');
-                                }
-                                if (p.line) {
-                                    const measureEndX = currentX + measureWidth - this.config.measurePadding;
-                                    const endX = p.end?.measure === mIndex + 1
-                                        ? this.rhythmicPositionToX(contentStartX, contentWidth, p.end.position)
-                                        : measureEndX;
-                                    const lineStartX = pX + (p.sign ? 32 : 0);
-                                    const lineEndX = Math.max(lineStartX + 16, Math.min(endX, measureEndX));
-                                    svgContent += this.renderPedalLine(lineStartX, lineEndX, currentY);
-                                } else if (!p.sign) {
-                                    svgContent += this.renderPedalSign(pX, currentY, 'start');
-                                }
-                            } else if (p.type === 'stop' && !p.line) {
-                                svgContent += this.renderPedalSign(pX, currentY, 'stop');
+                            for (const eventId of beam.events) {
+                                beamedEventIds.add(eventId);
                             }
-                        });
+                        }
                     }
-                } // End of else block (regular measure rendering)
 
-                // --- 6. Advance X position ---
-                currentX += measureWidth;
-                if (currentX > maxX) maxX = currentX;
+                    if (renderMeasure.multimeasureRest) {
+                        svgContent += this.renderMultimeasureRest(
+                            measurePlan.contentX,
+                            measureEndX - this.config.measurePadding,
+                            systemY,
+                            renderMeasure.multimeasureRest.duration
+                        );
+                    } else {
+                        const sequences = renderMeasure.sequences || [];
+                        const stemDirections = this.sequenceStemDirections(sequences, systemY);
+                        sequences.forEach((sequence, sequenceIndex) => {
+                            svgContent += this.renderSequenceContent(
+                                sequence.content || [],
+                                measurePlan.contentX,
+                                systemY,
+                                renderedPartId,
+                                stemDirections[sequenceIndex],
+                                beamedEventIds,
+                                eventPositions,
+                                globalPositions,
+                                curveRequests,
+                                pendingTremolos
+                            );
+                        });
 
-                // Access Global Measure for barline/repeat/ending info
-                const globalMeasure = score.global.measures[mIndex];
+                        if (measure.beams && eventPositions.size > 0) {
+                            for (const beam of measure.beams) {
+                                svgContent += this.renderBeam(beam.events, eventPositions);
+                            }
+                        }
 
-                // --- 7. Draw ending barline ---
-                svgContent += this.renderBarline(currentX, currentY, "end", globalMeasure);
+                        if (renderMeasure.ottavas) {
+                            for (const ottava of renderMeasure.ottavas) {
+                                svgContent += this.renderOttava(
+                                    measurePlan.contentX,
+                                    measureEndX - this.config.measurePadding,
+                                    systemY,
+                                    ottava.value
+                                );
+                            }
+                        }
 
-                // --- 7b. Draw Voltas (Endings) ---
-                if (globalMeasure?.ending) {
-                    svgContent += this.renderEnding(currentX, measureWidth, currentY, globalMeasure.ending);
-                }
+                        if (renderMeasure.pedals) {
+                            renderMeasure.pedals.forEach((p) => {
+                                const pX = this.rhythmicPositionToX(
+                                    measurePlan.contentX,
+                                    measurePlan.contentWidth,
+                                    p.position
+                                );
 
-                // --- 7c. Draw Jumps (End of measure: Fine, D.C., D.S.) ---
-                if (globalMeasure?.jumps) {
-                    svgContent += this.renderJumps(currentX, currentY, globalMeasure.jumps, "end");
-                }
+                                if (p.type === 'start') {
+                                    if (p.sign) {
+                                        svgContent += this.renderPedalSign(pX, systemY, 'start');
+                                    }
+                                    if (p.line) {
+                                        const pedalMeasureEndX = measureEndX - this.config.measurePadding;
+                                        const endX = p.end?.measure === measurePlan.measureNumber
+                                            ? this.rhythmicPositionToX(measurePlan.contentX, measurePlan.contentWidth, p.end.position)
+                                            : pedalMeasureEndX;
+                                        const lineStartX = pX + (p.sign ? 32 : 0);
+                                        const lineEndX = Math.max(lineStartX + 16, Math.min(endX, pedalMeasureEndX));
+                                        svgContent += this.renderPedalLine(lineStartX, lineEndX, systemY);
+                                    } else if (!p.sign) {
+                                        svgContent += this.renderPedalSign(pX, systemY, 'start');
+                                    }
+                                } else if (p.type === 'stop' && !p.line) {
+                                    svgContent += this.renderPedalSign(pX, systemY, 'stop');
+                                }
+                            });
+                        }
+                    }
+
+                    svgContent += this.renderBarline(measureEndX, systemY, "end", globalMeasure);
+
+                    if (globalMeasure?.ending) {
+                        svgContent += this.renderEnding(measureEndX, measureWidth, systemY, globalMeasure.ending);
+                    }
+
+                    if (globalMeasure?.jumps) {
+                        svgContent += this.renderJumps(measureEndX, systemY, globalMeasure.jumps, "end");
+                    }
+                });
+
+                svgContent += this.renderStaveLines(system.x, system.y, system.width);
             });
-
-            // Draw stave lines for the last system
-            svgContent += this.renderStaveLines(this.config.paddingX, systemStartY, currentX - this.config.paddingX);
-
-            // Move down for next part
-            currentY += this.config.systemSpacing;
         });
 
         // --- 8. Render Ties and Slurs (Deferred) ---
@@ -295,16 +266,46 @@ export class Renderer {
             }
         }
 
-        // Calculate final SVG dimensions
-        const svgWidth = Math.max(maxX + this.config.paddingX, this.config.minPageWidth);
-        const svgHeight = currentY + this.config.bottomPadding;
-
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${plan.width}" height="${plan.height}">
             <style>
                 .smufl-glyph { font-family: ${SMUFL_FONT_STACK}; }
             </style>
             ${svgContent}
         </svg>`;
+    }
+
+    private getRenderPlanOptions(score: Score): RenderPlanOptions {
+        return {
+            pageWidth: this.config.pageWidth,
+            minPageWidth: this.config.minPageWidth,
+            paddingX: this.config.paddingX,
+            paddingY: this.config.paddingY,
+            bottomPadding: this.config.bottomPadding,
+            systemSpacing: this.config.systemSpacing,
+            measurePadding: this.config.measurePadding,
+            minMeasureWidth: 60,
+            systemHeaderWidth: this.estimateSystemHeaderWidth(score)
+        };
+    }
+
+    private estimateSystemHeaderWidth(score: Score): number {
+        const initialGlobalMeasure = score.global.measures[0];
+        let width = this.config.clefWidth;
+
+        if (initialGlobalMeasure?.key) {
+            width += this.estimateKeySignatureWidth(initialGlobalMeasure.key);
+        }
+
+        if (initialGlobalMeasure?.time) {
+            width += 30;
+        }
+
+        return width;
+    }
+
+    private estimateKeySignatureWidth(key: { fifths?: number }): number {
+        const fifths = key.fifths || 0;
+        return fifths === 0 ? 10 : (Math.abs(fifths) * 12) + 10;
     }
 
     /**
@@ -584,31 +585,6 @@ export class Renderer {
             }
         });
         return positions;
-    }
-
-    /**
-     * Calculate the width needed for a measure based on its content.
-     */
-    private calculateMeasureWidth(measure: RenderMeasure): number {
-        const sequenceWidths = (measure.sequences || []).map((sequence) =>
-            this.config.measurePadding * 2 + this.calculateSequenceContentWidth(sequence.content || [])
-        );
-
-        return Math.max(...sequenceWidths, 60); // Minimum width
-    }
-
-    private calculateSequenceContentWidth(content: RenderItem[]): number {
-        let width = 0;
-        content.forEach((item) => {
-            if (item.notes && item.notes.length > 0) {
-                width += this.getNoteWidth(item.duration?.base || "quarter", item.duration?.dots || 0);
-            } else if (item.rest) {
-                width += this.getNoteWidth(item.duration?.base || "quarter", item.duration?.dots || 0);
-            } else if (item.type === 'tuplet' || item.type === 'grace') {
-                item.content?.forEach(() => { width += 20; });
-            }
-        });
-        return width;
     }
 
     /**

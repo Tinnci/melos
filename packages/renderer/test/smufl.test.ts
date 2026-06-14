@@ -154,9 +154,15 @@ describe("SMuFL rendering support", () => {
             }]
         });
 
-        const svg = new Renderer().render(score);
+        const renderer = new Renderer();
+        const plan = renderer.createPlan(score);
+        const measure = plan.systems[0].measures[0];
+        const lineStartX = measure.contentX + 32;
+        const lineEndX = measure.contentX + (measure.contentWidth / 2);
+        const svg = renderer.render(score);
+
         expect(svg).toContain('data-smufl-glyph="keyboardPedalPed"');
-        expect(svg).toContain('<path d="M127 151 L127 161 L165 161 L165 151"');
+        expect(svg).toContain(`<path d="M${lineStartX} 151 L${lineStartX} 161 L${lineEndX} 161 L${lineEndX} 151"`);
     });
 
     it("escapes custom dynamic text before writing SVG", () => {

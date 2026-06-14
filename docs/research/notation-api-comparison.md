@@ -39,6 +39,15 @@ LilyPond favors compiler passes. The relevant lesson is pass separation, not an
 external dependency: semantic timing, engraving objects, spacing, and output
 should stay distinct.
 
+## Rendering Pipeline Differences
+
+| Project | Rendering pipeline shape | Melos implication |
+| --- | --- | --- |
+| VexFlow | Caller-created notes/voices -> `Formatter` -> `TickContext` x positions -> backend drawing | Keep low-level geometry state explicit and inspectable. |
+| OpenSheetMusicDisplay | MusicXML -> `MusicSheet` -> `GraphicalMusicSheet` via calculator -> drawer | Separate semantic score data from graphical geometry. |
+| abcjs | Parser tune -> abstract engraving elements -> layout assigns coordinates -> draw creates SVG/selectables | Add a retained plan between parsing/layout and SVG output. |
+| LilyPond | Source -> music interpretation -> engraving objects -> spacing -> output backend | Keep passes composable instead of embedding all decisions in one renderer method. |
+
 ## Melos Decision Supported
 
 The comparison supports a small query layer between semantic data and
@@ -46,6 +55,7 @@ consumers:
 
 - Timeline builders create normalized timing data.
 - Timeline indexes provide lookup by measure, sequence, id, and path.
+- Render plans expose systems and measure geometry before SVG serialization.
 - Renderers, players, and editor selection use indexes instead of inventing
   local traversal rules.
 - Duplicate event ids are represented as multiple matches rather than silently
