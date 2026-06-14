@@ -18,6 +18,6 @@
             "@/*": ["./packages/web/src/*"]
         }
     },
-    "include": ["packages/**/*.ts", "packages/**/*.tsx", "scripts/**/*.ts"],
+    "include": ["packages/**/*.ts", "packages/**/*.tsx", "scripts/**/*.ts", "test/**/*.ts"],
     "exclude": ["node_modules", "dist", "coverage", ".codex-research", "packages/*/dist"]
 }

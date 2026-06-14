@@ -1,6 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import { ScoreSchema } from "../src/schema";
 import {
+    dynamicEvent,
+    graceGroup,
+    measureWithContent,
+    noteEvent,
+    restEvent,
+    singlePartScore,
+    tupletEvent,
+} from "../../../test/fixtures/score";
+import {
     buildMeasureTimeline,
     buildScoreTimelineIndex,
     buildScoreTimeline,
@@ -16,38 +25,18 @@ import {
 
 describe("core normalized timeline", () => {
     it("resolves inherited time signatures and positions duration-bearing events", () => {
-        const score = ScoreSchema.parse({
-            mnx: { version: 1 },
-            global: {
-                measures: [{ time: { count: 3, unit: 4 } }, {}],
-            },
-            parts: [
-                {
-                    id: "P1",
-                    measures: [
-                        { sequences: [{ content: [] }] },
-                        {
-                            sequences: [
-                                {
-                                    content: [
-                                        { type: "dynamic", id: "dyn-1", value: "p" },
-                                        {
-                                            id: "note-1",
-                                            duration: { base: "quarter" },
-                                            notes: [{ pitch: { step: "C", octave: 4 }, staff: 1 }],
-                                        },
-                                        {
-                                            id: "skip-1",
-                                            duration: { base: "half" },
-                                            rest: { hidden: true },
-                                            staff: 1,
-                                        },
-                                    ],
-                                },
-                            ],
-                        },
-                    ],
-                },
+        const score = singlePartScore({
+            globalMeasures: [{ time: { count: 3, unit: 4 } }, {}],
+            measures: [
+                measureWithContent([]),
+                measureWithContent([
+                    dynamicEvent({ id: "dyn-1", value: "p" }),
+                    noteEvent({
+                        id: "note-1",
+                        notes: [{ pitch: { step: "C", octave: 4 }, staff: 1 }],
+                    }),
+                    { ...restEvent({ id: "skip-1", duration: "half", hidden: true }), staff: 1 },
+                ]),
             ],
         });
 
@@ -76,43 +65,27 @@ describe("core normalized timeline", () => {
     });
 
     it("keeps grace events on the timeline without advancing rhythmic time", () => {
-        const score = ScoreSchema.parse({
-            mnx: { version: 1 },
-            global: { measures: [{ time: { count: 4, unit: 4 } }] },
-            parts: [
-                {
-                    id: "P1",
-                    measures: [
-                        {
-                            sequences: [
-                                {
-                                    content: [
-                                        {
-                                            type: "grace",
-                                            content: [
-                                                {
-                                                    id: "grace-1",
-                                                    duration: { base: "16th" },
-                                                    notes: [{ pitch: { step: "B", octave: 4 } }],
-                                                },
-                                                {
-                                                    id: "grace-2",
-                                                    duration: { base: "16th" },
-                                                    notes: [{ pitch: { step: "C", octave: 5 } }],
-                                                },
-                                            ],
-                                        },
-                                        {
-                                            id: "main-1",
-                                            duration: { base: "whole" },
-                                            notes: [{ pitch: { step: "D", octave: 4 } }],
-                                        },
-                                    ],
-                                },
-                            ],
-                        },
-                    ],
-                },
+        const score = singlePartScore({
+            measures: [
+                measureWithContent([
+                    graceGroup([
+                        noteEvent({
+                            id: "grace-1",
+                            duration: "16th",
+                            pitch: { step: "B", octave: 4 },
+                        }),
+                        noteEvent({
+                            id: "grace-2",
+                            duration: "16th",
+                            pitch: { step: "C", octave: 5 },
+                        }),
+                    ]),
+                    noteEvent({
+                        id: "main-1",
+                        duration: "whole",
+                        pitch: { step: "D", octave: 4 },
+                    }),
+                ]),
             ],
         });
 
@@ -129,38 +102,22 @@ describe("core normalized timeline", () => {
     });
 
     it("applies tuplet scaling to nested event timing", () => {
-        const score = ScoreSchema.parse({
-            mnx: { version: 1 },
-            global: { measures: [{ time: { count: 4, unit: 4 } }] },
-            parts: [
-                {
-                    id: "P1",
-                    measures: [
-                        {
-                            sequences: [
-                                {
-                                    content: [
-                                        {
-                                            type: "tuplet",
-                                            inner: { duration: { base: "eighth" }, multiple: 3 },
-                                            outer: { duration: { base: "eighth" }, multiple: 2 },
-                                            content: ["C", "D", "E"].map((step, index) => ({
-                                                id: `tuplet-${index + 1}`,
-                                                duration: { base: "eighth" },
-                                                notes: [{ pitch: { step, octave: 4 } }],
-                                            })),
-                                        },
-                                        ...["F", "G", "A"].map((step, index) => ({
-                                            id: `quarter-${index + 1}`,
-                                            duration: { base: "quarter" },
-                                            notes: [{ pitch: { step, octave: 4 } }],
-                                        })),
-                                    ],
-                                },
-                            ],
-                        },
-                    ],
-                },
+        const score = singlePartScore({
+            measures: [
+                measureWithContent([
+                    tupletEvent({
+                        content: (["C", "D", "E"] as const).map((step, index) =>
+                            noteEvent({
+                                id: `tuplet-${index + 1}`,
+                                duration: "eighth",
+                                pitch: { step, octave: 4 },
+                            }),
+                        ),
+                    }),
+                    ...(["F", "G", "A"] as const).map((step, index) =>
+                        noteEvent({ id: `quarter-${index + 1}`, pitch: { step, octave: 4 } }),
+                    ),
+                ]),
             ],
         });
 
@@ -175,39 +132,19 @@ describe("core normalized timeline", () => {
     });
 
     it("reports per-sequence rhythm diagnostics and aggregates score diagnostics", () => {
-        const score = ScoreSchema.parse({
-            mnx: { version: 1 },
-            global: { measures: [{ time: { count: 4, unit: 4 } }] },
-            parts: [
-                {
-                    id: "P1",
-                    measures: [
+        const score = singlePartScore({
+            measures: [
+                measureWithContent([], {
+                    sequences: [
+                        { content: [noteEvent()] },
                         {
-                            sequences: [
-                                {
-                                    content: [
-                                        {
-                                            duration: { base: "quarter" },
-                                            notes: [{ pitch: { step: "C", octave: 4 } }],
-                                        },
-                                    ],
-                                },
-                                {
-                                    content: [
-                                        {
-                                            duration: { base: "whole" },
-                                            notes: [{ pitch: { step: "E", octave: 4 } }],
-                                        },
-                                        {
-                                            duration: { base: "quarter" },
-                                            notes: [{ pitch: { step: "F", octave: 4 } }],
-                                        },
-                                    ],
-                                },
+                            content: [
+                                noteEvent({ duration: "whole", pitch: { step: "E", octave: 4 } }),
+                                noteEvent({ pitch: { step: "F", octave: 4 } }),
                             ],
                         },
                     ],
-                },
+                }),
             ],
         });
 

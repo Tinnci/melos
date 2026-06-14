@@ -1,50 +1,40 @@
 import { describe, expect, it } from "bun:test";
-import { ScoreSchema } from "@melos/core";
+import {
+    graceGroup,
+    measureWithContent,
+    noteEvent,
+    restEvent,
+    singlePartScore,
+    tupletEvent,
+} from "../../../test/fixtures/score";
 import { createRenderPlan, solveMeasureSpacing } from "../src/index";
 
 describe("renderer spacing solver", () => {
     it("creates timeline-aligned columns across voices", () => {
-        const score = ScoreSchema.parse({
-            mnx: { version: 1 },
-            global: { measures: [{ time: { count: 4, unit: 4 } }] },
-            parts: [
-                {
-                    id: "P1",
-                    measures: [
+        const score = singlePartScore({
+            measures: [
+                measureWithContent([], {
+                    sequences: [
                         {
-                            sequences: [
-                                {
-                                    content: [
-                                        {
-                                            id: "upper-1",
-                                            duration: { base: "quarter" },
-                                            notes: [{ pitch: { step: "C", octave: 5 } }],
-                                        },
-                                        {
-                                            id: "upper-2",
-                                            duration: { base: "quarter" },
-                                            notes: [{ pitch: { step: "D", octave: 5 } }],
-                                        },
-                                    ],
-                                },
-                                {
-                                    content: [
-                                        {
-                                            id: "skip",
-                                            duration: { base: "quarter" },
-                                            rest: { hidden: true },
-                                        },
-                                        {
-                                            id: "lower-entry",
-                                            duration: { base: "quarter" },
-                                            notes: [{ pitch: { step: "C", octave: 4 } }],
-                                        },
-                                    ],
-                                },
+                            content: [
+                                noteEvent({
+                                    id: "upper-1",
+                                    pitch: { step: "C", octave: 5 },
+                                }),
+                                noteEvent({
+                                    id: "upper-2",
+                                    pitch: { step: "D", octave: 5 },
+                                }),
+                            ],
+                        },
+                        {
+                            content: [
+                                restEvent({ id: "skip", hidden: true }),
+                                noteEvent({ id: "lower-entry" }),
                             ],
                         },
                     ],
-                },
+                }),
             ],
         });
 
@@ -70,45 +60,26 @@ describe("renderer spacing solver", () => {
     });
 
     it("indexes nested grace and tuplet events by source path", () => {
-        const score = ScoreSchema.parse({
-            mnx: { version: 1 },
-            global: { measures: [{ time: { count: 4, unit: 4 } }] },
-            parts: [
-                {
-                    id: "P1",
-                    measures: [
-                        {
-                            sequences: [
-                                {
-                                    content: [
-                                        {
-                                            type: "grace",
-                                            content: [
-                                                {
-                                                    id: "grace-1",
-                                                    duration: { base: "16th" },
-                                                    notes: [{ pitch: { step: "B", octave: 4 } }],
-                                                },
-                                            ],
-                                        },
-                                        {
-                                            type: "tuplet",
-                                            inner: { duration: { base: "eighth" }, multiple: 3 },
-                                            outer: { duration: { base: "eighth" }, multiple: 2 },
-                                            content: [
-                                                {
-                                                    id: "tuplet-1",
-                                                    duration: { base: "eighth" },
-                                                    notes: [{ pitch: { step: "C", octave: 5 } }],
-                                                },
-                                            ],
-                                        },
-                                    ],
-                                },
-                            ],
-                        },
-                    ],
-                },
+        const score = singlePartScore({
+            measures: [
+                measureWithContent([
+                    graceGroup([
+                        noteEvent({
+                            id: "grace-1",
+                            duration: "16th",
+                            pitch: { step: "B", octave: 4 },
+                        }),
+                    ]),
+                    tupletEvent({
+                        content: [
+                            noteEvent({
+                                id: "tuplet-1",
+                                duration: "eighth",
+                                pitch: { step: "C", octave: 5 },
+                            }),
+                        ],
+                    }),
+                ]),
             ],
         });
 

@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
-import { ScoreSchema } from '@melos/core'
+import {
+  graceGroup,
+  measureWithContent,
+  noteEvent,
+  scoreFixture,
+  singlePartScore,
+  tupletEvent,
+} from '../../../test/fixtures/score'
 import { createDemoScore, type EditableContentItem, useScoreStore } from '../src/store/scoreStore'
 
 function firstMeasureContent(): EditableContentItem[] {
@@ -165,51 +172,28 @@ describe('score store editing actions', () => {
   })
 
   it('uses the core timeline for inherited meter, grace notes, and tuplets', () => {
-    const score = ScoreSchema.parse({
-      mnx: { version: 1 },
-      global: {
-        measures: [{ time: { count: 3, unit: 4 } }, {}],
-      },
-      parts: [
-        {
-          id: 'piano',
-          measures: [
-            { sequences: [{ content: [] }] },
-            {
-              sequences: [
-                {
-                  content: [
-                    {
-                      type: 'grace',
-                      content: [
-                        {
-                          id: 'grace-note',
-                          duration: { base: '16th' },
-                          notes: [{ pitch: { step: 'B', octave: 4 } }],
-                        },
-                      ],
-                    },
-                    {
-                      type: 'tuplet',
-                      inner: { duration: { base: 'eighth' }, multiple: 3 },
-                      outer: { duration: { base: 'eighth' }, multiple: 2 },
-                      content: ['C', 'D', 'E'].map((step, index) => ({
-                        id: `tuplet-note-${index + 1}`,
-                        duration: { base: 'eighth' },
-                        notes: [{ pitch: { step, octave: 4 } }],
-                      })),
-                    },
-                    ...['F', 'G'].map((step, index) => ({
-                      id: `quarter-note-${index + 1}`,
-                      duration: { base: 'quarter' },
-                      notes: [{ pitch: { step, octave: 4 } }],
-                    })),
-                  ],
-                },
-              ],
-            },
-          ],
-        },
+    const score = singlePartScore({
+      partId: 'piano',
+      globalMeasures: [{ time: { count: 3, unit: 4 } }, {}],
+      measures: [
+        measureWithContent([]),
+        measureWithContent([
+          graceGroup([
+            noteEvent({ id: 'grace-note', duration: '16th', pitch: { step: 'B', octave: 4 } }),
+          ]),
+          tupletEvent({
+            content: (['C', 'D', 'E'] as const).map((step, index) =>
+              noteEvent({
+                id: `tuplet-note-${index + 1}`,
+                duration: 'eighth',
+                pitch: { step, octave: 4 },
+              }),
+            ),
+          }),
+          ...(['F', 'G'] as const).map((step, index) =>
+            noteEvent({ id: `quarter-note-${index + 1}`, pitch: { step, octave: 4 } }),
+          ),
+        ]),
       ],
     })
 
@@ -239,44 +223,18 @@ describe('score store editing actions', () => {
   })
 
   it('uses the timeline index to disambiguate selected duplicate ids by part', () => {
-    const score = ScoreSchema.parse({
-      mnx: { version: 1 },
-      global: { measures: [{ time: { count: 4, unit: 4 } }] },
+    const score = scoreFixture({
       parts: [
         {
           id: 'piano',
-          measures: [
-            {
-              sequences: [
-                {
-                  content: [
-                    {
-                      id: 'shared-event',
-                      duration: { base: 'quarter' },
-                      notes: [{ pitch: { step: 'C', octave: 4 } }],
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
+          measures: [measureWithContent([noteEvent({ id: 'shared-event' })])],
         },
         {
           id: 'violin',
           measures: [
-            {
-              sequences: [
-                {
-                  content: [
-                    {
-                      id: 'shared-event',
-                      duration: { base: 'quarter' },
-                      notes: [{ pitch: { step: 'D', octave: 5 } }],
-                    },
-                  ],
-                },
-              ],
-            },
+            measureWithContent([
+              noteEvent({ id: 'shared-event', pitch: { step: 'D', octave: 5 } }),
+            ]),
           ],
         },
       ],

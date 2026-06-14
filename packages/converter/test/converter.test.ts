@@ -3,13 +3,10 @@ import { ScoreSchema } from "@melos/core";
 import { MusicXMLToMNX } from "../src/index";
 import { MeasureParser, type PartParsingContext } from "../src/parsers/MeasureParser";
 import type { XmlRecord } from "../src/parsers/OrderedXml";
-import * as fs from "fs";
-import * as path from "path";
+import { musicXmlFixture, wrapMeasure } from "./fixtures/musicXml";
 
 describe("MusicXMLToMNX Converter", () => {
     const converter = new MusicXMLToMNX();
-    const musicXmlFixture = (filename: string) =>
-        fs.readFileSync(path.join(import.meta.dir, "data/musicxml", filename), "utf-8");
     const createPartContext = (): PartParsingContext => ({
         activeSlurs: {},
         activeTies: {},
@@ -18,18 +15,6 @@ describe("MusicXMLToMNX Converter", () => {
         activeTremolos: {},
         lyricLines: new Map(),
     });
-
-    // --- Helper for minimal XML wrapper ---
-    const wrapMeasure = (content: string, attributes = "<divisions>1</divisions>") => `
-    <score-partwise version="3.1">
-       <part-list><score-part id="P1"><part-name>Music</part-name></score-part></part-list>
-       <part id="P1">
-          <measure number="1">
-             <attributes>${attributes}</attributes>
-             ${content}
-          </measure>
-       </part>
-    </score-partwise>`;
 
     it("should parse simple chords correctly", () => {
         const xml = wrapMeasure(`
