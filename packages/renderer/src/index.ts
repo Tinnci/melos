@@ -991,7 +991,17 @@ export class Renderer {
         let svg = "";
         for (let i = 0; i < 5; i++) {
             const lineY = y + i * this.config.lineSpacing;
-            svg += `<line x1="${startX}" y1="${lineY}" x2="${startX + length}" y2="${lineY}" stroke="black" stroke-width="1" pointer-events="none" />\n`;
+            svg += this.backend.line({
+                x1: startX,
+                y1: lineY,
+                x2: startX + length,
+                y2: lineY,
+                attributes: {
+                    stroke: "black",
+                    "stroke-width": 1,
+                    "pointer-events": "none",
+                },
+            });
         }
         return svg;
     }
@@ -1016,11 +1026,21 @@ export class Renderer {
 
         // Helper to draw vertical line
         const drawLine = (lx: number, width: number) =>
-            `<line x1="${lx}" y1="${topY}" x2="${lx}" y2="${bottomY}" stroke="black" stroke-width="${width}" />\n`;
+            this.renderBlackLine(lx, topY, lx, bottomY, width);
 
         // Helper to draw dashed line
         const drawDashedLine = (lx: number, width: number) =>
-            `<line x1="${lx}" y1="${topY}" x2="${lx}" y2="${bottomY}" stroke="black" stroke-width="${width}" stroke-dasharray="5,5" />\n`;
+            this.backend.line({
+                x1: lx,
+                y1: topY,
+                x2: lx,
+                y2: bottomY,
+                attributes: {
+                    stroke: "black",
+                    "stroke-width": width,
+                    "stroke-dasharray": "5,5",
+                },
+            });
 
         // Helper to draw dots
         const drawDots = (dx: number) =>
@@ -1079,15 +1099,28 @@ export class Renderer {
         const label = ending.numbers ? ending.numbers.join(",") + "." : "";
 
         // Top line
-        svg += `<polyline points="${startX},${bracketY + bracketHeight} ${startX},${bracketY} ${endX},${bracketY}" fill="none" stroke="black" stroke-width="1" />\n`;
+        svg += this.backend.path({
+            d: `M${startX},${bracketY + bracketHeight} L${startX},${bracketY} L${endX},${bracketY}`,
+            attributes: {
+                fill: "none",
+                stroke: "black",
+                "stroke-width": 1,
+            },
+        });
 
         // Closing leg if not open
         if (!ending.open) {
-            svg += `<line x1="${endX}" y1="${bracketY}" x2="${endX}" y2="${bracketY + bracketHeight}" stroke="black" stroke-width="1" />\n`;
+            svg += this.renderBlackLine(endX, bracketY, endX, bracketY + bracketHeight, 1);
         }
 
         if (label) {
-            svg += `<text x="${startX + 5}" y="${bracketY + 12}" font-family="Times New Roman" font-size="12">${label}</text>\n`;
+            svg += this.backend.text({
+                x: startX + 5,
+                y: bracketY + 12,
+                text: label,
+                fontFamily: "Times New Roman",
+                fontSize: 12,
+            });
         }
 
         return svg;
@@ -1143,7 +1176,17 @@ export class Renderer {
             if (text) {
                 // Determine Anchor: End position -> Text-Anchor End
                 const anchor = position === "end" ? "end" : "start";
-                svg += `<text x="${x}" y="${currentY}" font-family="Times New Roman" font-weight="bold" font-size="12" text-anchor="${anchor}">${text}</text>\n`;
+                svg += this.backend.text({
+                    x,
+                    y: currentY,
+                    text,
+                    fontFamily: "Times New Roman",
+                    fontSize: 12,
+                    attributes: {
+                        "font-weight": "bold",
+                        "text-anchor": anchor,
+                    },
+                });
             } else if (j.type === "segno") {
                 svg += this.renderSegno(x, currentY - 10);
             } else if (j.type === "coda") {
@@ -1423,7 +1466,12 @@ export class Renderer {
         const y2 = last.y;
         const offsetY = stemUp ? beamHeight : -beamHeight;
 
-        svg += `<polygon points="${first.x},${y1} ${last.x},${y2} ${last.x},${y2 + offsetY} ${first.x},${y1 + offsetY}" fill="black" />\n`;
+        svg += this.backend.path({
+            d: `M${first.x},${y1} L${last.x},${y2} L${last.x},${y2 + offsetY} L${first.x},${y1 + offsetY} Z`,
+            attributes: {
+                fill: "black",
+            },
+        });
 
         return svg;
     }
@@ -1462,8 +1510,15 @@ export class Renderer {
         // For a thicker appearance, we draw two paths (outline effect)
         const strokeWidth = type === "tie" ? 2 : 2.5;
 
-        return `<path d="M${source.x},${startY} Q${midX},${controlY} ${target.x},${endY}" 
-                fill="none" stroke="black" stroke-width="${strokeWidth}" stroke-linecap="round" />\n`;
+        return this.backend.path({
+            d: `M${source.x},${startY} Q${midX},${controlY} ${target.x},${endY}`,
+            attributes: {
+                fill: "none",
+                stroke: "black",
+                "stroke-width": strokeWidth,
+                "stroke-linecap": "round",
+            },
+        });
     }
 
     /**
@@ -1511,15 +1566,34 @@ export class Renderer {
         const textY = above ? lineY - 5 : lineY + 15;
 
         // Draw label text
-        let svg = `<text x="${startX}" y="${textY}" font-family="Times New Roman" font-style="italic" font-size="12">${label}</text>\n`;
+        let svg = this.backend.text({
+            x: startX,
+            y: textY,
+            text: label,
+            fontFamily: "Times New Roman",
+            fontSize: 12,
+            attributes: {
+                "font-style": "italic",
+            },
+        });
 
         // Draw dashed line from after text to endX
         const lineStartX = startX + 25; // After the text
-        svg += `<line x1="${lineStartX}" y1="${lineY}" x2="${endX}" y2="${lineY}" stroke="black" stroke-width="1" stroke-dasharray="4,3" />\n`;
+        svg += this.backend.line({
+            x1: lineStartX,
+            y1: lineY,
+            x2: endX,
+            y2: lineY,
+            attributes: {
+                stroke: "black",
+                "stroke-width": 1,
+                "stroke-dasharray": "4,3",
+            },
+        });
 
         // Draw hook at the end (vertical line going toward the staff)
         const hookLength = above ? 8 : -8;
-        svg += `<line x1="${endX}" y1="${lineY}" x2="${endX}" y2="${lineY + hookLength}" stroke="black" stroke-width="1" />\n`;
+        svg += this.renderBlackLine(endX, lineY, endX, lineY + hookLength, 1);
 
         return svg;
     }
@@ -1540,18 +1614,36 @@ export class Renderer {
 
         // Thick horizontal line (the rest symbol)
         const lineHeight = 8;
-        let svg = `<rect x="${startX}" y="${centerY - lineHeight / 2}" width="${restWidth}" height="${lineHeight}" fill="black" />\n`;
+        let svg = this.backend.rect({
+            x: startX,
+            y: centerY - lineHeight / 2,
+            width: restWidth,
+            height: lineHeight,
+            attributes: {
+                fill: "black",
+            },
+        });
 
         // Vertical brackets at ends
         const bracketHeight = this.config.lineSpacing * 2;
         const bracketTop = centerY - bracketHeight / 2;
-        svg += `<line x1="${startX}" y1="${bracketTop}" x2="${startX}" y2="${bracketTop + bracketHeight}" stroke="black" stroke-width="2" />\n`;
-        svg += `<line x1="${endX}" y1="${bracketTop}" x2="${endX}" y2="${bracketTop + bracketHeight}" stroke="black" stroke-width="2" />\n`;
+        svg += this.renderBlackLine(startX, bracketTop, startX, bracketTop + bracketHeight, 2);
+        svg += this.renderBlackLine(endX, bracketTop, endX, bracketTop + bracketHeight, 2);
 
         // Number above the rest (centered)
         const numberX = (startX + endX) / 2;
         const numberY = staffTopY - 10;
-        svg += `<text x="${numberX}" y="${numberY}" font-family="Times New Roman" font-size="18" font-weight="bold" text-anchor="middle">${duration}</text>\n`;
+        svg += this.backend.text({
+            x: numberX,
+            y: numberY,
+            text: String(duration),
+            fontFamily: "Times New Roman",
+            fontSize: 18,
+            attributes: {
+                "font-weight": "bold",
+                "text-anchor": "middle",
+            },
+        });
         return svg;
     }
 
@@ -1743,11 +1835,11 @@ export class Renderer {
         if (stemUp) {
             const x = cx + r;
             const stemTop = minY - stemLen;
-            return `<line x1="${x}" y1="${maxY}" x2="${x}" y2="${stemTop}" stroke="black" stroke-width="1.5" />\n`;
+            return this.renderBlackLine(x, maxY, x, stemTop, 1.5);
         } else {
             const x = cx - r;
             const stemBottom = maxY + stemLen;
-            return `<line x1="${x}" y1="${minY}" x2="${x}" y2="${stemBottom}" stroke="black" stroke-width="1.5" />\n`;
+            return this.renderBlackLine(x, minY, x, stemBottom, 1.5);
         }
     }
 
@@ -1771,11 +1863,25 @@ export class Renderer {
             if (stemUp) {
                 const x = cx + r;
                 const flagY = cy - stemLen + flagOffset;
-                svg += `<path d="M${x},${flagY} Q${x + 10},${flagY + 8} ${x + 5},${flagY + 15}" fill="none" stroke="black" stroke-width="1.5" />\n`;
+                svg += this.backend.path({
+                    d: `M${x},${flagY} Q${x + 10},${flagY + 8} ${x + 5},${flagY + 15}`,
+                    attributes: {
+                        fill: "none",
+                        stroke: "black",
+                        "stroke-width": 1.5,
+                    },
+                });
             } else {
                 const x = cx - r;
                 const flagY = cy + stemLen - flagOffset;
-                svg += `<path d="M${x},${flagY} Q${x - 10},${flagY - 8} ${x - 5},${flagY - 15}" fill="none" stroke="black" stroke-width="1.5" />\n`;
+                svg += this.backend.path({
+                    d: `M${x},${flagY} Q${x - 10},${flagY - 8} ${x - 5},${flagY - 15}`,
+                    attributes: {
+                        fill: "none",
+                        stroke: "black",
+                        "stroke-width": 1.5,
+                    },
+                });
             }
         }
         return svg;
@@ -1797,7 +1903,7 @@ export class Renderer {
                 y >= cy - this.config.lineSpacing / 2;
                 y -= this.config.lineSpacing
             ) {
-                svg += `<line x1="${cx - ledgerWidth}" y1="${y}" x2="${cx + ledgerWidth}" y2="${y}" stroke="black" stroke-width="1" />\n`;
+                svg += this.renderBlackLine(cx - ledgerWidth, y, cx + ledgerWidth, y, 1);
             }
         }
 
@@ -1808,7 +1914,7 @@ export class Renderer {
                 y <= cy + this.config.lineSpacing / 2;
                 y += this.config.lineSpacing
             ) {
-                svg += `<line x1="${cx - ledgerWidth}" y1="${y}" x2="${cx + ledgerWidth}" y2="${y}" stroke="black" stroke-width="1" />\n`;
+                svg += this.renderBlackLine(cx - ledgerWidth, y, cx + ledgerWidth, y, 1);
             }
         }
 
@@ -1851,21 +1957,40 @@ export class Renderer {
 
         if (duration === "whole") {
             // Thick bar hanging from line 2
-            svg = `<rect x="${x}" y="${staffTopY + this.config.lineSpacing}" width="12" height="5" fill="black" />\n`;
+            svg = this.backend.rect({
+                x,
+                y: staffTopY + this.config.lineSpacing,
+                width: 12,
+                height: 5,
+                attributes: {
+                    fill: "black",
+                },
+            });
         } else if (duration === "half") {
             // Thick bar sitting on line 3
-            svg = `<rect x="${x}" y="${staffTopY + 2 * this.config.lineSpacing - 5}" width="12" height="5" fill="black" />\n`;
+            svg = this.backend.rect({
+                x,
+                y: staffTopY + 2 * this.config.lineSpacing - 5,
+                width: 12,
+                height: 5,
+                attributes: {
+                    fill: "black",
+                },
+            });
         } else if (duration === "quarter") {
             // Classical Quarter Rest Path
             // A squiggle centered around the middle lines
             const topY = staffTopY + this.config.lineSpacing; // Line 2
             // Path scaled to fit ~25px height
-            svg = `<path d="M${x + 5},${topY} 
-                     Q${x + 12},${topY + 8} ${x + 6},${topY + 12} 
-                     Q${x + 2},${topY + 15} ${x + 8},${topY + 20} 
-                     Q${x + 10},${topY + 25} ${x + 4},${topY + 22} 
-                     L${x + 6},${topY + 30}" 
-                     fill="none" stroke="black" stroke-width="2" stroke-linecap="round" />\n`;
+            svg = this.backend.path({
+                d: `M${x + 5},${topY} Q${x + 12},${topY + 8} ${x + 6},${topY + 12} Q${x + 2},${topY + 15} ${x + 8},${topY + 20} Q${x + 10},${topY + 25} ${x + 4},${topY + 22} L${x + 6},${topY + 30}`,
+                attributes: {
+                    fill: "none",
+                    stroke: "black",
+                    "stroke-width": 2,
+                    "stroke-linecap": "round",
+                },
+            });
         } else {
             // Eighth Rest: Dot-like head with a flag tail
             const topY = staffTopY + 2 * this.config.lineSpacing; // Line 3
@@ -1936,6 +2061,25 @@ export class Renderer {
         attrs = "",
     ): string {
         return this.backend.smuflGlyphs(glyphNames, x, y, fontSize, attrs);
+    }
+
+    private renderBlackLine(
+        x1: number,
+        y1: number,
+        x2: number,
+        y2: number,
+        strokeWidth: number,
+    ): string {
+        return this.backend.line({
+            x1,
+            y1,
+            x2,
+            y2,
+            attributes: {
+                stroke: "black",
+                "stroke-width": strokeWidth,
+            },
+        });
     }
 
     /**
@@ -2039,7 +2183,7 @@ export class Renderer {
         let svg = "";
         for (let i = 0; i < marks; i++) {
             const y = centerY + i * spacing * (stemUp ? 1 : -1);
-            svg += `<line x1="${startX}" y1="${y + slant}" x2="${startX + length}" y2="${y - slant}" stroke="black" stroke-width="2" />\n`;
+            svg += this.renderBlackLine(startX, y + slant, startX + length, y - slant, 2);
         }
         return svg;
     }
@@ -2063,7 +2207,7 @@ export class Renderer {
             const offset = (i - (marks - 1) / 2) * spacing;
             const barY = midY + offset;
 
-            svg += `<line x1="${startX}" y1="${barY + slantY}" x2="${startX + length}" y2="${barY - slantY}" stroke="black" stroke-width="2" />\n`;
+            svg += this.renderBlackLine(startX, barY + slantY, startX + length, barY - slantY, 2);
         }
 
         return svg;
@@ -2083,7 +2227,14 @@ export class Renderer {
     private renderPedalLine(startX: number, endX: number, systemY: number): string {
         const y = systemY + this.config.pedalLineOffsetY;
         const height = 10;
-        return `<path d="M${startX} ${y - height} L${startX} ${y} L${endX} ${y} L${endX} ${y - height}" stroke="black" stroke-width="1.5" fill="none"/>\n`;
+        return this.backend.path({
+            d: `M${startX} ${y - height} L${startX} ${y} L${endX} ${y} L${endX} ${y - height}`,
+            attributes: {
+                stroke: "black",
+                "stroke-width": 1.5,
+                fill: "none",
+            },
+        });
     }
 }
 

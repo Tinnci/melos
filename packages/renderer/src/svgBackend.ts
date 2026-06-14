@@ -103,6 +103,18 @@ export class SvgRenderBackend {
         return this.renderElement({ ...element, kind: "hitbox" });
     }
 
+    line(element: Omit<RenderLineElement, "kind">): string {
+        return this.renderElement({ ...element, kind: "line" });
+    }
+
+    path(element: Omit<RenderPathElement, "kind">): string {
+        return this.renderElement({ ...element, kind: "path" });
+    }
+
+    rect(element: Omit<RenderRectElement, "kind">): string {
+        return this.renderElement({ ...element, kind: "rect" });
+    }
+
     group(element: Omit<RenderGroupElement, "kind">): string {
         return this.renderElement({ ...element, kind: "group" });
     }

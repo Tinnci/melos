@@ -27,8 +27,8 @@ Implemented:
 - `renderer/src/glyphPlanner.ts` resolves common score content to planned
   SMuFL glyph names.
 - `renderer/src/svgBackend.ts` owns the structured `RenderDocument` /
-  `RenderElement` serializer, SMuFL glyph output, text escaping, hitboxes, and
-  SVG groups.
+  `RenderElement` serializer, SMuFL glyph output, text escaping, hitboxes, SVG
+  groups, and primitive line/path/rect helpers.
 - `renderer/src/documentPlanner.ts` plans conservative measure, staff, event,
   adornment, pedal, ottava, wedge, tie, slur, and tremolo boxes/spans before
   backend serialization.
@@ -40,8 +40,9 @@ Implemented:
 
 Still coupled:
 
-- Curves, primitive paths, fallback notehead shapes, stems, flags, beams, and
-  most SVG primitive creation live mostly in `Renderer`.
+- Fallback notehead shapes and some symbolic details still live mostly in
+  `Renderer`; many line/path/rect primitives now go through
+  `SvgRenderBackend` helpers.
 - Collision avoidance is not implemented yet. Collision diagnostics are a
   separate pass, but they do not currently move glyphs or spans.
 - SVG is still the only backend. `RenderDocument` currently uses a raw SVG
@@ -261,6 +262,13 @@ The `raw` element is intentionally temporary. It allows `Renderer.render()` to
 stay stable while stave lines, barlines, notehead fallbacks, stems, flags,
 beams, curves, and spans are migrated in smaller patches.
 
+The first follow-up primitive migration moved staff lines, barline line
+segments, ending brackets, jump text, ottava lines, multimeasure rest bars,
+stems, flags, beams, ledger lines, tremolo marks, rest bars/paths, curves, and
+pedal bracket lines through `SvgRenderBackend` line/path/rect/text helpers.
+Repeat dots, fallback noteheads, and grouped decorative shapes still need more
+`RenderElement` primitives such as circle, ellipse, polygon, and polyline.
+
 `RenderBox` and `RenderSpan` are the retained visual index used by tests and
 future editor tooling. They are deliberately conservative and may be larger
 than final glyph outlines; their current job is to expose planned interaction
@@ -296,7 +304,7 @@ should stay in renderer layers.
    contracts are visible without parsing SVG. Done.
 7. Add a `RenderDocument` / `RenderElement` layer and migrate SVG primitives
    out of `Renderer`. Started with document, SMuFL glyphs, text, hitboxes, and
-   group serialization.
+   group serialization. Follow-up started for line/path/rect primitives.
 8. Add collision passes for accidentals, dots, lyrics, articulations, dynamics,
    pedals, and ottavas. Started as detection-only diagnostics.
 9. Add backend-neutral glyph-plan snapshot tests. Started with

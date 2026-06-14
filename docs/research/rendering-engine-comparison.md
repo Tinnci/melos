@@ -124,3 +124,21 @@ Remaining renderer work should move to follow-up milestones:
   accidentals, lyrics, articulations, dynamics, and spans.
 - Add Canvas/PDF/test backends only after `RenderDocument` no longer depends on
   raw SVG for core primitives.
+
+## Follow-Up Milestones
+
+GitHub milestone: `Renderer structured primitive migration` (#2).
+
+Scope:
+
+1. Move low-risk line/path/rect primitives behind `SvgRenderBackend` helpers.
+   Started: staff lines, barline line segments, ending brackets, jump text,
+   ottava lines, multimeasure rests, stems, flags, beams, ledger lines,
+   tremolos, rest bars/paths, curves, and pedal bracket lines now use
+   structured backend helpers.
+2. Add missing primitive element types for circle, ellipse, polygon, and
+   polyline before migrating repeat dots and fallback notehead shapes.
+3. Reduce the `RenderDocument` raw SVG bridge by returning structured
+   `RenderElement` children from more renderer paths.
+4. Keep `Renderer.render(score): string` stable until structured output reaches
+   parity.
