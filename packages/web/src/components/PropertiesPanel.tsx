@@ -76,11 +76,17 @@ const accidentalOptions = [
 ]
 
 const rhythmStatusClasses = {
-    unknown: 'border-slate-600/50 bg-slate-700/20 text-slate-300',
-    underfull: 'border-amber-500/35 bg-amber-500/10 text-amber-200',
-    complete: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-200',
-    overfull: 'border-rose-500/35 bg-rose-500/10 text-rose-200',
+    unknown: 'border-[#8f9289] bg-[#d7d9d3] text-[#20221f]',
+    underfull: 'border-[#c77a00] bg-[#f5dfaa] text-[#5f3900]',
+    complete: 'border-[#6ea82f] bg-[#dcedc6] text-[#245900]',
+    overfull: 'border-[#d52222] bg-[#ffd7d7] text-[#8a1111]',
 } as const
+
+const infoCellClass = 'parameter-cell'
+const infoLabelClass = 'parameter-label'
+const infoValueClass = 'parameter-value'
+const compactFieldClass = 'space-y-1'
+const panelIconClass = 'w-3.5 h-3.5 text-[#c94412]'
 
 function formatBeatCount(value: number): string {
     return Number.isInteger(value) ? value.toString() : value.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')
@@ -183,14 +189,14 @@ export function PropertiesPanel() {
             <Card>
                 <CardHeader>
                     <CardTitle>
-                        <Settings2 className="w-4 h-4 text-indigo-400" />
+                        <Settings2 className={panelIconClass} />
                         Score Properties
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-2.5">
                     {score ? (
                         <>
-                            <div className="space-y-2">
+                            <div className={compactFieldClass}>
                                 <Label htmlFor="time-signature">Time Signature</Label>
                                 <Select
                                     id="time-signature"
@@ -200,7 +206,7 @@ export function PropertiesPanel() {
                                 />
                             </div>
 
-                            <div className="space-y-2">
+                            <div className={compactFieldClass}>
                                 <Label htmlFor="key-signature">Key Signature</Label>
                                 <Select
                                     id="key-signature"
@@ -210,10 +216,10 @@ export function PropertiesPanel() {
                                 />
                             </div>
 
-                            <div className="space-y-2">
+                            <div className={compactFieldClass}>
                                 <Label htmlFor="tempo">Tempo (BPM)</Label>
                                 <div className="flex items-center gap-2">
-                                    <Clock className="w-4 h-4 text-slate-500" />
+                                    <Clock className="w-3.5 h-3.5 text-[#5e625a]" />
                                     <Input
                                         id="tempo"
                                         type="number"
@@ -226,16 +232,16 @@ export function PropertiesPanel() {
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className={compactFieldClass}>
                                 <Label>Measures</Label>
-                                <div className="px-3 py-2 bg-slate-800/50 rounded-lg border border-slate-700/50 font-mono text-sm text-white">
+                                <div className="parameter-cell font-mono text-[12px] font-bold text-[#121212]">
                                     {measureCount}
                                 </div>
                             </div>
                         </>
                     ) : (
-                        <div className="py-8 text-center">
-                            <p className="text-sm font-medium text-slate-300">No Score</p>
+                        <div className="py-6 text-center">
+                            <p className="text-[12px] font-bold text-[#5e625a]">No Score</p>
                         </div>
                     )}
                 </CardContent>
@@ -244,33 +250,33 @@ export function PropertiesPanel() {
             <Card>
                 <CardHeader>
                     <CardTitle>
-                        <MousePointer2 className="w-4 h-4 text-indigo-400" />
+                        <MousePointer2 className={panelIconClass} />
                         Selection
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-2.5">
                     {selectedMeasure ? (
                         <>
-                            <div className="grid grid-cols-2 gap-3 text-xs">
-                                <div className="rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2">
-                                    <div className="text-slate-500">Type</div>
-                                    <div className="mt-1 font-medium capitalize text-white">{selectedMeasure.type}</div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                <div className={infoCellClass}>
+                                    <div className={infoLabelClass}>Type</div>
+                                    <div className={`${infoValueClass} capitalize`}>{selectedMeasure.type}</div>
                                 </div>
-                                <div className="rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2">
-                                    <div className="text-slate-500">Measure</div>
-                                    <div className="mt-1 font-mono text-white">{selectedMeasure.measureNumber}</div>
+                                <div className={infoCellClass}>
+                                    <div className={infoLabelClass}>Measure</div>
+                                    <div className={infoValueClass}>{selectedMeasure.measureNumber}</div>
                                 </div>
-                                <div className="rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2">
-                                    <div className="text-slate-500">Voices</div>
-                                    <div className="mt-1 font-mono text-white">{selectedMeasure.voiceCount}</div>
+                                <div className={infoCellClass}>
+                                    <div className={infoLabelClass}>Voices</div>
+                                    <div className={infoValueClass}>{selectedMeasure.voiceCount}</div>
                                 </div>
-                                <div className="rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2">
-                                    <div className="text-slate-500">Events</div>
-                                    <div className="mt-1 font-mono text-white">{selectedMeasure.eventCount}</div>
+                                <div className={infoCellClass}>
+                                    <div className={infoLabelClass}>Events</div>
+                                    <div className={infoValueClass}>{selectedMeasure.eventCount}</div>
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className={compactFieldClass}>
                                 <Label htmlFor="selection-voice">Active Voice</Label>
                                 <Select
                                     id="selection-voice"
@@ -280,7 +286,7 @@ export function PropertiesPanel() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-1.5">
                                 <Button
                                     variant="secondary"
                                     size="sm"
@@ -300,42 +306,42 @@ export function PropertiesPanel() {
                                 </Button>
                             </div>
 
-                            <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${rhythmStatusClasses[selectedMeasure.rhythm.status]}`}>
-                                <Layers className="w-4 h-4" />
+                            <div className={`flex items-center gap-1.5 border px-2 py-1.5 text-[11px] ${rhythmStatusClasses[selectedMeasure.rhythm.status]}`}>
+                                <Layers className="w-3.5 h-3.5" />
                                 <div className="min-w-0">
                                     <div className="font-medium">Voice {selectedMeasure.sequenceNumber} - {selectedMeasure.rhythm.label}</div>
-                                    <div className="mt-0.5 font-mono text-[11px] opacity-90">{getRhythmDetail(selectedMeasure.rhythm)}</div>
+                                    <div className="mt-0.5 font-mono text-[10px] opacity-90">{getRhythmDetail(selectedMeasure.rhythm)}</div>
                                 </div>
                             </div>
                         </>
                     ) : selectedEvent ? (
                         <>
-                            <div className="grid grid-cols-3 gap-3 text-xs">
-                                <div className="rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2">
-                                    <div className="text-slate-500">Type</div>
-                                    <div className="mt-1 font-medium capitalize text-white">{selectedEvent.type}</div>
+                            <div className="grid grid-cols-3 gap-1.5">
+                                <div className={infoCellClass}>
+                                    <div className={infoLabelClass}>Type</div>
+                                    <div className={`${infoValueClass} capitalize`}>{selectedEvent.type}</div>
                                 </div>
-                                <div className="rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2">
-                                    <div className="text-slate-500">Measure</div>
-                                    <div className="mt-1 font-mono text-white">{selectedEvent.measureNumber}</div>
+                                <div className={infoCellClass}>
+                                    <div className={infoLabelClass}>Measure</div>
+                                    <div className={infoValueClass}>{selectedEvent.measureNumber}</div>
                                 </div>
-                                <div className="rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2">
-                                    <div className="text-slate-500">Voice</div>
-                                    <div className="mt-1 font-mono text-white">{selectedEvent.sequenceNumber}</div>
+                                <div className={infoCellClass}>
+                                    <div className={infoLabelClass}>Voice</div>
+                                    <div className={infoValueClass}>{selectedEvent.sequenceNumber}</div>
                                 </div>
                             </div>
 
-                            <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${rhythmStatusClasses[selectedEvent.rhythm.status]}`}>
-                                <Layers className="w-4 h-4" />
+                            <div className={`flex items-center gap-1.5 border px-2 py-1.5 text-[11px] ${rhythmStatusClasses[selectedEvent.rhythm.status]}`}>
+                                <Layers className="w-3.5 h-3.5" />
                                 <div className="min-w-0">
                                     <div className="font-medium">Voice {selectedEvent.sequenceNumber} - {selectedEvent.rhythm.label}</div>
-                                    <div className="mt-0.5 font-mono text-[11px] opacity-90">{getRhythmDetail(selectedEvent.rhythm)}</div>
+                                    <div className="mt-0.5 font-mono text-[10px] opacity-90">{getRhythmDetail(selectedEvent.rhythm)}</div>
                                 </div>
                             </div>
 
                             {selectedEvent.type !== 'dynamic' && (
-                                <div className="grid grid-cols-[1fr_72px] gap-3">
-                                    <div className="space-y-2">
+                                <div className="grid grid-cols-[1fr_64px] gap-1.5">
+                                    <div className={compactFieldClass}>
                                         <Label htmlFor="selection-duration">Duration</Label>
                                         <Select
                                             id="selection-duration"
@@ -344,7 +350,7 @@ export function PropertiesPanel() {
                                             onChange={handleDurationChange}
                                         />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className={compactFieldClass}>
                                         <Label htmlFor="selection-dots">Dots</Label>
                                         <Input
                                             id="selection-dots"
@@ -360,8 +366,8 @@ export function PropertiesPanel() {
 
                             {selectedEvent.type === 'note' && selectedPitch && (
                                 <>
-                                    <div className="grid grid-cols-[1fr_80px] gap-3">
-                                        <div className="space-y-2">
+                                    <div className="grid grid-cols-[1fr_70px] gap-1.5">
+                                        <div className={compactFieldClass}>
                                             <Label htmlFor="selection-step">Step</Label>
                                             <Select
                                                 id="selection-step"
@@ -370,7 +376,7 @@ export function PropertiesPanel() {
                                                 onChange={(event) => updateSelectedNotePitch({ step: event.target.value as PitchStep })}
                                             />
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className={compactFieldClass}>
                                             <Label htmlFor="selection-octave">Octave</Label>
                                             <Input
                                                 id="selection-octave"
@@ -383,7 +389,7 @@ export function PropertiesPanel() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
+                                    <div className={compactFieldClass}>
                                         <Label htmlFor="selection-accidental">Accidental</Label>
                                         <Select
                                             id="selection-accidental"
@@ -393,7 +399,7 @@ export function PropertiesPanel() {
                                         />
                                     </div>
 
-                                    <div className="space-y-2">
+                                    <div className={compactFieldClass}>
                                         <Label htmlFor="selection-notehead">Notehead</Label>
                                         <Select
                                             id="selection-notehead"
@@ -403,7 +409,7 @@ export function PropertiesPanel() {
                                         />
                                     </div>
 
-                                    <div className="space-y-2">
+                                    <div className={compactFieldClass}>
                                         <Label htmlFor="selection-color">Color</Label>
                                         <div className="flex gap-2">
                                             <Input
@@ -411,7 +417,7 @@ export function PropertiesPanel() {
                                                 type="color"
                                                 value={selectedNote?.color ?? '#000000'}
                                                 onChange={(event) => updateSelectedNoteColor(event.target.value)}
-                                                className="w-14 px-1"
+                                                className="w-12 px-1"
                                             />
                                             <Input
                                                 value={selectedNote?.color ?? ''}
@@ -422,13 +428,13 @@ export function PropertiesPanel() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
+                                    <div className={compactFieldClass}>
                                         <Label>Articulations</Label>
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-2 gap-1.5">
                                             {articulationOptions.map((articulation) => (
                                                 <label
                                                     key={articulation}
-                                                    className="flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-800/40 px-3 py-2 text-xs text-slate-300"
+                                                    className="flex min-h-7 items-center gap-1.5 border border-[#9a9c94] bg-[#d7d9d3] px-2 py-1 text-[11px] text-[#20221f]"
                                                 >
                                                     <input
                                                         type="checkbox"
@@ -444,7 +450,7 @@ export function PropertiesPanel() {
                             )}
 
                             {selectedEvent.type === 'dynamic' && (
-                                <div className="space-y-2">
+                                <div className={compactFieldClass}>
                                     <Label htmlFor="selection-dynamic">Dynamic</Label>
                                     <Input
                                         id="selection-dynamic"
@@ -466,8 +472,8 @@ export function PropertiesPanel() {
                             </Button>
                         </>
                     ) : (
-                        <div className="py-8 text-center">
-                            <p className="text-sm font-medium text-slate-300">No Selection</p>
+                        <div className="py-6 text-center">
+                            <p className="text-[12px] font-bold text-[#5e625a]">No Selection</p>
                         </div>
                     )}
                 </CardContent>
@@ -476,27 +482,27 @@ export function PropertiesPanel() {
             <Card>
                 <CardHeader>
                     <CardTitle>
-                        <Music2 className="w-4 h-4 text-indigo-400" />
+                        <Music2 className={panelIconClass} />
                         Parts ({parts.length})
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     {parts.length > 0 ? (
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                             {parts.map((part) => (
                                 <div
                                     key={part.id}
                                     onClick={() => selectPart(part.id === selectedPartId ? null : part.id)}
                                     className={`
-                                        w-full flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer
+                                        w-full flex items-center gap-2 border p-2 transition-colors cursor-pointer
                                         ${selectedPartId === part.id
-                                            ? 'bg-indigo-500/10 border-indigo-500/50'
-                                            : 'bg-slate-800/50 border-slate-700/50 hover:border-slate-600'
+                                            ? 'bg-[#f4e3db] border-[#ff5a1f]'
+                                            : 'bg-[#d7d9d3] border-[#9a9c94] hover:border-[#74766e]'
                                         }
                                     `}
                                 >
                                     <div
-                                        className="w-1 h-7 rounded-full"
+                                        className="w-1 h-6"
                                         style={{ background: part.color }}
                                     />
                                     <div className="flex-1 text-left min-w-0">
@@ -507,14 +513,14 @@ export function PropertiesPanel() {
                                                     id={`part-name-${part.id}`}
                                                     value={part.name}
                                                     onChange={(event) => updatePartName(part.id, event.target.value)}
-                                                    className="h-7 py-1 text-sm bg-slate-900/50 border-indigo-500/50 focus:border-indigo-500"
+                                                    className="h-7 py-1 text-[12px] border-[#ff5a1f] focus:border-[#ff5a1f]"
                                                 />
                                             </div>
                                         ) : (
                                             <>
-                                                <div className="text-sm font-medium text-white truncate">{part.name}</div>
+                                                <div className="truncate text-[12px] font-bold text-[#121212]">{part.name}</div>
                                                 {part.shortName && (
-                                                    <div className="text-xs text-slate-500 truncate">{part.shortName}</div>
+                                                    <div className="truncate text-[10px] text-[#5e625a]">{part.shortName}</div>
                                                 )}
                                             </>
                                         )}
@@ -523,7 +529,7 @@ export function PropertiesPanel() {
                             ))}
                         </div>
                     ) : (
-                        <p className="text-sm text-slate-500">No parts.</p>
+                        <p className="text-[12px] text-[#5e625a]">No parts.</p>
                     )}
                 </CardContent>
             </Card>

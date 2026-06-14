@@ -3,15 +3,15 @@ import { cn } from "@/lib/utils"
 
 type BadgeVariant = "default" | "secondary" | "success" | "warning" | "destructive" | "outline"
 
-const baseBadgeClass = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors"
+const baseBadgeClass = "inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-bold transition-colors"
 
 const variantClass: Record<BadgeVariant, string> = {
-    default: "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30",
-    secondary: "bg-slate-700 text-slate-300 border border-slate-600",
-    success: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
-    warning: "bg-amber-500/20 text-amber-400 border border-amber-500/30",
-    destructive: "bg-red-500/20 text-red-400 border border-red-500/30",
-    outline: "border border-slate-600 text-slate-400",
+    default: "bg-[#ff5a1f] text-black border-[#b43e16]",
+    secondary: "bg-[#cdd0c8] text-[#20221f] border-[#8f9289]",
+    success: "bg-[#dcedc6] text-[#245900] border-[#6ea82f]",
+    warning: "bg-[#f5dfaa] text-[#6b3f00] border-[#c77a00]",
+    destructive: "bg-[#ffd7d7] text-[#8a1111] border-[#d52222]",
+    outline: "border-[#8f9289] text-[#20221f]",
 }
 
 function badgeVariants({

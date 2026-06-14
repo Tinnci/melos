@@ -13,7 +13,7 @@ import { PropertiesPanel } from './components/PropertiesPanel'
 import { Sidebar } from './components/Sidebar'
 import { Button } from './components/ui/button'
 import { Badge } from './components/ui/badge'
-import { Undo2, Redo2, Music, FileText, FileAudio } from 'lucide-react'
+import { AlertTriangle, Undo2, Redo2, Music, FileText, FileAudio } from 'lucide-react'
 import { exportToPdf, exportToMidi } from './lib/exporter'
 import { MusicXMLToMNX } from '@melos/converter'
 import { MEIToMNX } from '@melos/mei'
@@ -96,15 +96,15 @@ function App() {
   }, [error, setError])
 
   return (
-    <div className="grid min-h-screen grid-cols-[280px_1fr_320px] grid-rows-[auto_1fr] gap-px bg-slate-800/50">
+    <div className="live-theme grid min-h-screen grid-cols-[252px_1fr_300px] grid-rows-[44px_1fr] gap-0 bg-[#cfd1cc] text-[#121212]">
       {/* Header */}
-      <header className="col-span-3 flex items-center justify-between gap-6 px-6 py-3 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800/50 sticky top-0 z-50">
+      <header className="app-header col-span-3 flex items-center justify-between gap-4 border-b border-[#8c8f86] bg-[#e3e3dd] px-3 py-1.5 sticky top-0 z-50">
         {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <Music className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-sm border border-[#96320f] bg-[#ff5a1f]">
+            <Music className="h-4 w-4 text-black" />
           </div>
-          <span className="font-bold text-lg bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+          <span className="text-[13px] font-black text-[#111]">
             Melos Studio
           </span>
           <Badge variant="default">Beta</Badge>
@@ -114,8 +114,8 @@ function App() {
         <TransportBar />
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 pr-3 mr-3 border-r border-slate-700">
+        <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 pr-2 mr-1 border-r border-[#9a9c94]">
             <Button
               variant="ghost"
               size="icon"
@@ -136,7 +136,7 @@ function App() {
             </Button>
           </div>
           {score && (
-            <div className="flex items-center gap-1 pr-3 mr-3 border-r border-slate-700">
+            <div className="flex items-center gap-1 pr-2 mr-1 border-r border-[#9a9c94]">
               <Button
                 variant="ghost"
                 size="icon"
@@ -167,26 +167,27 @@ function App() {
       <Sidebar />
 
       {/* Main Canvas */}
-      <main className="bg-slate-950 flex flex-col overflow-hidden">
-        <div className="flex-1 flex flex-col p-5 gap-4 overflow-hidden">
+      <main className="score-workspace schematic-surface flex flex-col overflow-hidden border-x border-[#8c8f86]">
+        <div className="flex-1 flex flex-col p-2.5 gap-2 overflow-hidden">
           {/* Canvas Header */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-medium uppercase tracking-wider text-indigo-400">
+          <div className="flex items-center justify-between gap-3 border border-[#9a9c94] bg-[#e8e8e2] px-2.5 py-1.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-[10px] font-black uppercase text-[#c94412]">
                 Score Preview
                 {status === 'playing' && (
-                  <span className="ml-2 text-emerald-400 animate-pulse">• Playing</span>
+                  <span className="ml-2 text-[#317100] animate-pulse">Playing</span>
                 )}
               </span>
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="truncate text-[13px] font-bold text-[#121212]">
                 {scoreTitle}
               </h2>
             </div>
 
             {/* Error toast */}
             {error && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm animate-slide-up">
-                ⚠️ {error}
+              <div className="flex items-center gap-1.5 border border-[#d52222] bg-[#ffd7d7] px-2 py-1 text-[11px] font-bold text-[#8a1111] animate-slide-up">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {error}
               </div>
             )}
           </div>
@@ -197,7 +198,7 @@ function App() {
       </main>
 
       {/* Right Panel */}
-      <aside className="bg-slate-900 p-5 overflow-y-auto flex flex-col gap-5">
+      <aside className="properties-rail flex flex-col gap-2 overflow-y-auto bg-[#dedfd9] p-2.5">
         <PropertiesPanel />
       </aside>
     </div>

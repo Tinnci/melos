@@ -67,19 +67,19 @@ export function Sidebar() {
     const pitch: Pitch = { step, octave }
 
     return (
-        <aside className="bg-slate-900 p-5 overflow-y-auto flex flex-col gap-5 border-r border-slate-800">
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+        <aside className="palette-panel flex flex-col gap-2 overflow-y-auto border-r border-[#8c8f86] bg-[#dedfd9] p-2.5">
+            <div className="border border-[#9a9c94] bg-[#cfd1cc] px-2 py-1 text-[10px] font-black uppercase text-[#3a3d37]">
                 Palette
             </div>
 
             <Card>
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-300">
+                <CardHeader>
+                    <CardTitle>
                         Pitch
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
+                <CardContent className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
                         <Label htmlFor="palette-step">Step</Label>
                         <Select
                             id="palette-step"
@@ -88,7 +88,7 @@ export function Sidebar() {
                             onChange={(event) => setStep(event.target.value as PitchStep)}
                         />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                         <Label htmlFor="palette-octave">Octave</Label>
                         <Select
                             id="palette-octave"
@@ -101,16 +101,16 @@ export function Sidebar() {
             </Card>
 
             <Card>
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-300">
+                <CardHeader>
+                    <CardTitle>
                         Notes
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-3 gap-2">
+                <CardContent className="grid grid-cols-3 gap-1.5">
                     {noteDurationBases.map((duration) => (
                         <button
                             key={duration}
-                            className="aspect-square rounded-lg flex items-center justify-center bg-slate-800 hover:bg-slate-700 hover:text-indigo-400 transition-colors border border-transparent hover:border-indigo-500/50 disabled:opacity-40 disabled:pointer-events-none"
+                            className="tool-cell aspect-square disabled:pointer-events-none"
                             disabled={!canEdit}
                             title={`Insert ${duration} note`}
                             onClick={() => insertNote(duration, pitch)}
@@ -122,16 +122,16 @@ export function Sidebar() {
             </Card>
 
             <Card>
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-300">
+                <CardHeader>
+                    <CardTitle>
                         Rests
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-3 gap-2">
+                <CardContent className="grid grid-cols-3 gap-1.5">
                     {noteDurationBases.map((duration) => (
                         <button
                             key={duration}
-                            className="aspect-square rounded-lg flex items-center justify-center bg-slate-800 hover:bg-slate-700 hover:text-indigo-400 transition-colors border border-transparent hover:border-indigo-500/50 disabled:opacity-40 disabled:pointer-events-none"
+                            className="tool-cell aspect-square disabled:pointer-events-none"
                             disabled={!canEdit}
                             title={`Insert ${duration} rest`}
                             onClick={() => insertRest(duration)}
@@ -143,12 +143,12 @@ export function Sidebar() {
             </Card>
 
             <Card>
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-300">
+                <CardHeader>
+                    <CardTitle>
                         Accidentals
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-4 gap-2">
+                <CardContent className="grid grid-cols-4 gap-1.5">
                     {[
                         { value: 1, label: '♯', title: 'Sharp' },
                         { value: -1, label: '♭', title: 'Flat' },
@@ -157,7 +157,7 @@ export function Sidebar() {
                     ].map((accidental) => (
                         <button
                             key={accidental.title}
-                            className="aspect-square rounded-lg flex items-center justify-center bg-slate-800 hover:bg-slate-700 hover:text-indigo-400 transition-colors border border-transparent hover:border-indigo-500/50 disabled:opacity-40 disabled:pointer-events-none"
+                            className="tool-cell aspect-square disabled:pointer-events-none"
                             disabled={!canEditNote}
                             title={accidental.title}
                             onClick={() => updateSelectedNoteAccidental(accidental.value)}
@@ -169,16 +169,16 @@ export function Sidebar() {
             </Card>
 
             <Card>
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-300">
+                <CardHeader>
+                    <CardTitle>
                         Dynamics
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-4 gap-2">
+                <CardContent className="grid grid-cols-4 gap-1.5">
                     {dynamicValues.map((dynamic) => (
                         <button
                             key={dynamic}
-                            className="aspect-square rounded-lg flex items-center justify-center bg-slate-800 hover:bg-slate-700 hover:text-indigo-400 transition-colors border border-transparent hover:border-indigo-500/50 italic font-serif disabled:opacity-40 disabled:pointer-events-none"
+                            className="tool-cell aspect-square font-serif italic disabled:pointer-events-none"
                             disabled={!canEdit}
                             title={`Insert ${dynamic}`}
                             onClick={() => insertDynamic(dynamic)}
@@ -190,12 +190,12 @@ export function Sidebar() {
             </Card>
 
             <Card>
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-300">
+                <CardHeader>
+                    <CardTitle>
                         Measures
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-3 gap-2">
+                <CardContent className="grid grid-cols-3 gap-1.5">
                     <Button
                         variant="secondary"
                         size="icon"
@@ -227,14 +227,14 @@ export function Sidebar() {
             </Card>
 
             <Card>
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-slate-300">
-                        <Layers className="w-4 h-4 text-indigo-400" />
+                <CardHeader>
+                    <CardTitle>
+                        <Layers className="w-4 h-4 text-[#c94412]" />
                         Voices
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                    <div className="space-y-2">
+                <CardContent className="space-y-2">
+                    <div className="space-y-1">
                         <Label htmlFor="palette-voice">Active Voice</Label>
                         <Select
                             id="palette-voice"
@@ -244,7 +244,7 @@ export function Sidebar() {
                             onChange={(event) => setActiveSequence(Number(event.target.value))}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-1.5">
                         <Button
                             variant="secondary"
                             size="sm"

@@ -98,12 +98,11 @@ export function Dropzone({ onLoadDemo }: DropzoneProps) {
     return (
         <div
             className={`
-        flex-1 flex flex-col items-center justify-center gap-6 p-12
-        bg-slate-900/60 border-2 border-dashed rounded-2xl
-        transition-all duration-300 cursor-pointer group
+        schematic-surface flex-1 flex flex-col items-center justify-center gap-4 p-8
+        border-2 border-dashed transition-colors duration-150 cursor-pointer group
         ${isDragOver
-                    ? 'border-indigo-500 bg-indigo-500/5 shadow-lg shadow-indigo-500/10'
-                    : 'border-slate-700 hover:border-indigo-500/50 hover:bg-slate-900/80'
+                    ? 'border-[#ff5a1f] bg-[#f4e3db]'
+                    : 'border-[#8f9289] hover:border-[#ff5a1f] hover:bg-[#e8e8e2]'
                 }
       `}
             onDragOver={handleDragOver}
@@ -123,31 +122,31 @@ export function Dropzone({ onLoadDemo }: DropzoneProps) {
 
             {/* Icon */}
             <div className={`
-        w-20 h-20 rounded-2xl flex items-center justify-center
-        bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700
-        shadow-xl transition-transform duration-300
-        ${isDragOver ? 'scale-110 border-indigo-500/50' : 'group-hover:-translate-y-1'}
+        w-14 h-14 flex items-center justify-center
+        bg-[#d4d6d0] border border-[#8f9289]
+        transition-transform duration-150
+        ${isDragOver ? 'scale-105 border-[#ff5a1f]' : 'group-hover:-translate-y-0.5'}
       `}>
-                <FileMusic className="w-10 h-10 text-indigo-400" />
+                <FileMusic className="w-7 h-7 text-[#c94412]" />
             </div>
 
             {/* Text */}
             <div className="text-center">
-                <h3 className="text-xl font-semibold text-white mb-2">
+                <h3 className="mb-1 text-[16px] font-black text-[#121212]">
                     Drop MusicXML/MEI or Click to Load Demo
                 </h3>
-                <p className="text-slate-400 text-sm">
+                <p className="text-[12px] text-[#5e625a]">
                     Import .musicxml, .mei, .mxl, or .xml files to convert them to MNX format
                 </p>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
                 <Button onClick={handleBrowseClick} className="gap-2">
                     <Upload className="w-4 h-4" />
                     Browse Files
                 </Button>
-                <span className="text-slate-600 text-sm uppercase tracking-wider">or</span>
+                <span className="text-[10px] font-bold uppercase text-[#777b73]">or</span>
                 <Button
                     variant="outline"
                     onClick={(e) => {
@@ -162,11 +161,11 @@ export function Dropzone({ onLoadDemo }: DropzoneProps) {
             </div>
 
             {/* Format badges */}
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
                 {['.musicxml', '.mei', '.mxl', '.xml'].map((format) => (
                     <span
                         key={format}
-                        className="px-2 py-1 text-xs font-mono bg-slate-800 text-slate-400 rounded border border-slate-700"
+                        className="border border-[#9a9c94] bg-[#d7d9d3] px-1.5 py-0.5 font-mono text-[10px] text-[#3a3d37]"
                     >
                         {format}
                     </span>

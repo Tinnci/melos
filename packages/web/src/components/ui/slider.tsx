@@ -8,13 +8,12 @@ const Slider = React.forwardRef<
     <input
         type="range"
         className={cn(
-            "w-full h-2 bg-slate-800 rounded-full appearance-none cursor-pointer",
-            "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4",
-            "[&::-webkit-slider-thumb]:bg-gradient-to-r [&::-webkit-slider-thumb]:from-indigo-500 [&::-webkit-slider-thumb]:to-purple-500",
-            "[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-indigo-500/30",
-            "[&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110",
-            "[&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-indigo-500",
-            "[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0",
+            "w-full h-1.5 bg-[#b8bab3] rounded-sm appearance-none cursor-pointer",
+            "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5",
+            "[&::-webkit-slider-thumb]:bg-[#ff5a1f] [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-[#96320f]",
+            "[&::-webkit-slider-thumb]:rounded-sm [&::-webkit-slider-thumb]:transition-colors",
+            "[&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:bg-[#ff5a1f]",
+            "[&::-moz-range-thumb]:rounded-sm [&::-moz-range-thumb]:border-[#96320f]",
             className
         )}
         ref={ref}

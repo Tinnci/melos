@@ -50,7 +50,7 @@ export function TransportBar() {
     }, [tempo, status])
 
     return (
-        <div className="flex items-center gap-4 px-4 py-2 bg-slate-800/50 rounded-xl border border-slate-700/50">
+        <div className="flex items-center gap-3 border border-[#8f9289] bg-[#d4d6d0] px-2 py-1">
             {/* Controls */}
             <div className="flex gap-1">
                 <Button
@@ -58,7 +58,7 @@ export function TransportBar() {
                     size="icon"
                     onClick={handleStop}
                     title="Stop"
-                    className="text-slate-400 hover:text-white"
+                    className="text-[#2b2d29]"
                 >
                     <Square className="w-4 h-4" />
                 </Button>
@@ -68,29 +68,27 @@ export function TransportBar() {
                     onClick={handlePlay}
                     disabled={!score}
                     title="Play"
-                    className={status === 'playing' ? 'bg-emerald-600 hover:bg-emerald-500 animate-pulse' : ''}
+                    className={status === 'playing' ? 'border-[#347200] bg-[#65bd13] hover:bg-[#76cf24] animate-pulse' : ''}
                 >
                     <Play className="w-4 h-4" />
                 </Button>
             </div>
 
             {/* Tempo */}
-            <div className="flex flex-col gap-1 min-w-[140px]">
-                <span className="text-[10px] uppercase tracking-wider text-slate-500">
+            <div className="flex items-center gap-2 min-w-[170px]">
+                <span className="text-[10px] font-black uppercase text-[#5e625a]">
                     Tempo
                 </span>
-                <div className="flex items-center gap-2">
-                    <Slider
-                        min={40}
-                        max={200}
-                        value={tempo}
-                        onChange={(e) => setTempo(Number(e.target.value))}
-                        className="flex-1"
-                    />
-                    <span className="text-sm font-mono font-medium text-white w-8 text-right">
-                        {tempo}
-                    </span>
-                </div>
+                <Slider
+                    min={40}
+                    max={200}
+                    value={tempo}
+                    onChange={(e) => setTempo(Number(e.target.value))}
+                    className="flex-1"
+                />
+                <span className="w-8 text-right font-mono text-[12px] font-bold text-[#121212]">
+                    {tempo}
+                </span>
             </div>
 
             {/* Status */}
@@ -100,10 +98,10 @@ export function TransportBar() {
                         status === 'unsupported' ? 'destructive' :
                             'secondary'
                 }
-                className="gap-1.5"
+                className="gap-1"
             >
                 {status === 'playing' && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#317100] animate-pulse" />
                 )}
                 {status === 'idle' && 'Ready'}
                 {status === 'playing' && 'Playing'}

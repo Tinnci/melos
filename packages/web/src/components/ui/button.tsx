@@ -5,28 +5,28 @@ type ButtonVariant = "default" | "destructive" | "outline" | "secondary" | "ghos
 type ButtonSize = "default" | "sm" | "lg" | "icon"
 
 const baseButtonClass =
-    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
+    "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-sm border text-[11px] font-bold transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff5a1f] focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-45 [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0"
 
 const variantClass: Record<ButtonVariant, string> = {
     default:
-        "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:brightness-110",
+        "border-[#b43e16] bg-[#ff5a1f] text-black hover:bg-[#ff713d]",
     destructive:
-        "bg-red-600 text-white shadow-lg shadow-red-500/25 hover:bg-red-500",
+        "border-[#9a1717] bg-[#d52222] text-white hover:bg-[#ef3333]",
     outline:
-        "border border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-600",
+        "border-[#8f9289] bg-transparent text-[#151515] hover:border-[#ff5a1f] hover:bg-[#f4e3db]",
     secondary:
-        "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 hover:text-white",
+        "border-[#8f9289] bg-[#d2d4ce] text-[#151515] hover:border-[#74766e] hover:bg-[#ecece7]",
     ghost:
-        "text-slate-400 hover:bg-slate-800 hover:text-white",
+        "border-transparent bg-transparent text-[#2b2d29] hover:border-[#9b9d95] hover:bg-[#d9dbd5]",
     link:
-        "text-indigo-400 underline-offset-4 hover:underline hover:text-indigo-300",
+        "border-transparent bg-transparent text-[#c94412] underline-offset-4 hover:underline",
 }
 
 const sizeClass: Record<ButtonSize, string> = {
-    default: "h-10 px-4 py-2",
-    sm: "h-8 rounded-md px-3 text-xs",
-    lg: "h-12 rounded-xl px-8 text-base",
-    icon: "h-10 w-10",
+    default: "h-8 px-3 py-1",
+    sm: "h-7 px-2.5 text-[11px]",
+    lg: "h-9 px-4 text-xs",
+    icon: "h-7 w-7 p-0",
 }
 
 function buttonVariants({

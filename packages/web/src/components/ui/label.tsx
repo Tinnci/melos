@@ -8,7 +8,7 @@ const Label = React.forwardRef<
     <label
         ref={ref}
         className={cn(
-            "text-[10px] uppercase tracking-wider text-slate-500 font-medium",
+            "text-[10px] uppercase text-[#5e625a] font-bold",
             className
         )}
         {...props}

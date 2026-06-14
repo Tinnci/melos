@@ -92,8 +92,8 @@ export function ScoreCanvas() {
 
     if (isLoading) {
         return (
-            <div className="flex-1 rounded-2xl bg-slate-900/80 border border-slate-800/50 p-6 animate-pulse">
-                <div className="h-[300px] bg-slate-800/50 rounded-xl" />
+            <div className="flex-1 border border-[#9a9c94] bg-[#e5e5df] p-2 animate-pulse">
+                <div className="h-[300px] border border-[#b4b6ae] bg-[#d6d8d2]" />
             </div>
         )
     }
@@ -105,16 +105,14 @@ export function ScoreCanvas() {
     return (
         <div
             className="
-                flex-1 rounded-2xl bg-slate-900/80 backdrop-blur-xl
-                border border-slate-800/50 p-4 overflow-hidden
-                shadow-xl shadow-indigo-500/5 animate-slide-up
+                schematic-surface flex-1
+                border border-[#8f9289] p-2 overflow-hidden
+                animate-slide-up
                 relative flex flex-col gap-3
             "
         >
-            <div className="absolute inset-0 bg-gradient-to-t from-indigo-500/5 to-transparent rounded-2xl pointer-events-none" />
-
-            <div className="relative z-10 flex items-center justify-between gap-3">
-                <div className="text-xs font-mono text-slate-500">
+            <div className="relative z-10 flex items-center justify-between gap-2 border border-[#a6a8a0] bg-[#dedfd9] px-2 py-1">
+                <div className="font-mono text-[11px] font-bold text-[#5e625a]">
                     {Math.round(zoom * 100)}%
                 </div>
                 <div className="flex items-center gap-1">
@@ -153,9 +151,9 @@ export function ScoreCanvas() {
                 </div>
             </div>
 
-            <div className="relative z-10 flex-1 overflow-auto rounded-lg bg-white p-6">
+            <div className="relative z-10 flex-1 overflow-auto border border-[#8f9289] bg-[#f4f4ef] p-3">
                 <div
-                    className="[&_svg]:w-full [&_svg]:h-auto [&_svg]:min-w-[600px]"
+                    className="mx-auto w-fit border border-[#c9cbc5] bg-white p-4 [&_svg]:h-auto [&_svg]:min-w-[600px] [&_svg]:w-full"
                     style={zoomStyle}
                     dangerouslySetInnerHTML={{ __html: scoreMarkup }}
                     onClick={handleCanvasClick}
@@ -163,7 +161,7 @@ export function ScoreCanvas() {
             </div>
 
             {showSource && (
-                <pre className="relative z-10 max-h-64 overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-4 text-xs leading-relaxed text-slate-300">
+                <pre className="relative z-10 max-h-56 overflow-auto border border-[#8f9289] bg-[#f8f8f3] p-2 font-mono text-[11px] leading-relaxed text-[#20221f]">
                     {sourceMarkup}
                 </pre>
             )}

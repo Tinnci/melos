@@ -8,7 +8,7 @@ const Card = React.forwardRef<
     <div
         ref={ref}
         className={cn(
-            "rounded-2xl border border-slate-800/50 bg-slate-900/80 backdrop-blur-xl text-slate-50 shadow-xl",
+            "rounded border border-[#9a9c94] bg-[#e7e7e1] text-[#121212]",
             className
         )}
         {...props}
@@ -22,7 +22,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
     <div
         ref={ref}
-        className={cn("flex flex-col space-y-1.5 p-5 border-b border-slate-800/50", className)}
+        className={cn("flex flex-col space-y-1 p-2.5 border-b border-[#b4b6ae]", className)}
         {...props}
     />
 ))
@@ -34,7 +34,7 @@ const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
     <div
         ref={ref}
-        className={cn("text-sm font-semibold flex items-center gap-2 text-slate-200", className)}
+        className={cn("text-[12px] font-bold flex items-center gap-1.5 text-[#121212]", className)}
         {...props}
     />
 ))
@@ -46,7 +46,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
     <div
         ref={ref}
-        className={cn("text-sm text-slate-400", className)}
+        className={cn("text-xs text-[#5e625a]", className)}
         {...props}
     />
 ))
@@ -56,7 +56,7 @@ const CardContent = React.forwardRef<
     HTMLDivElement,
     React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("p-5", className)} {...props} />
+    <div ref={ref} className={cn("p-2.5", className)} {...props} />
 ))
 CardContent.displayName = "CardContent"
 
@@ -66,7 +66,7 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
     <div
         ref={ref}
-        className={cn("flex items-center p-5 pt-0", className)}
+        className={cn("flex items-center p-2.5 pt-0", className)}
         {...props}
     />
 ))
