@@ -16,6 +16,8 @@ Implemented:
 - `Renderer.createPipeline(score)` exposes the current input summary, stage
   statuses, render plan, per-measure layout analysis, per-measure spacing, and
   output contract for debugging and tests.
+- `Renderer.createDocument(score)` exposes a `RenderDocument` before SVG
+  serialization.
 - `renderer/src/plan.ts` wraps measures into systems from layout analysis.
 - `renderer/src/spacing.ts` maps core timeline events to measure columns and x
   positions.
@@ -23,19 +25,21 @@ Implemented:
   forcing callers through SVG serialization.
 - `renderer/src/glyphPlanner.ts` resolves common score content to planned
   SMuFL glyph names.
-- `renderer/src/svgBackend.ts` owns SMuFL glyph escaping and SVG text emission
-  helpers.
+- `renderer/src/svgBackend.ts` owns the structured `RenderDocument` /
+  `RenderElement` serializer, SMuFL glyph output, text escaping, hitboxes, and
+  SVG groups.
 - `renderer/src/smufl.ts` resolves common SMuFL glyph names.
 - `renderer/src/layout.ts` analyzes hard, soft, and overlay spacing
   contributions from `@melos/core` timeline data.
 
 Still coupled:
 
-- Curves, hitboxes, primitive paths, fallback notehead shapes, stems, flags,
-  beams, and SVG string serialization live mostly in `Renderer`.
+- Curves, primitive paths, fallback notehead shapes, stems, flags, beams, and
+  most SVG primitive creation live mostly in `Renderer`.
 - Collision avoidance is not a separate pass.
-- SVG is still the only backend, and the current SVG backend is helper-level
-  rather than a full `RenderDocument` serializer.
+- SVG is still the only backend. `RenderDocument` currently uses a raw SVG
+  bridge for unmigrated primitives, so it is a migration contract rather than a
+  fully backend-neutral drawing tree.
 
 ## Target Pipeline
 
@@ -60,6 +64,7 @@ Score
 | Spacing solver | Event columns and x positions from timeline beats | Started in `@melos/renderer` |
 | Glyph planner | SMuFL glyph names for clefs, noteheads, rests, accidentals, dynamics, articulations, pedals | Started in `GlyphPlanner`; geometry still mostly in `Renderer` |
 | Collision resolver | Accidentals, dots, lyrics, articulations, dynamics, spans | Missing |
+| Render document | Backend-neutral document and element tree | Started in `RenderDocument`; raw bridge remains |
 | Render backend | SVG/canvas/PDF/test serialization | Started in `SvgRenderBackend`; many primitives remain inline in `Renderer` |
 
 ## Current Inputs And Outputs
@@ -70,6 +75,7 @@ Renderer input:
 Renderer.render(score: Score): string
 Renderer.createPlan(score: Score): RenderPlan
 Renderer.createPipeline(score: Score): RenderPipeline
+Renderer.createDocument(score: Score): RenderDocument
 createRenderPipeline(score: Score, options?: RenderPlanOptions): RenderPipeline
 solveMeasureSpacing(score: Score, measure: RenderPlanMeasure): MeasureSpacing
 ```
@@ -83,10 +89,14 @@ Intermediate outputs:
   layout diagnostics.
 - `MeasureSpacing`: timeline-aligned event columns, event x positions, and
   path/id indexes for renderer lookup.
+- `RenderDocument`: structured document wrapper with `RenderElement` items.
+  Existing unmigrated primitives are currently carried through a trusted raw
+  SVG element.
 
 Renderer output:
 
-- SVG string with SMuFL text glyphs, SVG primitives, and interaction metadata.
+- `RenderDocument` serialized to an SVG string with SMuFL text glyphs, SVG
+  primitives, and interaction metadata.
 
 ## Spacing Model
 
@@ -206,6 +216,34 @@ This is intentionally an inspection API, not the final drawing backend. It
 keeps the current renderer stable while giving tests and future tools a direct
 view of layout and spacing decisions.
 
+## Render Document Contract
+
+`RenderDocument` is the migration layer between renderer passes and concrete
+output backends:
+
+```ts
+interface RenderDocument {
+  width: number;
+  height: number;
+  elements: RenderElement[];
+  styles?: string[];
+}
+
+type RenderElement =
+  | { kind: "group"; children: RenderElement[] }
+  | { kind: "hitbox"; x: number; y: number; width: number; height: number }
+  | { kind: "line"; x1: number; y1: number; x2: number; y2: number }
+  | { kind: "path"; d: string }
+  | { kind: "raw"; svg: string }
+  | { kind: "rect"; x: number; y: number; width: number; height: number }
+  | { kind: "smuflGlyph"; glyphName?: string; glyphNames?: string[] }
+  | { kind: "text"; x: number; y: number; text: string };
+```
+
+The `raw` element is intentionally temporary. It allows `Renderer.render()` to
+stay stable while stave lines, barlines, notehead fallbacks, stems, flags,
+beams, curves, and spans are migrated in smaller patches.
+
 ## Renderer Diagnostics
 
 Renderer diagnostics should be structured and non-fatal for normal notation
@@ -235,7 +273,8 @@ should stay in renderer layers.
 6. Add `RenderPipeline` inspection so inputs, intermediate outputs, and backend
    contracts are visible without parsing SVG. Done.
 7. Add a `RenderDocument` / `RenderElement` layer and migrate SVG primitives
-   out of `Renderer`.
+   out of `Renderer`. Started with document, SMuFL glyphs, text, hitboxes, and
+   group serialization.
 8. Add collision passes for accidentals, dots, lyrics, articulations, dynamics,
    pedals, and ottavas.
 9. Add backend-neutral glyph-plan snapshot tests.

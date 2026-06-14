@@ -10,7 +10,7 @@ import {
 } from "./plan";
 import { solveMeasureSpacing, type MeasureSpacing } from "./spacing";
 import { GlyphPlanner } from "./glyphPlanner";
-import { SvgRenderBackend } from "./svgBackend";
+import { SvgRenderBackend, type RenderDocument } from "./svgBackend";
 import { createRenderPipeline, type RenderPipeline } from "./pipeline";
 
 export * from "./smufl";
@@ -187,10 +187,7 @@ export class Renderer {
         return createRenderPipeline(score, this.getRenderPlanOptions(score));
     }
 
-    /**
-     * Renders a Score object to an SVG string through the intermediate render plan.
-     */
-    render(score: Score): string {
+    createDocument(score: Score): RenderDocument {
         const plan = this.createPlan(score);
         const state: DeferredRenderState = {
             globalPositions: new Map(),
@@ -203,12 +200,19 @@ export class Renderer {
 
         svgContent += this.renderDeferredCurves(state);
 
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="${plan.width}" height="${plan.height}">
-            <style>
-                .smufl-glyph { font-family: ${SMUFL_FONT_STACK}; }
-            </style>
-            ${svgContent}
-        </svg>`;
+        return {
+            width: plan.width,
+            height: plan.height,
+            styles: [`.smufl-glyph { font-family: ${SMUFL_FONT_STACK}; }`],
+            elements: [{ kind: "raw", svg: svgContent }],
+        };
+    }
+
+    /**
+     * Renders a Score object to an SVG string through the intermediate render plan.
+     */
+    render(score: Score): string {
+        return this.backend.renderDocument(this.createDocument(score));
     }
 
     private renderPart(score: Score, partPlan: RenderPlanPart, state: DeferredRenderState): string {
@@ -1547,7 +1551,18 @@ export class Renderer {
     ): string {
         const y = staffTopY - 14;
         const height = this.config.lineSpacing * 4 + 84;
-        return `<rect class="measure-hitbox" data-measure-index="${measureNumber}" data-part-id="${this.escapeXml(partId)}" x="${x}" y="${y}" width="${width}" height="${height}" fill="transparent" stroke="transparent" pointer-events="all" style="cursor: pointer;" />\n`;
+        return this.backend.hitbox({
+            className: "measure-hitbox",
+            x,
+            y,
+            width,
+            height,
+            attributes: {
+                "data-measure-index": measureNumber,
+                "data-part-id": partId,
+                style: "cursor: pointer;",
+            },
+        });
     }
 
     private renderDynamic(
@@ -1562,7 +1577,18 @@ export class Renderer {
         let svg = "";
 
         if (plannedDynamic.glyphNames.length === 0) {
-            svg = `<text x="${x}" y="${staffTopY + this.config.dynamicOffsetY}" font-family="Times New Roman" font-style="italic" font-weight="bold" font-size="16" data-smufl-role="dynamic-text">${this.escapeXml(value)}</text>\n`;
+            svg = this.backend.text({
+                x,
+                y: staffTopY + this.config.dynamicOffsetY,
+                text: value,
+                fontFamily: "Times New Roman",
+                fontSize: 16,
+                attributes: {
+                    "font-style": "italic",
+                    "font-weight": "bold",
+                    "data-smufl-role": "dynamic-text",
+                },
+            });
         } else {
             svg = this.renderSmuflGlyphs(
                 plannedDynamic.glyphNames,
@@ -1828,20 +1854,29 @@ export class Renderer {
     ): string {
         if (!eventId && !partId) return svg;
 
-        const hitboxSvg = hitbox
-            ? `<rect class="event-hitbox" x="${hitbox.x}" y="${hitbox.y}" width="${hitbox.width}" height="${hitbox.height}" fill="transparent" stroke="transparent" pointer-events="all" />\n`
-            : "";
-        const attrs = [
-            eventId ? `data-event-id="${eventId}"` : "",
-            partId ? `data-part-id="${partId}"` : "",
-            `data-event-kind="${kind}"`,
-            `class="score-object ${kind}-group"`,
-            `style="cursor: pointer;"`,
-        ]
-            .filter(Boolean)
-            .join(" ");
+        const children = [
+            ...(hitbox
+                ? [
+                      {
+                          kind: "hitbox" as const,
+                          className: "event-hitbox",
+                          ...hitbox,
+                      },
+                  ]
+                : []),
+            { kind: "raw" as const, svg },
+        ];
 
-        return `<g ${attrs}>${hitboxSvg}${svg}</g>\n`;
+        return this.backend.group({
+            attributes: {
+                ...(eventId ? { "data-event-id": eventId } : {}),
+                ...(partId ? { "data-part-id": partId } : {}),
+                "data-event-kind": kind,
+                class: `score-object ${kind}-group`,
+                style: "cursor: pointer;",
+            },
+            children,
+        });
     }
 
     private renderSmuflGlyph(
@@ -1862,10 +1897,6 @@ export class Renderer {
         attrs = "",
     ): string {
         return this.backend.smuflGlyphs(glyphNames, x, y, fontSize, attrs);
-    }
-
-    private escapeXml(value: string): string {
-        return this.backend.escapeXml(value);
     }
 
     /**

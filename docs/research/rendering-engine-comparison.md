@@ -83,9 +83,12 @@ Planned batches:
 1. Pipeline inspection API. Done: `Renderer.createPipeline()` and
    `createRenderPipeline()`.
 2. `RenderDocument` and structured `RenderElement` union for text, SMuFL glyph,
-   path, line, rect, group, and hitbox output.
+   path, line, rect, group, and hitbox output. Started: `SvgRenderBackend` now
+   serializes structured documents and `Renderer.createDocument()` exposes the
+   current document before SVG output.
 3. Move stave lines, barlines, measure hitboxes, event hitboxes, and SMUFL text
-   from raw strings to structured elements.
+   from raw strings to structured elements. Started for SMuFL text, custom
+   dynamic text, event hitboxes, measure hitboxes, and groups.
 4. Add box/span planning for accidentals, dots, articulations, dynamics,
    pedals, ottavas, ties, slurs, and tremolos.
 5. Add a simple collision resolver and diagnostics:
