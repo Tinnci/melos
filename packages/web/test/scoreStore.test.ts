@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "bun:test";
+import { ScoreSchema } from "@melos/core";
 import {
     createDemoScore,
     type EditableContentItem,
@@ -162,5 +163,74 @@ describe("score store editing actions", () => {
         expect(selectedEvent?.rhythm.status).toBe("overfull");
         expect(selectedEvent?.rhythm.usedBeats).toBe(8);
         expect(selectedEvent?.rhythm.overfillBeats).toBe(4);
+    });
+
+    it("uses the core timeline for inherited meter, grace notes, and tuplets", () => {
+        const score = ScoreSchema.parse({
+            mnx: { version: 1 },
+            global: {
+                measures: [
+                    { time: { count: 3, unit: 4 } },
+                    {}
+                ]
+            },
+            parts: [{
+                id: "piano",
+                measures: [
+                    { sequences: [{ content: [] }] },
+                    {
+                        sequences: [{
+                            content: [
+                                {
+                                    type: "grace",
+                                    content: [{
+                                        id: "grace-note",
+                                        duration: { base: "16th" },
+                                        notes: [{ pitch: { step: "B", octave: 4 } }]
+                                    }]
+                                },
+                                {
+                                    type: "tuplet",
+                                    inner: { duration: { base: "eighth" }, multiple: 3 },
+                                    outer: { duration: { base: "eighth" }, multiple: 2 },
+                                    content: ["C", "D", "E"].map((step, index) => ({
+                                        id: `tuplet-note-${index + 1}`,
+                                        duration: { base: "eighth" },
+                                        notes: [{ pitch: { step, octave: 4 } }]
+                                    }))
+                                },
+                                ...["F", "G"].map((step, index) => ({
+                                    id: `quarter-note-${index + 1}`,
+                                    duration: { base: "quarter" },
+                                    notes: [{ pitch: { step, octave: 4 } }]
+                                }))
+                            ]
+                        }]
+                    }
+                ]
+            }]
+        });
+
+        useScoreStore.getState().setScore(score);
+        useScoreStore.getState().setSelection({
+            type: "measure",
+            id: "2",
+            partId: "piano"
+        });
+
+        const selectedMeasure = useScoreStore.getState().getSelectedMeasure();
+        expect(selectedMeasure?.rhythm.status).toBe("complete");
+        expect(selectedMeasure?.rhythm.usedBeats).toBe(3);
+        expect(selectedMeasure?.rhythm.expectedBeats).toBe(3);
+
+        useScoreStore.getState().setSelection({
+            type: "note",
+            id: "tuplet-note-2",
+            partId: "piano"
+        });
+
+        const selectedEvent = useScoreStore.getState().getSelectedEvent();
+        expect(selectedEvent?.rhythm.status).toBe("complete");
+        expect(selectedEvent?.rhythm.usedBeats).toBe(3);
     });
 });

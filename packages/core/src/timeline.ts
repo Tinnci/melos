@@ -185,6 +185,30 @@ export function resolveTimeSignatureForMeasure(
     return resolved;
 }
 
+export function getTimelineEventSource(
+    score: Score,
+    event: Pick<TimedEventRef, "partIndex" | "measureIndex" | "sequenceIndex" | "contentPath">
+): unknown {
+    let content = score.parts[event.partIndex]
+        ?.measures[event.measureIndex]
+        ?.sequences[event.sequenceIndex]
+        ?.content as unknown[] | undefined;
+
+    let item: unknown;
+    for (let index = 0; index < event.contentPath.length; index += 1) {
+        if (!Array.isArray(content)) return undefined;
+        item = content[event.contentPath[index]];
+
+        if (index < event.contentPath.length - 1) {
+            content = isRecord(item) && Array.isArray(item.content)
+                ? item.content
+                : undefined;
+        }
+    }
+
+    return item;
+}
+
 interface TimelineWalkContext {
     partIndex: number;
     measureIndex: number;

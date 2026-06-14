@@ -3,6 +3,7 @@ import { ScoreSchema } from "../src/schema";
 import {
     buildMeasureTimeline,
     buildScoreTimeline,
+    getTimelineEventSource,
     resolveTimeSignatureForMeasure
 } from "../src/timeline";
 
@@ -214,5 +215,35 @@ describe("core normalized timeline", () => {
         ]);
         expect(buildMeasureTimeline(score, 0, 0, { allowPickupMeasure: true }).diagnostics).toEqual([]);
         expect(buildMeasureTimeline(score, 0, 0, { includeRhythmDiagnostics: false }).diagnostics).toEqual([]);
+    });
+
+    it("resolves timeline event refs back to nested score content", () => {
+        const score = ScoreSchema.parse({
+            mnx: { version: 1 },
+            global: { measures: [{ time: { count: 4, unit: 4 } }] },
+            parts: [{
+                id: "P1",
+                measures: [{
+                    sequences: [{
+                        content: [{
+                            type: "tuplet",
+                            inner: { duration: { base: "eighth" }, multiple: 3 },
+                            outer: { duration: { base: "eighth" }, multiple: 2 },
+                            content: [{
+                                id: "nested-note",
+                                duration: { base: "eighth" },
+                                notes: [{ pitch: { step: "C", octave: 4 } }]
+                            }]
+                        }]
+                    }]
+                }]
+            }]
+        });
+
+        const timeline = buildMeasureTimeline(score, 0, 0, { includeRhythmDiagnostics: false });
+        const event = timeline.sequences[0].events.find((item) => item.id === "nested-note");
+        const source = event ? getTimelineEventSource(score, event) : undefined;
+
+        expect((source as { id?: string } | undefined)?.id).toBe("nested-note");
     });
 });

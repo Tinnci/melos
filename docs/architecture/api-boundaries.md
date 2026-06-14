@@ -60,6 +60,10 @@ The current work corrected these layering issues:
   data.
 - `@melos/mnx` validator consumes the core timeline instead of maintaining its
   own duration table.
+- `@melos/web` rhythm summaries consume the core timeline instead of computing
+  voice duration locally.
+- `@melos/player` builds playback schedules from the core timeline instead of
+  traversing score content with local rhythm math.
 - `@melos/mnx` still owns validation policy such as whether pickup underfill is
   allowed by default.
 - Pitch bound checks in `@melos/mnx` now recurse through nested grace/tuplet
@@ -101,11 +105,14 @@ interface MnxValidationOptions {
 }
 ```
 
+Player scheduling:
+
+```ts
+createPlaybackSchedule(score, options?)
+```
+
 ## Remaining Risks
 
-- Web rhythm status still has local summary logic.
-- Player scheduling still traverses score content directly.
 - Converter diagnostics are not yet structured.
 - Renderer still couples glyph planning and SVG serialization.
 - Lyrics and melisma are not yet core semantic spans.
-

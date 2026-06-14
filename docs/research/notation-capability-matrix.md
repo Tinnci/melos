@@ -25,7 +25,7 @@ Status key:
 | Tuplets | Partial | converter, core timeline, renderer layout tests | Nested visual brackets and collisions |
 | Grace notes | Partial | converter, core timeline, renderer layout tests | Grace beam/slur/layout quality |
 | Multiple voices | Partial | converter and renderer tests | Shared voice/timeline UX in web |
-| Hidden rests/skips | Partial | converter and renderer tests | Needs timeline-driven player/web use |
+| Hidden rests/skips | Partial | converter, renderer, web, and player timeline tests | Needs broader multi-voice editing UX |
 | Beams | Partial | converter ground truth, renderer beams | Cross-staff and advanced beam groups |
 | Slurs and ties | Partial | converter and renderer curve support | Cross-system/span diagnostics |
 | Cross-staff notation | Partial | staff preserved in converter | Layout model still basic |
@@ -48,17 +48,15 @@ Status key:
 | SVG preview | Supported | `Renderer.render()` | Backend still coupled to planning |
 | PDF/export | Partial | web export dependencies | Needs cleaner optional export API |
 | External comparison backend | Missing | LilyPond research note | Optional developer-only tool |
-| Structured diagnostics | Planned | core timeline and renderer layout diagnostics | Converter/web adoption |
+| Structured diagnostics | Planned | core timeline, renderer layout, and web rhythm summaries | Converter adoption |
 
 ## Priority Gaps
 
-1. Migrate web rhythm summaries to the core timeline.
-2. Migrate player scheduling to the core timeline.
-3. Add span modeling for ties, slurs, wedges, ottavas, pedals, and lyrics.
-4. Split renderer planning from SVG serialization.
-5. Add import diagnostics for MusicXML and MEI ambiguity.
-6. Expand SMuFL coverage with glyph metrics and modern accidentals.
-7. Add original edge-case fixtures for cross-staff, melisma, polymeter, and
+1. Add span modeling for ties, slurs, wedges, ottavas, pedals, and lyrics.
+2. Split renderer planning from SVG serialization.
+3. Add import diagnostics for MusicXML and MEI ambiguity.
+4. Expand SMuFL coverage with glyph metrics and modern accidentals.
+5. Add original edge-case fixtures for cross-staff, melisma, polymeter, and
    microtonal notation.
 
 ## Regression Fixture Targets
@@ -75,4 +73,3 @@ formats and open-source renderer behavior:
 - Percussion/unpitched staves.
 - Microtonal accidentals.
 - Polymeter or local measure-length diagnostics.
-

@@ -11,8 +11,7 @@ import {
     type NoteValue,
     type Pitch,
     type Score,
-    getSequenceContentBeats,
-    getTimeSignatureBeats,
+    buildMeasureTimeline,
     ScoreBuilder,
 } from '@melos/core'
 
@@ -351,26 +350,16 @@ function roundBeats(value: number): number {
     return Math.round((value + Number.EPSILON) * 1000) / 1000
 }
 
-function resolveMeasureTime(score: Score, measureNumber: number) {
-    let resolved = score.global.measures[0]?.time
-
-    score.global.measures.forEach((globalMeasure, index) => {
-        const globalMeasureNumber = globalMeasure.index ?? index + 1
-        if (globalMeasureNumber <= measureNumber && globalMeasure.time) {
-            resolved = globalMeasure.time
-        }
-    })
-
-    return resolved
-}
-
 function summarizeVoiceRhythm(
     score: Score,
-    measureNumber: number,
-    content: ScoreContentItem[]
+    partIndex: number,
+    measureIndex: number,
+    sequenceIndex: number
 ): VoiceRhythmSummary {
-    const expectedBeats = getTimeSignatureBeats(resolveMeasureTime(score, measureNumber))
-    const usedBeats = getSequenceContentBeats(content)
+    const timeline = buildMeasureTimeline(score, partIndex, measureIndex)
+    const sequence = timeline.sequences[sequenceIndex]
+    const expectedBeats = sequence?.expectedBeats ?? timeline.expectedBeats
+    const usedBeats = sequence?.usedBeats ?? 0
     const difference = usedBeats - expectedBeats
     const remainingBeats = Math.max(0, expectedBeats - usedBeats)
     const overfillBeats = Math.max(0, usedBeats - expectedBeats)
@@ -467,7 +456,8 @@ export function getSelectedEventDetails(
 ): SelectedEventDetails | null {
     if (!score || !isEditableSelection(selection)) return null
 
-    for (const part of score.parts) {
+    for (let partIndex = 0; partIndex < score.parts.length; partIndex += 1) {
+        const part = score.parts[partIndex]
         if (selection.partId && part.id !== selection.partId) continue
 
         for (let measureIndex = 0; measureIndex < part.measures.length; measureIndex += 1) {
@@ -489,8 +479,9 @@ export function getSelectedEventDetails(
                     eventIndex: result.eventIndex,
                     rhythm: summarizeVoiceRhythm(
                         score,
-                        measure.index ?? measureIndex + 1,
-                        measure.sequences[sequenceIndex].content
+                        partIndex,
+                        measureIndex,
+                        sequenceIndex
                     ),
                     event: result.item,
                 }
@@ -511,9 +502,10 @@ export function getSelectedMeasureDetails(
     const measureNumber = parseMeasureNumber(selection)
     if (!measureNumber) return null
 
-    const part = selection.partId
-        ? score.parts.find((scorePart) => scorePart.id === selection.partId)
-        : score.parts[0]
+    const partIndex = selection.partId
+        ? score.parts.findIndex((scorePart) => scorePart.id === selection.partId)
+        : 0
+    const part = partIndex >= 0 ? score.parts[partIndex] : undefined
     if (!part) return null
 
     const measureIndex = findMeasureIndex(part, measureNumber)
@@ -523,7 +515,6 @@ export function getSelectedMeasureDetails(
     const voiceCount = Math.max(1, measure.sequences.length)
     const sequenceIndex = Math.max(0, Math.min(activeSequenceIndex, voiceCount - 1))
     const eventCount = measure.sequences[sequenceIndex]?.content.length ?? 0
-    const content = measure.sequences[sequenceIndex]?.content ?? []
 
     return {
         type: 'measure',
@@ -533,7 +524,7 @@ export function getSelectedMeasureDetails(
         sequenceNumber: sequenceIndex + 1,
         voiceCount,
         eventCount,
-        rhythm: summarizeVoiceRhythm(score, measureNumber, content),
+        rhythm: summarizeVoiceRhythm(score, partIndex, measureIndex, sequenceIndex),
         measure,
     }
 }

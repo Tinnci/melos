@@ -1,5 +1,6 @@
-import type { Score, Pitch, Note } from "@melos/core";
-import { pitchToMidi, midiToFreq, getDurationInBeats, getTupletScale } from "./utils";
+import type { Score, Pitch } from "@melos/core";
+import { createPlaybackSchedule } from "./schedule";
+import { pitchToMidi, midiToFreq } from "./utils";
 
 export class AudioPlayer {
     private ctx: AudioContext | null = null;
@@ -56,72 +57,14 @@ export class AudioPlayer {
 
         // Start slightly in the future to allow scheduling
         const startTime = this.ctx.currentTime + 0.1;
-
-        // Iterate over all parts
-        score.parts.forEach(part => {
-            // Each part has its own timeline
-            // We assume measures are sequential and no gaps/overlaps for MVP simplified logic
-
-            let currentTime = startTime;
-
-            part.measures.forEach(measure => {
-                // For each measure, we might have multiple sequences (voices)
-                // They run parallel within the measure.
-                // We track the max duration of the measure to advance currentTime correctly.
-                let maxMeasureDuration = 0;
-
-                measure.sequences.forEach(seq => {
-                    const seqDuration = this.scheduleContent(seq.content, currentTime);
-                    if (seqDuration > maxMeasureDuration) {
-                        maxMeasureDuration = seqDuration;
-                    }
-                });
-
-                // Advance global time by measure duration
-                // Fallback if empty measure: assume 4/4 (4 beats)
-                if (maxMeasureDuration === 0) {
-                    maxMeasureDuration = 4 * (60 / this.tempo);
-                }
-
-                currentTime += maxMeasureDuration;
-            });
-        });
-    }
-
-    private scheduleContent(content: unknown[], startTime: number, scale = 1): number {
-        let seqTime = startTime;
-
-        content.forEach(event => {
-            if (!event || typeof event !== "object") return;
-
-            if ("type" in event) {
-                if (event.type === "tuplet" && "content" in event && Array.isArray(event.content)) {
-                    const duration = this.scheduleContent(event.content, seqTime, scale * getTupletScale(event));
-                    seqTime += duration;
-                    return;
-                }
-
-                if (event.type === "dynamic" || event.type === "grace") {
-                    return;
-                }
-            }
-
-            const baseEvent = event as any;
-            const beats = getDurationInBeats(baseEvent.duration) * scale;
-            const durationSecs = beats * (60 / this.tempo);
-
-            if (baseEvent.notes) {
-                baseEvent.notes.forEach((note: Note) => {
-                    if (note.pitch) {
-                        this.scheduleNote(note.pitch, seqTime, durationSecs);
-                    }
-                });
-            }
-
-            seqTime += durationSecs;
+        const schedule = createPlaybackSchedule(score, {
+            tempo: this.tempo,
+            startTime
         });
 
-        return seqTime - startTime;
+        schedule.forEach((event) => {
+            this.scheduleNote(event.pitch, event.startTime, event.duration);
+        });
     }
 
     private scheduleNote(pitch: Pitch, startTime: number, duration: number) {
@@ -147,5 +90,6 @@ export class AudioPlayer {
     }
 }
 
+export * from './schedule';
 export * from './utils';
 
