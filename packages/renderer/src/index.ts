@@ -592,7 +592,6 @@ export class Renderer {
         // key: { fifths: number }
         // fifths > 0: Sharps, fifths < 0: Flats
         let svg = "";
-        let width = 0;
         const fifths = key.fifths || 0;
         const spacing = 12;
 
@@ -635,7 +634,7 @@ export class Renderer {
             );
         }
 
-        width = count * spacing + 10;
+        const width = count * spacing + 10;
         return { svg, width };
     }
 
@@ -1705,7 +1704,7 @@ export class Renderer {
         partId?: string,
     ): string {
         const plannedDynamic = this.glyphPlanner.planDynamic(value, glyph);
-        let svg = "";
+        let svg: string;
 
         if (plannedDynamic.glyphNames.length === 0) {
             svg = this.backend.text({
@@ -1936,7 +1935,7 @@ export class Renderer {
         partId?: string,
     ): string {
         const glyph = this.glyphPlanner.planRest(duration);
-        let svg = "";
+        let svg: string;
 
         if (glyph && duration !== "whole" && duration !== "half") {
             svg = this.renderSmuflGlyph(
@@ -2150,8 +2149,8 @@ export class Renderer {
      */
     private calculateY(note: Note, staffTopY: number): number {
         const stepMap: Record<string, number> = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
-        let step = "B";
-        let octave = 4;
+        let step: string;
+        let octave: number;
 
         if (note.pitch) {
             step = note.pitch.step;
