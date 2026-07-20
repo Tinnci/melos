@@ -15,7 +15,7 @@
         "@melos/mei": "workspace:*",
         "@melos/player": "workspace:*",
         "@melos/renderer": "workspace:*",
-        "jspdf": "^3.0.4",
+        "jspdf": "^4.2.1",
         "lucide-react": "^0.556.0",
         "react": "^19.2.7",
         "react-dom": "^19.2.7",
