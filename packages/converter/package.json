@@ -9,6 +9,6 @@
     },
     "dependencies": {
         "@melos/core": "workspace:*",
-        "fast-xml-parser": "^5.10.0"
+        "fast-xml-parser": "^5.11.0"
     }
 }
